@@ -60,7 +60,11 @@ export const useAppointmentData = (userRole: 'client' | 'workshop') => {
                    'make' in apt.vehicle && 
                    'model' in apt.vehicle && 
                    'year' in apt.vehicle
-            ? apt.vehicle
+            ? {
+                make: apt.vehicle.make,
+                model: apt.vehicle.model,
+                year: apt.vehicle.year
+              }
             : null
         }));
 

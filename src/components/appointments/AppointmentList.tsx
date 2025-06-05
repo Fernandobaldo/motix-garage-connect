@@ -120,7 +120,14 @@ const AppointmentList = ({ userRole }: AppointmentListProps) => {
           workshop: apt.workshop && typeof apt.workshop === 'object' && 'name' in apt.workshop
             ? apt.workshop
             : null,
-          vehicle: apt.vehicle && typeof apt.vehicle === 'object' && 'make' in apt.vehicle && 'model' in apt.vehicle && 'year' in apt.vehicle && 'license_plate' in apt.vehicle
+          vehicle: apt.vehicle && 
+                   typeof apt.vehicle === 'object' && 
+                   apt.vehicle !== null &&
+                   'make' in apt.vehicle && 
+                   'model' in apt.vehicle && 
+                   'year' in apt.vehicle && 
+                   'license_plate' in apt.vehicle &&
+                   'id' in apt.vehicle
             ? apt.vehicle
             : null
         }));
