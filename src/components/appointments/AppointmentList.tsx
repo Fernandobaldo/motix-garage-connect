@@ -22,18 +22,18 @@ interface Appointment {
     id: string;
     full_name: string;
     phone: string;
-  };
+  } | null;
   workshop: {
     id: string;
     name: string;
-  };
+  } | null;
   vehicle: {
     id: string;
     make: string;
     model: string;
     year: number;
     license_plate: string;
-  };
+  } | null;
 }
 
 interface AppointmentListProps {
@@ -73,7 +73,12 @@ const AppointmentList = ({ userRole }: AppointmentListProps) => {
       let query = supabase
         .from('appointments')
         .select(`
-          *,
+          id,
+          service_type,
+          description,
+          scheduled_at,
+          duration_minutes,
+          status,
           client:profiles!appointments_client_id_fkey(id, full_name, phone),
           workshop:workshops!appointments_workshop_id_fkey(id, name),
           vehicle:vehicles(id, make, model, year, license_plate)
@@ -98,7 +103,31 @@ const AppointmentList = ({ userRole }: AppointmentListProps) => {
         return;
       }
 
-      setAppointments(data || []);
+      console.log('Raw appointment data:', data);
+
+      // Filter out any appointments with invalid data and ensure proper typing
+      const validAppointments: Appointment[] = (data || [])
+        .filter(apt => apt && typeof apt === 'object' && !('error' in apt))
+        .map(apt => ({
+          id: apt.id,
+          service_type: apt.service_type,
+          description: apt.description,
+          scheduled_at: apt.scheduled_at,
+          duration_minutes: apt.duration_minutes,
+          status: apt.status,
+          client: apt.client && typeof apt.client === 'object' && !('error' in apt.client) 
+            ? apt.client 
+            : null,
+          workshop: apt.workshop && typeof apt.workshop === 'object' && !('error' in apt.workshop)
+            ? apt.workshop
+            : null,
+          vehicle: apt.vehicle && typeof apt.vehicle === 'object' && !('error' in apt.vehicle)
+            ? apt.vehicle
+            : null
+        }));
+
+      console.log('Processed appointments:', validAppointments);
+      setAppointments(validAppointments);
     } catch (error) {
       console.error('Error loading appointments:', error);
     } finally {
@@ -247,22 +276,28 @@ const AppointmentList = ({ userRole }: AppointmentListProps) => {
                       ({appointment.duration_minutes}m)
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Car className="h-4 w-4" />
-                    <span>
-                      {appointment.vehicle?.year} {appointment.vehicle?.make} {appointment.vehicle?.model}
-                    </span>
-                  </div>
+                  {appointment.vehicle && (
+                    <div className="flex items-center gap-2">
+                      <Car className="h-4 w-4" />
+                      <span>
+                        {appointment.vehicle.year} {appointment.vehicle.make} {appointment.vehicle.model}
+                      </span>
+                    </div>
+                  )}
                   {userRole === 'client' ? (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{appointment.workshop?.name}</span>
-                    </div>
+                    appointment.workshop && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        <span>{appointment.workshop.name}</span>
+                      </div>
+                    )
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4" />
-                      <span>{appointment.client?.full_name}</span>
-                    </div>
+                    appointment.client && (
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        <span>{appointment.client.full_name}</span>
+                      </div>
+                    )
                   )}
                 </div>
 

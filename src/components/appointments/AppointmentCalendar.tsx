@@ -20,12 +20,12 @@ interface Appointment {
   status: string;
   client: {
     full_name: string;
-  };
+  } | null;
   vehicle: {
     make: string;
     model: string;
     year: number;
-  };
+  } | null;
 }
 
 interface AppointmentCalendarProps {
@@ -59,7 +59,11 @@ const AppointmentCalendar = ({ userRole }: AppointmentCalendarProps) => {
       let query = supabase
         .from('appointments')
         .select(`
-          *,
+          id,
+          service_type,
+          scheduled_at,
+          duration_minutes,
+          status,
           client:profiles!appointments_client_id_fkey(full_name),
           vehicle:vehicles(make, model, year)
         `)
@@ -77,7 +81,27 @@ const AppointmentCalendar = ({ userRole }: AppointmentCalendarProps) => {
         return;
       }
 
-      setAppointments(data || []);
+      console.log('Raw appointment data:', data);
+
+      // Filter out any appointments with invalid data and ensure proper typing
+      const validAppointments: Appointment[] = (data || [])
+        .filter(apt => apt && typeof apt === 'object' && !('error' in apt))
+        .map(apt => ({
+          id: apt.id,
+          service_type: apt.service_type,
+          scheduled_at: apt.scheduled_at,
+          duration_minutes: apt.duration_minutes,
+          status: apt.status,
+          client: apt.client && typeof apt.client === 'object' && !('error' in apt.client) 
+            ? apt.client 
+            : null,
+          vehicle: apt.vehicle && typeof apt.vehicle === 'object' && !('error' in apt.vehicle)
+            ? apt.vehicle
+            : null
+        }));
+
+      console.log('Processed appointments:', validAppointments);
+      setAppointments(validAppointments);
     } catch (error) {
       console.error('Error loading appointments:', error);
     } finally {
@@ -230,17 +254,19 @@ const AppointmentCalendar = ({ userRole }: AppointmentCalendarProps) => {
                             </span>
                           </div>
                           
-                          <div className="flex items-center gap-1">
-                            <Car className="h-4 w-4" />
-                            <span>
-                              {appointment.vehicle?.year} {appointment.vehicle?.make} {appointment.vehicle?.model}
-                            </span>
-                          </div>
+                          {appointment.vehicle && (
+                            <div className="flex items-center gap-1">
+                              <Car className="h-4 w-4" />
+                              <span>
+                                {appointment.vehicle.year} {appointment.vehicle.make} {appointment.vehicle.model}
+                              </span>
+                            </div>
+                          )}
                           
-                          {userRole === 'workshop' && (
+                          {userRole === 'workshop' && appointment.client && (
                             <div className="flex items-center gap-1">
                               <User className="h-4 w-4" />
-                              <span>{appointment.client?.full_name}</span>
+                              <span>{appointment.client.full_name}</span>
                             </div>
                           )}
                         </div>
