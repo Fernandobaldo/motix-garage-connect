@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,11 +17,11 @@ interface Workshop {
   name: string;
   email: string;
   phone: string;
+  tenant_id: string;
 }
 
 export const useAppointmentBooking = () => {
   const { user, profile } = useAuth();
-  const { tenant } = useTenant();
   const { toast } = useToast();
   
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -39,31 +38,44 @@ export const useAppointmentBooking = () => {
   // Load user vehicles and available workshops
   useEffect(() => {
     const loadData = async () => {
-      if (profile?.role === 'client') {
+      if (profile?.role === 'client' && user) {
+        console.log('Loading vehicles and workshops for client:', user.id);
+        
         // Load user's vehicles
-        const { data: vehicleData } = await supabase
+        const { data: vehicleData, error: vehicleError } = await supabase
           .from('vehicles')
           .select('*')
-          .eq('owner_id', user?.id);
+          .eq('owner_id', user.id);
         
-        if (vehicleData) setVehicles(vehicleData);
+        if (vehicleError) {
+          console.error('Error loading vehicles:', vehicleError);
+        } else {
+          console.log('Loaded vehicles:', vehicleData);
+          setVehicles(vehicleData || []);
+        }
 
-        // Load available workshops (public ones or tenant-specific)
-        const { data: workshopData } = await supabase
+        // Load all public workshops
+        const { data: workshopData, error: workshopError } = await supabase
           .from('workshops')
           .select('*')
-          .or('is_public.eq.true,tenant_id.eq.' + tenant?.id);
+          .eq('is_public', true);
         
-        if (workshopData) setWorkshops(workshopData);
+        if (workshopError) {
+          console.error('Error loading workshops:', workshopError);
+        } else {
+          console.log('Loaded workshops:', workshopData);
+          setWorkshops(workshopData || []);
+        }
       }
     };
 
     loadData();
-  }, [profile, tenant, user]);
+  }, [profile, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDate || !selectedTime || !serviceType || !vehicleId || !selectedWorkshop || !tenant) {
+    
+    if (!selectedDate || !selectedTime || !serviceType || !vehicleId || !selectedWorkshop) {
       toast({
         title: 'Missing Information',
         description: 'Please fill in all required fields.',
@@ -72,27 +84,61 @@ export const useAppointmentBooking = () => {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please sign in to book an appointment.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Find the selected workshop to get its tenant_id
+      const workshop = workshops.find(w => w.id === selectedWorkshop);
+      if (!workshop) {
+        toast({
+          title: 'Workshop Error',
+          description: 'Selected workshop not found.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const scheduledAt = new Date(selectedDate);
       const [hours, minutes] = selectedTime.split(':');
       scheduledAt.setHours(parseInt(hours), parseInt(minutes));
 
+      console.log('Creating appointment with data:', {
+        tenant_id: workshop.tenant_id,
+        client_id: user.id,
+        workshop_id: selectedWorkshop,
+        vehicle_id: vehicleId,
+        service_type: serviceType,
+        description,
+        scheduled_at: scheduledAt.toISOString(),
+        duration_minutes: parseInt(duration),
+        status: 'pending'
+      });
+
       const { error } = await supabase
         .from('appointments')
         .insert({
-          tenant_id: tenant.id,
-          client_id: user?.id,
+          tenant_id: workshop.tenant_id,
+          client_id: user.id,
           workshop_id: selectedWorkshop,
           vehicle_id: vehicleId,
           service_type: serviceType,
           description,
           scheduled_at: scheduledAt.toISOString(),
-          duration_minutes: parseInt(duration)
+          duration_minutes: parseInt(duration),
+          status: 'pending'
         });
 
       if (error) {
+        console.error('Appointment booking error:', error);
         toast({
           title: 'Booking Failed',
           description: error.message,
@@ -115,6 +161,7 @@ export const useAppointmentBooking = () => {
       setSelectedWorkshop('');
       
     } catch (error) {
+      console.error('Unexpected error:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred.',

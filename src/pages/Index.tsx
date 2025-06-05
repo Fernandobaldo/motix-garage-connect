@@ -60,7 +60,7 @@ const Index = () => {
             </h1>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
-                Welcome back!
+                Welcome back, {profile?.full_name || 'User'}!
               </span>
               <Button onClick={signOut} variant="outline" size="sm">
                 Sign Out
