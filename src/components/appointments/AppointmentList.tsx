@@ -107,30 +107,41 @@ const AppointmentList = ({ userRole }: AppointmentListProps) => {
       // Filter out any appointments with invalid data and ensure proper typing
       const validAppointments: Appointment[] = (data || [])
         .filter(apt => apt && typeof apt === 'object')
-        .map(apt => ({
-          id: apt.id,
-          service_type: apt.service_type,
-          description: apt.description,
-          scheduled_at: apt.scheduled_at,
-          duration_minutes: apt.duration_minutes,
-          status: apt.status,
-          client: apt.client && typeof apt.client === 'object' && 'full_name' in apt.client 
-            ? apt.client 
-            : null,
-          workshop: apt.workshop && typeof apt.workshop === 'object' && 'name' in apt.workshop
-            ? apt.workshop
-            : null,
-          vehicle: apt.vehicle && 
-                   typeof apt.vehicle === 'object' && 
-                   apt.vehicle !== null &&
-                   'make' in apt.vehicle && 
-                   'model' in apt.vehicle && 
-                   'year' in apt.vehicle && 
-                   'license_plate' in apt.vehicle &&
-                   'id' in apt.vehicle
-            ? apt.vehicle
-            : null
-        }));
+        .map(apt => {
+          // Safe vehicle extraction with proper null checks
+          const vehicleData = apt.vehicle && 
+                             typeof apt.vehicle === 'object' && 
+                             apt.vehicle !== null &&
+                             'make' in apt.vehicle && 
+                             'model' in apt.vehicle && 
+                             'year' in apt.vehicle && 
+                             'license_plate' in apt.vehicle &&
+                             'id' in apt.vehicle
+            ? {
+                id: String(apt.vehicle.id),
+                make: String(apt.vehicle.make),
+                model: String(apt.vehicle.model),
+                year: Number(apt.vehicle.year),
+                license_plate: String(apt.vehicle.license_plate)
+              }
+            : null;
+
+          return {
+            id: apt.id,
+            service_type: apt.service_type,
+            description: apt.description,
+            scheduled_at: apt.scheduled_at,
+            duration_minutes: apt.duration_minutes,
+            status: apt.status,
+            client: apt.client && typeof apt.client === 'object' && 'full_name' in apt.client 
+              ? apt.client 
+              : null,
+            workshop: apt.workshop && typeof apt.workshop === 'object' && 'name' in apt.workshop
+              ? apt.workshop
+              : null,
+            vehicle: vehicleData
+          };
+        });
 
       console.log('Processed appointments:', validAppointments);
       setAppointments(validAppointments);
