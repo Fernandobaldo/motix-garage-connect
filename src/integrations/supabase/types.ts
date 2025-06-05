@@ -9,6 +9,209 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      appointments: {
+        Row: {
+          client_id: string
+          created_at: string
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          scheduled_at: string
+          service_type: string
+          status: string | null
+          tenant_id: string
+          updated_at: string
+          vehicle_id: string | null
+          workshop_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          scheduled_at: string
+          service_type: string
+          status?: string | null
+          tenant_id: string
+          updated_at?: string
+          vehicle_id?: string | null
+          workshop_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          scheduled_at?: string
+          service_type?: string
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_conversations: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          id: string
+          tenant_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          id?: string
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string
+          id?: string
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_conversations_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string
+          file_name: string | null
+          file_url: string | null
+          id: string
+          message_type: string | null
+          sender_id: string
+          translated_content: Json | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          message_type?: string | null
+          sender_id: string
+          translated_content?: Json | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          message_type?: string | null
+          sender_id?: string
+          translated_content?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "chat_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -37,6 +240,218 @@ export type Database = {
           tenant_id?: string | null
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotations: {
+        Row: {
+          appointment_id: string | null
+          approved_at: string | null
+          client_id: string
+          created_at: string
+          description: string | null
+          id: string
+          labor_cost: number | null
+          parts_cost: number | null
+          quote_number: string
+          status: string | null
+          tax_rate: number | null
+          tenant_id: string
+          total_cost: number
+          updated_at: string
+          valid_until: string | null
+          vehicle_id: string | null
+          workshop_id: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          approved_at?: string | null
+          client_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          labor_cost?: number | null
+          parts_cost?: number | null
+          quote_number: string
+          status?: string | null
+          tax_rate?: number | null
+          tenant_id: string
+          total_cost: number
+          updated_at?: string
+          valid_until?: string | null
+          vehicle_id?: string | null
+          workshop_id: string
+        }
+        Update: {
+          appointment_id?: string | null
+          approved_at?: string | null
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          labor_cost?: number | null
+          parts_cost?: number | null
+          quote_number?: string
+          status?: string | null
+          tax_rate?: number | null
+          tenant_id?: string
+          total_cost?: number
+          updated_at?: string
+          valid_until?: string | null
+          vehicle_id?: string | null
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotations_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_history: {
+        Row: {
+          appointment_id: string | null
+          completed_at: string
+          cost: number | null
+          created_at: string
+          description: string | null
+          id: string
+          mileage: number | null
+          quotation_id: string | null
+          service_type: string
+          tenant_id: string
+          vehicle_id: string
+          workshop_id: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          completed_at?: string
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          mileage?: number | null
+          quotation_id?: string | null
+          service_type: string
+          tenant_id: string
+          vehicle_id: string
+          workshop_id: string
+        }
+        Update: {
+          appointment_id?: string | null
+          completed_at?: string
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          mileage?: number | null
+          quotation_id?: string | null
+          service_type?: string
+          tenant_id?: string
+          vehicle_id?: string
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_history_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_history_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_history_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_history_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          settings: Json | null
+          subdomain: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          settings?: Json | null
+          subdomain?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          settings?: Json | null
+          subdomain?: string | null
+          updated_at?: string
+        }
         Relationships: []
       }
       vehicles: {
@@ -48,6 +463,7 @@ export type Database = {
           make: string
           model: string
           owner_id: string
+          tenant_id: string | null
           transmission: string | null
           updated_at: string
           year: number
@@ -60,6 +476,7 @@ export type Database = {
           make: string
           model: string
           owner_id: string
+          tenant_id?: string | null
           transmission?: string | null
           updated_at?: string
           year: number
@@ -72,6 +489,7 @@ export type Database = {
           make?: string
           model?: string
           owner_id?: string
+          tenant_id?: string | null
           transmission?: string | null
           updated_at?: string
           year?: number
@@ -82,6 +500,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -98,6 +523,7 @@ export type Database = {
           owner_id: string
           phone: string | null
           services_offered: string[] | null
+          tenant_id: string | null
           updated_at: string
           working_hours: Json | null
         }
@@ -112,6 +538,7 @@ export type Database = {
           owner_id: string
           phone?: string | null
           services_offered?: string[] | null
+          tenant_id?: string | null
           updated_at?: string
           working_hours?: Json | null
         }
@@ -126,6 +553,7 @@ export type Database = {
           owner_id?: string
           phone?: string | null
           services_offered?: string[] | null
+          tenant_id?: string | null
           updated_at?: string
           working_hours?: Json | null
         }
@@ -137,6 +565,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "workshops_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -144,7 +579,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_tenant_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      user_belongs_to_tenant: {
+        Args: { check_tenant_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "client" | "workshop" | "admin"
