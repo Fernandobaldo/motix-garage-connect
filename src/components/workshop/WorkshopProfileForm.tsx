@@ -70,7 +70,7 @@ const WorkshopProfileForm = ({ formData, onFormDataChange, onSubmit, isSubmittin
     onFormDataChange({ ...formData, languages_spoken: newLanguages });
   };
 
-  const handleWorkingHoursChange = (day: string, field: string, value: string) => {
+  const handleWorkingHoursChange = (day: string, field: string, value: string | boolean) => {
     const newWorkingHours = {
       ...formData.working_hours,
       [day]: {

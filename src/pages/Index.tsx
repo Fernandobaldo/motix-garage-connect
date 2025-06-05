@@ -13,7 +13,7 @@ import AppointmentBooking from "@/components/appointments/AppointmentBooking";
 import RoleGuard from "@/components/auth/RoleGuard";
 
 const Index = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, profile } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
 
   if (!user) {
@@ -111,7 +111,7 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Dashboard />
+            <Dashboard userRole={profile?.role as 'client' | 'workshop'} />
           </TabsContent>
 
           <TabsContent value="booking">
