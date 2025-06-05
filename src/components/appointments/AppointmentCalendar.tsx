@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -85,17 +84,17 @@ const AppointmentCalendar = ({ userRole }: AppointmentCalendarProps) => {
 
       // Filter out any appointments with invalid data and ensure proper typing
       const validAppointments: Appointment[] = (data || [])
-        .filter(apt => apt && typeof apt === 'object' && !('error' in apt))
+        .filter(apt => apt && typeof apt === 'object')
         .map(apt => ({
           id: apt.id,
           service_type: apt.service_type,
           scheduled_at: apt.scheduled_at,
           duration_minutes: apt.duration_minutes,
           status: apt.status,
-          client: apt.client && typeof apt.client === 'object' && !('error' in apt.client) 
+          client: apt.client && typeof apt.client === 'object' && 'full_name' in apt.client 
             ? apt.client 
             : null,
-          vehicle: apt.vehicle && typeof apt.vehicle === 'object' && !('error' in apt.vehicle)
+          vehicle: apt.vehicle && typeof apt.vehicle === 'object' && 'make' in apt.vehicle && 'model' in apt.vehicle && 'year' in apt.vehicle
             ? apt.vehicle
             : null
         }));
