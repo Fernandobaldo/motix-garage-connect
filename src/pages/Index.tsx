@@ -1,15 +1,12 @@
-
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Car, MessageSquare, FileText, Users, BarChart3 } from "lucide-react";
-import AuthModal from "@/components/auth/AuthModal";
 import Dashboard from "@/components/dashboard/Dashboard";
-import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   const { user, profile, loading } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
 
   if (loading) {
     return (
@@ -44,12 +41,11 @@ const Index = () => {
               <p className="text-sm text-slate-600">Smart Automotive Management</p>
             </div>
           </div>
-          <Button 
-            onClick={() => setShowAuthModal(true)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-          >
-            Get Started
-          </Button>
+          <Link to="/auth">
+            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+              Get Started
+            </Button>
+          </Link>
         </div>
       </header>
 
@@ -67,13 +63,14 @@ const Index = () => {
             with our comprehensive SaaS platform designed for modern workshops and clients.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              onClick={() => setShowAuthModal(true)}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg px-8 py-3"
-            >
-              Start Free Trial
-            </Button>
+            <Link to="/auth">
+              <Button 
+                size="lg" 
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-lg px-8 py-3"
+              >
+                Start Free Trial
+              </Button>
+            </Link>
             <Button 
               size="lg" 
               variant="outline"
@@ -180,14 +177,15 @@ const Index = () => {
               Join thousands of workshops already using Motix Garage to streamline their operations.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                variant="secondary"
-                onClick={() => setShowAuthModal(true)}
-                className="text-lg px-8 py-3 bg-white text-blue-600 hover:bg-blue-50"
-              >
-                Start Your Free Trial
-              </Button>
+              <Link to="/auth">
+                <Button 
+                  size="lg" 
+                  variant="secondary"
+                  className="text-lg px-8 py-3 bg-white text-blue-600 hover:bg-blue-50"
+                >
+                  Start Your Free Trial
+                </Button>
+              </Link>
               <Button 
                 size="lg" 
                 variant="outline"
@@ -248,11 +246,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
-      />
     </div>
   );
 };
