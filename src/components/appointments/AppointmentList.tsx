@@ -108,24 +108,6 @@ const AppointmentList = ({ userRole }: AppointmentListProps) => {
       const validAppointments: Appointment[] = (data || [])
         .filter(apt => apt && typeof apt === 'object')
         .map(apt => {
-          // Safe vehicle extraction with proper null checks
-          const vehicleData = apt.vehicle && 
-                             typeof apt.vehicle === 'object' && 
-                             apt.vehicle !== null &&
-                             'make' in apt.vehicle && 
-                             'model' in apt.vehicle && 
-                             'year' in apt.vehicle && 
-                             'license_plate' in apt.vehicle &&
-                             'id' in apt.vehicle
-            ? {
-                id: String(apt.vehicle.id),
-                make: String(apt.vehicle.make),
-                model: String(apt.vehicle.model),
-                year: Number(apt.vehicle.year),
-                license_plate: String(apt.vehicle.license_plate)
-              }
-            : null;
-
           return {
             id: apt.id,
             service_type: apt.service_type,
@@ -139,7 +121,22 @@ const AppointmentList = ({ userRole }: AppointmentListProps) => {
             workshop: apt.workshop && typeof apt.workshop === 'object' && 'name' in apt.workshop
               ? apt.workshop
               : null,
-            vehicle: vehicleData
+            vehicle: apt.vehicle && 
+                     typeof apt.vehicle === 'object' && 
+                     apt.vehicle !== null &&
+                     'make' in apt.vehicle && 
+                     'model' in apt.vehicle && 
+                     'year' in apt.vehicle && 
+                     'license_plate' in apt.vehicle &&
+                     'id' in apt.vehicle
+              ? {
+                  id: String(apt.vehicle.id),
+                  make: String(apt.vehicle.make),
+                  model: String(apt.vehicle.model),
+                  year: Number(apt.vehicle.year),
+                  license_plate: String(apt.vehicle.license_plate)
+                }
+              : null
           };
         });
 
