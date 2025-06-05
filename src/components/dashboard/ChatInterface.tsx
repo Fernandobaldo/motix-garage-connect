@@ -1,362 +1,159 @@
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Send, 
-  Paperclip, 
-  Image, 
-  Phone, 
-  Video, 
-  MoreVertical, 
-  Search,
-  Languages,
-  User,
-  Building
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Send, Paperclip, User, Bot } from "lucide-react";
 
 interface ChatInterfaceProps {
   userRole: 'client' | 'workshop';
 }
 
-interface Message {
-  id: number;
-  text: string;
-  sender: 'client' | 'workshop';
-  timestamp: string;
-  type: 'text' | 'image' | 'file';
-  translated?: string;
-  isTranslated?: boolean;
-}
-
-interface ChatContact {
-  id: number;
-  name: string;
-  role: 'client' | 'workshop';
-  lastMessage: string;
-  timestamp: string;
-  unread: number;
-  avatar?: string;
-}
-
 const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
-  const [selectedContact, setSelectedContact] = useState<ChatContact | null>(null);
-  const [newMessage, setNewMessage] = useState('');
-  const [showTranslated, setShowTranslated] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-
-  const mockContacts: ChatContact[] = userRole === 'client' ? [
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState([
     {
       id: 1,
-      name: 'AutoCare Plus',
-      role: 'workshop',
-      lastMessage: 'Your oil change is complete and ready for pickup!',
-      timestamp: '2 min ago',
-      unread: 1,
+      sender: userRole === 'client' ? 'workshop' : 'client',
+      content: "Hello! How can I help you today?",
+      timestamp: "10:30 AM",
+      type: 'text' as const
     },
     {
       id: 2,
-      name: 'City Motors',
-      role: 'workshop',
-      lastMessage: 'We received your brake service request. When would you like to schedule?',
-      timestamp: '1 hour ago',
-      unread: 0,
-    },
-    {
-      id: 3,
-      name: 'Speed Shop Garage',
-      role: 'workshop',
-      lastMessage: 'Thank you for your visit today!',
-      timestamp: '1 day ago',
-      unread: 0,
+      sender: userRole,
+      content: "I need help with my brake system",
+      timestamp: "10:32 AM",
+      type: 'text' as const
     }
-  ] : [
-    {
-      id: 1,
-      name: 'John Smith',
-      role: 'client',
-      lastMessage: 'What time should I bring my car in?',
-      timestamp: '5 min ago',
-      unread: 2,
-    },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      role: 'client',
-      lastMessage: 'Thank you for the excellent service!',
-      timestamp: '30 min ago',
-      unread: 0,
-    },
-    {
-      id: 3,
-      name: 'Mike Davis',
-      role: 'client',
-      lastMessage: 'Is the estimate ready?',
-      timestamp: '2 hours ago',
-      unread: 1,
-    }
-  ];
-
-  const mockMessages: Message[] = [
-    {
-      id: 1,
-      text: 'Hello! I need to schedule an oil change for my Honda Civic.',
-      sender: 'client',
-      timestamp: '10:30 AM',
-      type: 'text',
-      translated: 'Hola! Necesito programar un cambio de aceite para mi Honda Civic.'
-    },
-    {
-      id: 2,
-      text: 'Hi! We can schedule that for you. What day works best?',
-      sender: 'workshop',
-      timestamp: '10:32 AM',
-      type: 'text',
-      translated: 'Hola! Podemos programar eso para ti. ¿Qué día te conviene mejor?'
-    },
-    {
-      id: 3,
-      text: 'How about this Friday around 2 PM?',
-      sender: 'client',
-      timestamp: '10:35 AM',
-      type: 'text',
-      translated: '¿Qué tal este viernes alrededor de las 2 PM?'
-    },
-    {
-      id: 4,
-      text: 'Perfect! Friday at 2 PM is available. I\'ll book that for you.',
-      sender: 'workshop',
-      timestamp: '10:36 AM',
-      type: 'text',
-      translated: '¡Perfecto! El viernes a las 2 PM está disponible. Lo reservaré para ti.'
-    },
-    {
-      id: 5,
-      text: 'Great! Should I bring anything specific?',
-      sender: 'client',
-      timestamp: '10:38 AM',
-      type: 'text',
-      translated: '¡Genial! ¿Debo traer algo específico?'
-    }
-  ];
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [mockMessages]);
-
-  useEffect(() => {
-    if (mockContacts.length > 0) {
-      setSelectedContact(mockContacts[0]);
-    }
-  }, []);
+  ]);
 
   const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
-
-    toast({
-      title: "Message Sent",
-      description: "Your message has been delivered.",
-    });
-
-    setNewMessage('');
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+    if (message.trim()) {
+      setMessages([...messages, {
+        id: messages.length + 1,
+        sender: userRole,
+        content: message,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'text' as const
+      }]);
+      setMessage('');
     }
-  };
-
-  const toggleTranslation = () => {
-    setShowTranslated(!showTranslated);
-    toast({
-      title: showTranslated ? "Translation Hidden" : "Translation Shown",
-      description: showTranslated 
-        ? "Now showing original messages" 
-        : "Now showing translated messages",
-    });
   };
 
   return (
-    <div className="h-[calc(100vh-200px)] flex bg-white rounded-lg border border-gray-200 overflow-hidden">
-      {/* Contacts Sidebar */}
-      <div className="w-80 border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">
-              {userRole === 'client' ? 'Workshops' : 'Clients'}
-            </h3>
-            <Button variant="ghost" size="sm">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Search conversations..." className="pl-10" />
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Messages</h2>
+          <p className="text-gray-600">
+            {userRole === 'client' ? 'Chat with workshops' : 'Chat with clients'}
+          </p>
         </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {mockContacts.map((contact) => (
-            <div
-              key={contact.id}
-              onClick={() => setSelectedContact(contact)}
-              className={`p-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${
-                selectedContact?.id === contact.id ? 'bg-blue-50 border-blue-200' : ''
-              }`}
-            >
-              <div className="flex items-start space-x-3">
-                <Avatar>
-                  <AvatarImage src={contact.avatar} />
-                  <AvatarFallback>
-                    {contact.role === 'workshop' ? (
-                      <Building className="h-4 w-4" />
-                    ) : (
-                      <User className="h-4 w-4" />
-                    )}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-gray-900 truncate">{contact.name}</h4>
-                    <span className="text-xs text-gray-500">{contact.timestamp}</span>
-                  </div>
-                  <p className="text-sm text-gray-600 truncate mt-1">{contact.lastMessage}</p>
-                </div>
-                {contact.unread > 0 && (
-                  <Badge className="bg-blue-600 text-white text-xs">
-                    {contact.unread}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <Button>
+          <Send className="h-4 w-4 mr-2" />
+          New Conversation
+        </Button>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {selectedContact ? (
-          <>
-            {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarImage src={selectedContact.avatar} />
-                    <AvatarFallback>
-                      {selectedContact.role === 'workshop' ? (
-                        <Building className="h-4 w-4" />
-                      ) : (
-                        <User className="h-4 w-4" />
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{selectedContact.name}</h3>
-                    <p className="text-sm text-gray-500 capitalize">{selectedContact.role}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Chat List */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle>Conversations</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="space-y-2">
+              {[1, 2, 3].map((chat) => (
+                <div key={chat} className="p-4 hover:bg-gray-50 cursor-pointer border-b">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback>
+                        {userRole === 'client' ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900">
+                        {userRole === 'client' ? `Workshop ${chat}` : `Client ${chat}`}
+                      </p>
+                      <p className="text-sm text-gray-500 truncate">
+                        Last message preview...
+                      </p>
+                    </div>
+                    <Badge variant="secondary">2</Badge>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={toggleTranslation}
-                    className={showTranslated ? 'bg-blue-100 text-blue-600' : ''}
-                  >
-                    <Languages className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Phone className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Video className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Chat Window */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="border-b">
+            <div className="flex items-center space-x-3">
+              <Avatar>
+                <AvatarFallback>
+                  {userRole === 'client' ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <CardTitle className="text-lg">
+                  {userRole === 'client' ? 'Auto Repair Shop' : 'John Doe'}
+                </CardTitle>
+                <CardDescription>Online now</CardDescription>
               </div>
             </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {mockMessages.map((message) => {
-                const isOwnMessage = message.sender === userRole;
-                return (
+          </CardHeader>
+          
+          <CardContent className="p-0">
+            {/* Messages Area */}
+            <div className="h-96 overflow-y-auto p-4 space-y-4">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.sender === userRole ? 'justify-end' : 'justify-start'}`}
+                >
                   <div
-                    key={message.id}
-                    className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                      msg.sender === userRole
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-900'
+                    }`}
                   >
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        isOwnMessage
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-900'
-                      }`}
-                    >
-                      <p className="text-sm">
-                        {showTranslated && message.translated ? message.translated : message.text}
-                      </p>
-                      <span className={`text-xs mt-1 block ${
-                        isOwnMessage ? 'text-blue-100' : 'text-gray-500'
-                      }`}>
-                        {message.timestamp}
-                      </span>
-                      {showTranslated && message.translated && (
-                        <p className={`text-xs mt-1 italic ${
-                          isOwnMessage ? 'text-blue-200' : 'text-gray-600'
-                        }`}>
-                          Original: {message.text}
-                        </p>
-                      )}
-                    </div>
+                    <p>{msg.content}</p>
+                    <p className={`text-xs mt-1 ${
+                      msg.sender === userRole ? 'text-blue-100' : 'text-gray-500'
+                    }`}>
+                      {msg.timestamp}
+                    </p>
                   </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
+                </div>
+              ))}
             </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm">
+            <div className="border-t p-4">
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm">
                   <Paperclip className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Image className="h-4 w-4" />
                 </Button>
                 <Input
                   placeholder="Type a message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   className="flex-1"
                 />
-                <Button 
-                  onClick={handleSendMessage}
-                  className="bg-blue-600 hover:bg-blue-700"
-                  disabled={!newMessage.trim()}
-                >
+                <Button onClick={handleSendMessage}>
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p>Select a conversation to start messaging</p>
-            </div>
-          </div>
-        )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

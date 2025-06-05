@@ -5,68 +5,76 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Car, User, Building, Mail, Lock, Phone } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (role: 'client' | 'workshop') => void;
 }
 
-const AuthModal = ({ isOpen, onClose, onLogin }: AuthModalProps) => {
+const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
+  const { signIn, signUp, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('login');
+  const [selectedRole, setSelectedRole] = useState<'client' | 'workshop'>('client');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    name: '',
+    full_name: '',
     phone: '',
     confirmPassword: ''
   });
-  const { toast } = useToast();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleLogin = async (role: 'client' | 'workshop') => {
+  const handleLogin = async () => {
+    if (!formData.email || !formData.password) return;
+
     setIsLoading(true);
+    const { error } = await signIn(formData.email, formData.password);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast({
-      title: "Login Successful!",
-      description: `Welcome back to Motix Garage.`,
-    });
-    
+    if (!error) {
+      onClose();
+      setFormData({
+        email: '',
+        password: '',
+        full_name: '',
+        phone: '',
+        confirmPassword: ''
+      });
+    }
     setIsLoading(false);
-    onLogin(role);
   };
 
-  const handleRegister = async (role: 'client' | 'workshop') => {
+  const handleRegister = async () => {
+    if (!formData.email || !formData.password || !formData.full_name) return;
+    
     if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Passwords don't match.",
-        variant: "destructive",
-      });
       return;
     }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    toast({
-      title: "Registration Successful!",
-      description: `Your ${role} account has been created successfully.`,
+    const { error } = await signUp(formData.email, formData.password, {
+      full_name: formData.full_name,
+      phone: formData.phone,
+      role: selectedRole
     });
     
+    if (!error) {
+      onClose();
+      setFormData({
+        email: '',
+        password: '',
+        full_name: '',
+        phone: '',
+        confirmPassword: ''
+      });
+    }
     setIsLoading(false);
-    onLogin(role);
   };
 
   return (
@@ -84,33 +92,13 @@ const AuthModal = ({ isOpen, onClose, onLogin }: AuthModalProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
 
           <TabsContent value="login" className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <Card className="cursor-pointer hover:bg-blue-50 transition-colors border-2 hover:border-blue-200" 
-                    onClick={() => handleLogin('client')}>
-                <CardContent className="p-4 text-center">
-                  <User className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                  <h3 className="font-semibold text-sm">Client Login</h3>
-                  <p className="text-xs text-gray-600 mt-1">Book services & track repairs</p>
-                </CardContent>
-              </Card>
-
-              <Card className="cursor-pointer hover:bg-green-50 transition-colors border-2 hover:border-green-200" 
-                    onClick={() => handleLogin('workshop')}>
-                <CardContent className="p-4 text-center">
-                  <Building className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                  <h3 className="font-semibold text-sm">Workshop Login</h3>
-                  <p className="text-xs text-gray-600 mt-1">Manage your auto repair business</p>
-                </CardContent>
-              </Card>
-            </div>
-
             <div className="space-y-3">
               <div>
                 <Label htmlFor="login-email">Email</Label>
@@ -144,18 +132,24 @@ const AuthModal = ({ isOpen, onClose, onLogin }: AuthModalProps) => {
 
               <Button 
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" 
-                disabled={isLoading}
-                onClick={() => handleLogin('client')}
+                disabled={isLoading || loading}
+                onClick={handleLogin}
               >
-                {isLoading ? "Signing in..." : "Sign In"}
+                {isLoading || loading ? "Signing in..." : "Sign In"}
               </Button>
             </div>
           </TabsContent>
 
           <TabsContent value="register" className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <Card className="cursor-pointer hover:bg-blue-50 transition-colors border-2 hover:border-blue-200" 
-                    onClick={() => handleRegister('client')}>
+              <Card 
+                className={`cursor-pointer transition-colors border-2 ${
+                  selectedRole === 'client' 
+                    ? 'border-blue-200 bg-blue-50' 
+                    : 'hover:bg-blue-50 hover:border-blue-200'
+                }`}
+                onClick={() => setSelectedRole('client')}
+              >
                 <CardContent className="p-4 text-center">
                   <User className="h-8 w-8 mx-auto mb-2 text-blue-600" />
                   <h3 className="font-semibold text-sm">Register as Client</h3>
@@ -163,8 +157,14 @@ const AuthModal = ({ isOpen, onClose, onLogin }: AuthModalProps) => {
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:bg-green-50 transition-colors border-2 hover:border-green-200" 
-                    onClick={() => handleRegister('workshop')}>
+              <Card 
+                className={`cursor-pointer transition-colors border-2 ${
+                  selectedRole === 'workshop' 
+                    ? 'border-green-200 bg-green-50' 
+                    : 'hover:bg-green-50 hover:border-green-200'
+                }`}
+                onClick={() => setSelectedRole('workshop')}
+              >
                 <CardContent className="p-4 text-center">
                   <Building className="h-8 w-8 mx-auto mb-2 text-green-600" />
                   <h3 className="font-semibold text-sm">Register Workshop</h3>
@@ -179,8 +179,8 @@ const AuthModal = ({ isOpen, onClose, onLogin }: AuthModalProps) => {
                 <Input
                   id="register-name"
                   placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  value={formData.full_name}
+                  onChange={(e) => handleInputChange('full_name', e.target.value)}
                 />
               </div>
 
@@ -245,10 +245,10 @@ const AuthModal = ({ isOpen, onClose, onLogin }: AuthModalProps) => {
 
               <Button 
                 className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700" 
-                disabled={isLoading}
-                onClick={() => handleRegister('client')}
+                disabled={isLoading || loading}
+                onClick={handleRegister}
               >
-                {isLoading ? "Creating Account..." : "Create Account"}
+                {isLoading || loading ? "Creating Account..." : "Create Account"}
               </Button>
             </div>
           </TabsContent>

@@ -22,16 +22,17 @@ import {
   User
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
 import ServiceScheduling from "./ServiceScheduling";
 import ChatInterface from "./ChatInterface";
 import QuotationManager from "./QuotationManager";
 
 interface DashboardProps {
   userRole: 'client' | 'workshop';
-  onLogout: () => void;
 }
 
-const Dashboard = ({ userRole, onLogout }: DashboardProps) => {
+const Dashboard = ({ userRole }: DashboardProps) => {
+  const { signOut, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   const clientStats = [
@@ -111,6 +112,19 @@ const Dashboard = ({ userRole, onLogout }: DashboardProps) => {
       default:
         return (
           <div className="space-y-6">
+            {/* Welcome Message */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-lg">
+              <h2 className="text-2xl font-bold mb-2">
+                Welcome back, {profile?.full_name || 'User'}!
+              </h2>
+              <p className="text-blue-100">
+                {userRole === 'client' 
+                  ? 'Manage your vehicles and service appointments.' 
+                  : 'Manage your workshop operations and client relationships.'
+                }
+              </p>
+            </div>
+
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {stats.map((stat, index) => {
@@ -263,7 +277,7 @@ const Dashboard = ({ userRole, onLogout }: DashboardProps) => {
                   <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
-              <Button variant="ghost" size="sm" onClick={onLogout}>
+              <Button variant="ghost" size="sm" onClick={signOut}>
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>

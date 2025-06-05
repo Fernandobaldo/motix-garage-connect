@@ -1,40 +1,31 @@
 
-import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Car, MessageSquare, FileText, Users, Settings, BarChart3, Bell, Search } from "lucide-react";
+import { Calendar, Car, MessageSquare, FileText, Users, BarChart3 } from "lucide-react";
 import AuthModal from "@/components/auth/AuthModal";
 import Dashboard from "@/components/dashboard/Dashboard";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 const Index = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<'client' | 'workshop' | null>(null);
+  const { user, profile, loading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const { toast } = useToast();
 
-  const handleLogin = (role: 'client' | 'workshop') => {
-    setIsAuthenticated(true);
-    setUserRole(role);
-    setShowAuthModal(false);
-    toast({
-      title: "Welcome to Motix Garage!",
-      description: `You're now logged in as a ${role}.`,
-    });
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-3 rounded-xl w-fit mx-auto mb-4">
+            <Car className="h-8 w-8 text-white" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900">Loading Motix Garage...</h2>
+        </div>
+      </div>
+    );
+  }
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUserRole(null);
-    toast({
-      title: "Logged out",
-      description: "You've been successfully logged out.",
-    });
-  };
-
-  if (isAuthenticated && userRole) {
-    return <Dashboard userRole={userRole} onLogout={handleLogout} />;
+  if (user && profile) {
+    return <Dashboard userRole={profile.role as 'client' | 'workshop'} />;
   }
 
   return (
@@ -261,7 +252,6 @@ const Index = () => {
       <AuthModal 
         isOpen={showAuthModal} 
         onClose={() => setShowAuthModal(false)} 
-        onLogin={handleLogin}
       />
     </div>
   );

@@ -9,7 +9,136 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          created_at: string
+          fuel_type: string | null
+          id: string
+          license_plate: string
+          make: string
+          model: string
+          owner_id: string
+          transmission: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          fuel_type?: string | null
+          id?: string
+          license_plate: string
+          make: string
+          model: string
+          owner_id: string
+          transmission?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          fuel_type?: string | null
+          id?: string
+          license_plate?: string
+          make?: string
+          model?: string
+          owner_id?: string
+          transmission?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workshops: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_public: boolean | null
+          languages_spoken: string[] | null
+          name: string
+          owner_id: string
+          phone: string | null
+          services_offered: string[] | null
+          updated_at: string
+          working_hours: Json | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_public?: boolean | null
+          languages_spoken?: string[] | null
+          name: string
+          owner_id: string
+          phone?: string | null
+          services_offered?: string[] | null
+          updated_at?: string
+          working_hours?: Json | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_public?: boolean | null
+          languages_spoken?: string[] | null
+          name?: string
+          owner_id?: string
+          phone?: string | null
+          services_offered?: string[] | null
+          updated_at?: string
+          working_hours?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshops_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +147,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      user_role: "client" | "workshop" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +262,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_role: ["client", "workshop", "admin"],
+    },
   },
 } as const
