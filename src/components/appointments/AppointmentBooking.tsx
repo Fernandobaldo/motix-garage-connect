@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +65,7 @@ const AppointmentBooking = () => {
   ];
 
   // Load user vehicles and available workshops
-  useState(() => {
+  useEffect(() => {
     const loadData = async () => {
       if (profile?.role === 'client') {
         // Load user's vehicles
