@@ -10,6 +10,7 @@ import UserProfileTab from "@/components/dashboard/UserProfileTab";
 import WorkshopTab from "@/components/dashboard/WorkshopTab";
 import TenantSetup from "@/components/tenant/TenantSetup";
 import AppointmentBooking from "@/components/appointments/AppointmentBooking";
+import ChatInterface from "@/components/chat/ChatInterface";
 import RoleGuard from "@/components/auth/RoleGuard";
 
 const Index = () => {
@@ -127,20 +128,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="messages">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MessageSquare className="h-5 w-5" />
-                  <span>Messages</span>
-                </CardTitle>
-                <CardDescription>
-                  Chat with clients and workshops
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-500">Message system coming soon...</p>
-              </CardContent>
-            </Card>
+            <ChatInterface userRole={profile?.role as 'client' | 'workshop'} />
           </TabsContent>
 
           <TabsContent value="profile">

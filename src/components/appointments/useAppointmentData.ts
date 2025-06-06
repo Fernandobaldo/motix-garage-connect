@@ -1,85 +1,79 @@
 
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
-import { supabase } from '@/integrations/supabase/client';
-import type { Appointment } from './types';
 
-export const useAppointmentData = (userRole: 'client' | 'workshop') => {
+export const useAppointmentData = () => {
   const { user } = useAuth();
   const { tenant } = useTenant();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const loadAppointments = async () => {
-    if (!tenant || !user) return;
+  const { data: appointments = [], isLoading } = useQuery({
+    queryKey: ['appointments', user?.id, tenant?.id],
+    queryFn: async () => {
+      if (!user || !tenant) return [];
 
-    try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('appointments')
         .select(`
-          id,
-          service_type,
-          scheduled_at,
-          duration_minutes,
-          status,
-          client:profiles!appointments_client_id_fkey(full_name),
-          vehicle:vehicles(make, model, year)
+          *,
+          client:profiles!appointments_client_id_fkey(full_name, phone),
+          workshop:workshops!appointments_workshop_id_fkey(name, phone),
+          vehicle:vehicles(make, model, year, license_plate)
         `)
         .eq('tenant_id', tenant.id)
         .order('scheduled_at', { ascending: true });
 
-      if (userRole === 'client') {
-        query = query.eq('client_id', user.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!tenant,
+  });
+
+  const upcomingAppointments = appointments.filter(apt => {
+    const scheduledDate = new Date(apt.scheduled_at);
+    const now = new Date();
+    return scheduledDate > now && apt.status !== 'cancelled';
+  });
+
+  const todayAppointments = appointments.filter(apt => {
+    const scheduledDate = new Date(apt.scheduled_at);
+    const today = new Date();
+    return (
+      scheduledDate.toDateString() === today.toDateString() &&
+      apt.status !== 'cancelled'
+    );
+  });
+
+  const completedAppointments = appointments.filter(apt => 
+    apt.status === 'completed'
+  );
+
+  const pendingAppointments = appointments.filter(apt => 
+    apt.status === 'pending'
+  );
+
+  const appointmentsByVehicle = appointments.reduce((acc, apt) => {
+    if (apt.vehicle) {
+      const vehicleKey = `${apt.vehicle.year} ${apt.vehicle.make} ${apt.vehicle.model}`;
+      if (!acc[vehicleKey]) {
+        acc[vehicleKey] = {
+          vehicle: apt.vehicle,
+          appointments: []
+        };
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error loading appointments:', error);
-        return;
-      }
-
-      console.log('Raw appointment data:', data);
-
-      // Filter out any appointments with invalid data and ensure proper typing
-      const validAppointments: Appointment[] = (data || [])
-        .filter(apt => apt && typeof apt === 'object')
-        .map(apt => ({
-          id: apt.id,
-          service_type: apt.service_type,
-          scheduled_at: apt.scheduled_at,
-          duration_minutes: apt.duration_minutes,
-          status: apt.status,
-          client: apt.client && typeof apt.client === 'object' && 'full_name' in apt.client 
-            ? apt.client 
-            : null,
-          vehicle: apt.vehicle && 
-                   typeof apt.vehicle === 'object' && 
-                   apt.vehicle !== null &&
-                   'make' in apt.vehicle && 
-                   'model' in apt.vehicle && 
-                   'year' in apt.vehicle
-            ? {
-                make: String(apt.vehicle.make),
-                model: String(apt.vehicle.model),
-                year: Number(apt.vehicle.year)
-              }
-            : null
-        }));
-
-      console.log('Processed appointments:', validAppointments);
-      setAppointments(validAppointments);
-    } catch (error) {
-      console.error('Error loading appointments:', error);
-    } finally {
-      setLoading(false);
+      acc[vehicleKey].appointments.push(apt);
     }
+    return acc;
+  }, {} as Record<string, { vehicle: any; appointments: any[] }>);
+
+  return {
+    appointments,
+    upcomingAppointments,
+    todayAppointments,
+    completedAppointments,
+    pendingAppointments,
+    appointmentsByVehicle,
+    isLoading,
   };
-
-  useEffect(() => {
-    loadAppointments();
-  }, [tenant, user, userRole]);
-
-  return { appointments, loading, refetch: loadAppointments };
 };

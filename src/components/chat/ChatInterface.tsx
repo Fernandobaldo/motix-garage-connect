@@ -1,11 +1,10 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Send, Plus, User, Bot, Users, MessageSquare } from "lucide-react";
+import { Send, Plus, User, Bot, Users, MessageSquare, Download, Image, FileText, Video } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RealtimeChannel } from '@supabase/supabase-js';
+import FileUpload from './FileUpload';
+import MessageTranslation from './MessageTranslation';
 
 interface ChatInterfaceProps {
   userRole: 'client' | 'workshop';
@@ -34,6 +35,9 @@ interface Message {
   message_type: string;
   created_at: string;
   conversation_id: string;
+  file_url?: string;
+  file_name?: string;
+  translated_content?: any;
   sender?: {
     full_name: string;
     role: string;
@@ -85,7 +89,6 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
     if (!tenant) return;
 
     try {
-      // For workshops, fetch clients; for clients, fetch workshops
       const targetRole = userRole === 'client' ? 'workshop' : 'client';
       
       const { data, error } = await supabase
@@ -133,7 +136,6 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
         return;
       }
 
-      // Filter conversations where current user is a participant
       const userConversations = (data || []).filter(conv => 
         conv.participants?.some(p => p.user_id === user.id)
       );
@@ -160,6 +162,9 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
           message_type,
           created_at,
           conversation_id,
+          file_url,
+          file_name,
+          translated_content,
           sender:profiles(full_name, role)
         `)
         .eq('conversation_id', conversationId)
@@ -179,12 +184,10 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
   const setupRealtimeSubscription = () => {
     if (!selectedConversation) return;
 
-    // Clean up existing subscription
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
     }
 
-    // Create new subscription for messages in the selected conversation
     const channel = supabase
       .channel(`conversation-${selectedConversation}`)
       .on('postgres_changes', {
@@ -233,7 +236,6 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
     if (!user || !tenant || !selectedProfileId) return;
 
     try {
-      // Create conversation
       const { data: conversation, error: convError } = await supabase
         .from('chat_conversations')
         .insert({
@@ -252,7 +254,6 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
         return;
       }
 
-      // Add participants
       const participants = [
         { conversation_id: conversation.id, user_id: user.id },
         { conversation_id: conversation.id, user_id: selectedProfileId }
@@ -291,8 +292,8 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!message.trim() || !selectedConversation || !user) return;
+  const handleSendMessage = async (messageType: string = 'text', fileUrl?: string, fileName?: string) => {
+    if ((!message.trim() && !fileUrl) || !selectedConversation || !user) return;
 
     try {
       const { error } = await supabase
@@ -300,8 +301,10 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
         .insert({
           conversation_id: selectedConversation,
           sender_id: user.id,
-          content: message,
-          message_type: 'text'
+          content: message || fileName || '',
+          message_type: messageType,
+          file_url: fileUrl,
+          file_name: fileName
         });
 
       if (error) {
@@ -314,7 +317,6 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
         return;
       }
 
-      // Update conversation's updated_at
       await supabase
         .from('chat_conversations')
         .update({ updated_at: new Date().toISOString() })
@@ -326,9 +328,104 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
     }
   };
 
+  const handleFileUploaded = (fileUrl: string, fileName: string, fileType: string) => {
+    const messageType = fileType.startsWith('image/') ? 'image' : 
+                       fileType.startsWith('video/') ? 'video' : 'file';
+    handleSendMessage(messageType, fileUrl, fileName);
+  };
+
+  const handleTranslationComplete = async (messageId: string, translatedText: string, targetLanguage: string) => {
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .update({
+          translated_content: {
+            [targetLanguage]: translatedText
+          }
+        })
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('Error saving translation:', error);
+        return;
+      }
+
+      // Refresh messages to show translation
+      if (selectedConversation) {
+        fetchMessages(selectedConversation);
+      }
+    } catch (error) {
+      console.error('Error saving translation:', error);
+    }
+  };
+
   const getConversationPartner = (conversation: Conversation) => {
     const partner = conversation.participants?.find(p => p.user_id !== user?.id);
     return partner?.user?.full_name || 'Unknown User';
+  };
+
+  const getFileIcon = (messageType: string) => {
+    switch (messageType) {
+      case 'image':
+        return <Image className="h-4 w-4" />;
+      case 'video':
+        return <Video className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  const renderMessageContent = (msg: Message) => {
+    if (msg.file_url) {
+      if (msg.message_type === 'image') {
+        return (
+          <div className="space-y-2">
+            <img 
+              src={msg.file_url} 
+              alt={msg.file_name || 'Image'} 
+              className="max-w-xs rounded-lg cursor-pointer"
+              onClick={() => window.open(msg.file_url, '_blank')}
+            />
+            {msg.file_name && (
+              <p className="text-xs opacity-75">{msg.file_name}</p>
+            )}
+          </div>
+        );
+      } else {
+        return (
+          <div className="flex items-center space-x-2 bg-black bg-opacity-10 p-2 rounded">
+            {getFileIcon(msg.message_type)}
+            <div className="flex-1">
+              <p className="text-sm font-medium">{msg.file_name || 'File'}</p>
+              <a 
+                href={msg.file_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs underline opacity-75 hover:opacity-100"
+              >
+                Download
+              </a>
+            </div>
+          </div>
+        );
+      }
+    }
+
+    return (
+      <div>
+        <p className="break-words">{msg.content}</p>
+        {msg.translated_content && Object.keys(msg.translated_content).length > 0 && (
+          <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+            <p className="font-medium text-blue-800">Translations:</p>
+            {Object.entries(msg.translated_content).map(([lang, translation]) => (
+              <p key={lang} className="text-blue-700">
+                <strong>{lang.toUpperCase()}:</strong> {translation as string}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -487,11 +584,20 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
                           }`}
                         >
                           {msg.sender_id !== user?.id && (
-                            <p className="text-xs font-medium mb-1 opacity-75">
-                              {msg.sender?.full_name || 'Unknown'}
-                            </p>
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-xs font-medium opacity-75">
+                                {msg.sender?.full_name || 'Unknown'}
+                              </p>
+                              <MessageTranslation
+                                messageId={msg.id}
+                                originalText={msg.content}
+                                onTranslationComplete={(translatedText, targetLanguage) => 
+                                  handleTranslationComplete(msg.id, translatedText, targetLanguage)
+                                }
+                              />
+                            </div>
                           )}
-                          <p className="break-words">{msg.content}</p>
+                          {renderMessageContent(msg)}
                           <p className={`text-xs mt-1 ${
                             msg.sender_id === user?.id ? 'text-blue-100' : 'text-gray-500'
                           }`}>
@@ -507,6 +613,10 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
                 {/* Message Input */}
                 <div className="border-t p-4">
                   <div className="flex space-x-2">
+                    <FileUpload 
+                      onFileUploaded={handleFileUploaded}
+                      disabled={!selectedConversation}
+                    />
                     <Input
                       placeholder="Type a message..."
                       value={message}
@@ -514,7 +624,7 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
                       onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                       className="flex-1"
                     />
-                    <Button onClick={handleSendMessage} disabled={!message.trim()}>
+                    <Button onClick={() => handleSendMessage()} disabled={!message.trim()}>
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>
