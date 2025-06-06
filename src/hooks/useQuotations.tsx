@@ -39,7 +39,22 @@ export const useQuotations = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setQuotations(data || []);
+      
+      // Transform the data to match our Quotation type
+      const transformedData = data?.map(item => ({
+        ...item,
+        items: Array.isArray(item.items) ? item.items : [],
+        client: item.client ? { full_name: item.client.full_name } : undefined,
+        vehicle: item.vehicle ? {
+          make: item.vehicle.make,
+          model: item.vehicle.model,
+          year: item.vehicle.year,
+          license_plate: item.vehicle.license_plate
+        } : undefined,
+        workshop: item.workshop ? { name: item.workshop.name } : undefined
+      })) || [];
+
+      setQuotations(transformedData);
     } catch (error) {
       console.error('Error fetching quotations:', error);
       toast({

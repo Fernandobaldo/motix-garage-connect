@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -85,14 +84,34 @@ const QuotationForm = ({
   const loadTemplate = (templateId: string) => {
     const template = templates.find(t => t.id === templateId);
     if (template && template.template_items) {
-      const templateItems = Array.isArray(template.template_items) 
-        ? template.template_items 
-        : [];
-      setItems(templateItems as QuoteItem[]);
-      setFormData(prev => ({
-        ...prev,
-        description: template.description || '',
-      }));
+      // Safely parse template items from JSONB
+      try {
+        const templateItems = Array.isArray(template.template_items) 
+          ? template.template_items as QuoteItem[]
+          : [];
+        
+        // Validate and transform the items
+        const validItems = templateItems.filter((item: any) => 
+          item && 
+          typeof item.description === 'string' &&
+          typeof item.quantity === 'number' &&
+          typeof item.unit_price === 'number' &&
+          typeof item.item_type === 'string'
+        ).map((item: any) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          item_type: item.item_type as 'service' | 'part' | 'labor' | 'tax' | 'other'
+        }));
+        
+        setItems(validItems);
+        setFormData(prev => ({
+          ...prev,
+          description: template.description || '',
+        }));
+      } catch (error) {
+        console.error('Error parsing template items:', error);
+      }
     }
   };
 
