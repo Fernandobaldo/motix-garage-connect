@@ -381,6 +381,42 @@ export type Database = {
           },
         ]
       }
+      quotation_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          item_type: string | null
+          quantity: number
+          quotation_id: string
+          total_price: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          item_type?: string | null
+          quantity?: number
+          quotation_id: string
+          total_price: number
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          item_type?: string | null
+          quantity?: number
+          quotation_id?: string
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       quotations: {
         Row: {
           appointment_id: string | null
@@ -476,6 +512,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      quote_templates: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          service_type: string
+          template_items: Json | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          service_type: string
+          template_items?: Json | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          service_type?: string
+          template_items?: Json | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       service_history: {
         Row: {
@@ -803,9 +878,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_quotation_total: {
+        Args: { quotation_uuid: string }
+        Returns: undefined
+      }
       check_overdue_maintenance: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      generate_quote_number: {
+        Args: { tenant_uuid: string }
+        Returns: string
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
