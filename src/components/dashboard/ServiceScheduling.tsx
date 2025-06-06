@@ -26,7 +26,7 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
         </TabsList>
 
         <TabsContent value="appointments" className="space-y-4">
-          <AppointmentList userRole={userRole} />
+          <AppointmentList />
         </TabsContent>
 
         <TabsContent value="calendar" className="space-y-4">

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import ServiceScheduling from "./ServiceScheduling";
 import ChatInterface from "./ChatInterface";
 import QuotationManager from "./QuotationManager";
+import NotificationBell from "../notifications/NotificationBell";
 
 interface DashboardProps {
   userRole: 'client' | 'workshop';
@@ -268,9 +268,7 @@ const Dashboard = ({ userRole }: DashboardProps) => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm">
-                <Bell className="h-5 w-5" />
-              </Button>
+              <NotificationBell />
               <Avatar>
                 <AvatarImage src="/placeholder-avatar.jpg" />
                 <AvatarFallback>
