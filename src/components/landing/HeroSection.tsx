@@ -1,17 +1,31 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, ArrowRight, Sparkles } from "lucide-react";
 import AuthModal from "@/components/auth/AuthModal";
+import { trackConversion, setupScrollTracking, setupTimeTracking } from "@/utils/analytics";
 
 const HeroSection = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  useEffect(() => {
+    // Setup analytics tracking
+    const cleanupScroll = setupScrollTracking();
+    const cleanupTime = setupTimeTracking();
+
+    return () => {
+      cleanupScroll?.();
+      cleanupTime?.();
+    };
+  }, []);
+
   const handleTryFree = () => {
+    trackConversion.freeTrialSignup();
     setShowAuthModal(true);
   };
 
   const handleWatchDemo = () => {
+    trackConversion.demoVideoPlay();
     // Scroll to demo video section
     const demoSection = document.querySelector('#demo-video');
     if (demoSection) {

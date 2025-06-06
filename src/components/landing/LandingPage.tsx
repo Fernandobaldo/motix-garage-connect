@@ -12,6 +12,7 @@ import FAQSection from "./FAQSection";
 import LandingFooter from "./LandingFooter";
 import AuthModal from "@/components/auth/AuthModal";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { trackConversion, trackPageView } from "@/utils/analytics";
 
 const LandingPage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -19,6 +20,9 @@ const LandingPage = () => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
+    // Track initial page view
+    trackPageView('/');
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
@@ -28,6 +32,7 @@ const LandingPage = () => {
   }, []);
 
   const scrollToSection = (sectionId: string) => {
+    trackConversion.navigationClick(sectionId);
     const element = document.querySelector(`#${sectionId}`);
     if (element) {
       element.scrollIntoView({ 
@@ -36,6 +41,11 @@ const LandingPage = () => {
       });
     }
     setMobileMenuOpen(false);
+  };
+
+  const handleAuthModalOpen = (source: string) => {
+    trackConversion.freeTrialSignup();
+    setShowAuthModal(true);
   };
 
   return (
@@ -92,14 +102,14 @@ const LandingPage = () => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setShowAuthModal(true)}
+                  onClick={() => handleAuthModalOpen('nav_signin')}
                   className="hover:scale-105 transition-transform duration-200"
                 >
                   Sign In
                 </Button>
                 <Button 
                   size="sm"
-                  onClick={() => setShowAuthModal(true)}
+                  onClick={() => handleAuthModalOpen('nav_cta')}
                   className="bg-blue-600 hover:bg-blue-700 hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   Try Free
@@ -152,7 +162,7 @@ const LandingPage = () => {
                       variant="outline" 
                       size="sm"
                       onClick={() => {
-                        setShowAuthModal(true);
+                        handleAuthModalOpen('mobile_signin');
                         setMobileMenuOpen(false);
                       }}
                       className="hover:scale-105 transition-transform duration-200"
@@ -162,7 +172,7 @@ const LandingPage = () => {
                     <Button 
                       size="sm"
                       onClick={() => {
-                        setShowAuthModal(true);
+                        handleAuthModalOpen('mobile_cta');
                         setMobileMenuOpen(false);
                       }}
                       className="bg-blue-600 hover:bg-blue-700 hover:scale-105 transition-all duration-200"
