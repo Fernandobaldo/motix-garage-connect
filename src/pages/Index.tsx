@@ -15,43 +15,14 @@ import VehicleServiceTab from "@/components/dashboard/VehicleServiceTab";
 import QuotationManager from "@/components/dashboard/QuotationManager";
 import TenantStats from "@/components/dashboard/TenantStats";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import LandingPage from "@/components/landing/LandingPage";
 
 const Index = () => {
   const { user, signOut, profile } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-gray-900">
-              Workshop Management System
-            </CardTitle>
-            <CardDescription>
-              Connect clients with trusted automotive workshops
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3">
-              <Button 
-                onClick={() => window.location.href = '/auth'}
-                className="w-full bg-blue-600 hover:bg-blue-700"
-              >
-                Sign In
-              </Button>
-              <Button 
-                onClick={() => window.location.href = '/auth'}
-                variant="outline"
-                className="w-full"
-              >
-                Create Account
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <LandingPage />;
   }
 
   if (!profile) {
