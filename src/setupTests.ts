@@ -5,7 +5,7 @@ import { cleanup } from '@testing-library/react'
 
 // Make vi available globally for mocking
 declare global {
-  var vi: typeof vi
+  var vi: typeof import('vitest').vi
 }
 
 globalThis.vi = vi
