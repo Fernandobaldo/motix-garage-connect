@@ -4,6 +4,10 @@ import { expect, afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 
 // Make vi available globally for mocking
+declare global {
+  var vi: typeof import('vitest').vi
+}
+
 globalThis.vi = vi
 
 // runs a cleanup after each test case (e.g. clearing jsdom)
