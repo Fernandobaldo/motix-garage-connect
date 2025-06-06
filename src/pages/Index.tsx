@@ -112,7 +112,7 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard">
-            <Dashboard userRole={profile?.role as 'client' | 'workshop'} />
+            <Dashboard />
           </TabsContent>
 
           <TabsContent value="booking">
