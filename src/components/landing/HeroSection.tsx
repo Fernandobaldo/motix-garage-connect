@@ -1,12 +1,14 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { Play, ArrowRight, Sparkles } from "lucide-react";
 import AuthModal from "@/components/auth/AuthModal";
 import { trackConversion, setupScrollTracking, setupTimeTracking } from "@/utils/analytics";
 
 const HeroSection = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isNavigatingToDemo, setIsNavigatingToDemo] = useState(false);
 
   useEffect(() => {
     // Setup analytics tracking
@@ -24,13 +26,20 @@ const HeroSection = () => {
     setShowAuthModal(true);
   };
 
-  const handleWatchDemo = () => {
+  const handleWatchDemo = async () => {
+    setIsNavigatingToDemo(true);
     trackConversion.demoVideoPlay();
+    
+    // Simulate loading time for demo section scroll
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     // Scroll to demo video section
     const demoSection = document.querySelector('#demo-video');
     if (demoSection) {
       demoSection.scrollIntoView({ behavior: 'smooth' });
     }
+    
+    setIsNavigatingToDemo(false);
   };
 
   return (
@@ -81,15 +90,18 @@ const HeroSection = () => {
                 Try for Free
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" />
               </Button>
-              <Button 
+              
+              <LoadingButton 
                 variant="outline" 
                 size="lg" 
                 className="px-8 py-4 text-lg border-2 hover:scale-105 transition-all duration-200 group hover:shadow-lg"
                 onClick={handleWatchDemo}
+                loading={isNavigatingToDemo}
+                loadingText="Loading Demo..."
               >
                 <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform duration-200" />
                 Watch Demo Video
-              </Button>
+              </LoadingButton>
             </div>
 
             <div className="mt-8 text-sm text-gray-500 animate-in fade-in-0 slide-in-from-bottom-4 duration-700 delay-500">
