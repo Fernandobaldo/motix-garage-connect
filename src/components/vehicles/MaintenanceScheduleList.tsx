@@ -79,12 +79,12 @@ const MaintenanceScheduleList = ({ schedules, onMarkCompleted, onEditSchedule }:
                 <div>
                   <CardTitle className="text-lg">{schedule.service_type}</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {schedule.vehicle?.year} {schedule.vehicle?.make} {schedule.vehicle?.model}
+                    {schedule.vehicle ? `${schedule.vehicle.year} ${schedule.vehicle.make} ${schedule.vehicle.model}` : 'Unknown Vehicle'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <Badge variant={getPriorityBadge(schedule.priority, schedule.is_overdue)}>
+                <Badge variant={getPriorityBadge(schedule.priority, schedule.is_overdue) as any}>
                   {getStatusText(schedule)}
                 </Badge>
                 <Badge variant="outline">

@@ -23,6 +23,15 @@ export interface ServiceHistoryRecord {
   next_service_due_at?: string;
   warranty_until?: string;
   created_at: string;
+  vehicle?: {
+    make: string;
+    model: string;
+    year: number;
+    license_plate: string;
+  };
+  workshop?: {
+    name: string;
+  };
 }
 
 export interface MaintenanceSchedule {
@@ -43,6 +52,12 @@ export interface MaintenanceSchedule {
   description?: string;
   created_at: string;
   updated_at: string;
+  vehicle?: {
+    make: string;
+    model: string;
+    year: number;
+    license_plate: string;
+  };
 }
 
 export interface VehicleHealthReport {
@@ -71,4 +86,10 @@ export interface VehicleHealthReport {
   inspector_notes?: string;
   created_by?: string;
   created_at: string;
+  vehicle?: {
+    make: string;
+    model: string;
+    year: number;
+    license_plate: string;
+  };
 }

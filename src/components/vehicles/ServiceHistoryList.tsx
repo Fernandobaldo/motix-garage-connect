@@ -58,11 +58,11 @@ const ServiceHistoryList = ({ records, onViewDetails }: ServiceHistoryListProps)
                 <div>
                   <CardTitle className="text-lg">{record.service_type}</CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {record.vehicle?.year} {record.vehicle?.make} {record.vehicle?.model}
+                    {record.vehicle ? `${record.vehicle.year} ${record.vehicle.make} ${record.vehicle.model}` : 'Unknown Vehicle'}
                   </p>
                 </div>
               </div>
-              <Badge variant={getServiceTypeBadge(record.service_type)}>
+              <Badge variant={getServiceTypeBadge(record.service_type) as any}>
                 {record.service_type}
               </Badge>
             </div>

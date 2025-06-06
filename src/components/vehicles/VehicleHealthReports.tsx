@@ -79,7 +79,7 @@ const VehicleHealthReports = ({ reports, onViewReport, onCreateReport }: Vehicle
                     Health Report - {format(new Date(report.report_date), 'MMM dd, yyyy')}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {report.vehicle?.year} {report.vehicle?.make} {report.vehicle?.model}
+                    {report.vehicle ? `${report.vehicle.year} ${report.vehicle.make} ${report.vehicle.model}` : 'Unknown Vehicle'}
                   </p>
                 </div>
               </div>

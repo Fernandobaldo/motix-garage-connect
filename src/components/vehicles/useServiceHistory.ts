@@ -14,7 +14,7 @@ export const useServiceHistory = (vehicleId?: string) => {
 
   const { data: serviceHistory = [], isLoading: historyLoading } = useQuery({
     queryKey: ['serviceHistory', vehicleId, tenant?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<ServiceHistoryRecord[]> => {
       if (!user || !tenant) return [];
 
       let query = supabase
@@ -33,14 +33,19 @@ export const useServiceHistory = (vehicleId?: string) => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      
+      return (data || []).map(record => ({
+        ...record,
+        parts_used: Array.isArray(record.parts_used) ? record.parts_used : [],
+        images: Array.isArray(record.images) ? record.images : [],
+      })) as ServiceHistoryRecord[];
     },
     enabled: !!user && !!tenant,
   });
 
   const { data: maintenanceSchedules = [], isLoading: schedulesLoading } = useQuery({
     queryKey: ['maintenanceSchedules', vehicleId, tenant?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<MaintenanceSchedule[]> => {
       if (!user || !tenant) return [];
 
       let query = supabase
@@ -58,14 +63,14 @@ export const useServiceHistory = (vehicleId?: string) => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      return data as MaintenanceSchedule[] || [];
     },
     enabled: !!user && !!tenant,
   });
 
   const { data: healthReports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['vehicleHealthReports', vehicleId, tenant?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<VehicleHealthReport[]> => {
       if (!user || !tenant) return [];
 
       let query = supabase
@@ -83,13 +88,18 @@ export const useServiceHistory = (vehicleId?: string) => {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data || [];
+      
+      return (data || []).map(report => ({
+        ...report,
+        issues_found: Array.isArray(report.issues_found) ? report.issues_found : [],
+        recommendations: Array.isArray(report.recommendations) ? report.recommendations : [],
+      })) as VehicleHealthReport[];
     },
     enabled: !!user && !!tenant,
   });
 
   const addServiceRecord = useMutation({
-    mutationFn: async (record: Partial<ServiceHistoryRecord>) => {
+    mutationFn: async (record: Omit<ServiceHistoryRecord, 'id' | 'created_at' | 'tenant_id'>) => {
       if (!user || !tenant) throw new Error('User not authenticated');
 
       const { error } = await supabase
@@ -120,7 +130,7 @@ export const useServiceHistory = (vehicleId?: string) => {
   });
 
   const addMaintenanceSchedule = useMutation({
-    mutationFn: async (schedule: Partial<MaintenanceSchedule>) => {
+    mutationFn: async (schedule: Omit<MaintenanceSchedule, 'id' | 'created_at' | 'updated_at' | 'tenant_id'>) => {
       if (!user || !tenant) throw new Error('User not authenticated');
 
       const { error } = await supabase
@@ -150,7 +160,7 @@ export const useServiceHistory = (vehicleId?: string) => {
   });
 
   const addHealthReport = useMutation({
-    mutationFn: async (report: Partial<VehicleHealthReport>) => {
+    mutationFn: async (report: Omit<VehicleHealthReport, 'id' | 'created_at' | 'tenant_id'>) => {
       if (!user || !tenant) throw new Error('User not authenticated');
 
       const { error } = await supabase
