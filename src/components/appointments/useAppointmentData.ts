@@ -19,7 +19,7 @@ export const useAppointmentData = () => {
           *,
           client:profiles!appointments_client_id_fkey(full_name, phone),
           workshop:workshops!appointments_workshop_id_fkey(name, phone),
-          vehicle:vehicles(make, model, year, license_plate)
+          vehicle:vehicles!appointments_vehicle_id_fkey(make, model, year, license_plate)
         `)
         .eq('tenant_id', tenant.id)
         .order('scheduled_at', { ascending: true });
@@ -75,5 +75,6 @@ export const useAppointmentData = () => {
     pendingAppointments,
     appointmentsByVehicle,
     isLoading,
+    loading: isLoading, // Add this for backward compatibility
   };
 };

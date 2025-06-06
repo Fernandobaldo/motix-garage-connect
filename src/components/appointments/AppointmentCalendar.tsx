@@ -11,7 +11,7 @@ interface AppointmentCalendarProps {
 const AppointmentCalendar = ({ userRole }: AppointmentCalendarProps) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const { appointments, loading } = useAppointmentData(userRole);
+  const { appointments, isLoading } = useAppointmentData();
 
   return (
     <div className="space-y-6">
@@ -37,7 +37,7 @@ const AppointmentCalendar = ({ userRole }: AppointmentCalendarProps) => {
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           userRole={userRole}
-          loading={loading}
+          loading={isLoading}
         />
       </div>
     </div>

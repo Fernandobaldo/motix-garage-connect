@@ -7,33 +7,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Calendar, Clock, User, Car, Phone, MapPin, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useAppointmentData } from "./useAppointmentData";
-
-interface Appointment {
-  id: string;
-  scheduled_at: string;
-  service_type: string;
-  status: string;
-  description?: string;
-  duration_minutes?: number;
-  client?: {
-    full_name: string;
-    phone?: string;
-  };
-  workshop?: {
-    name: string;
-    phone?: string;
-  };
-  vehicle?: {
-    make: string;
-    model: string;
-    year: number;
-    license_plate: string;
-  } | null;
-}
+import type { DatabaseAppointment } from "./types";
 
 const AppointmentList = () => {
   const { appointments, isLoading } = useAppointmentData();
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<DatabaseAppointment | null>(null);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -83,7 +61,7 @@ const AppointmentList = () => {
             </CardContent>
           </Card>
         ) : (
-          appointments.map((apt: Appointment) => (
+          appointments.map((apt: DatabaseAppointment) => (
             <Card key={apt.id} className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-6" onClick={() => setSelectedAppointment(apt)}>
                 <div className="flex items-start justify-between">
