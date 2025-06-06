@@ -1,7 +1,7 @@
 
+import React, { ReactNode } from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactNode } from 'react';
 import { testPatterns } from '../utils/testHelpers';
 
 // Reusable hook test pattern
@@ -25,9 +25,7 @@ export const createHookTestSuite = <TResult, TProps = undefined>(
     });
     
     return ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+      React.createElement(QueryClientProvider, { client: queryClient }, children)
     );
   };
 
@@ -42,14 +40,16 @@ export const createHookTestSuite = <TResult, TProps = undefined>(
     });
 
     // Test different scenarios
-    runTestScenarios(scenarios, ({ props, expectedResult }, scenarioName) => {
-      const { result } = renderHook(() => useHook(props), { wrapper: createWrapper() });
-      
-      if (expectedResult) {
-        Object.entries(expectedResult).forEach(([key, value]) => {
-          expect((result.current as any)[key]).toEqual(value);
-        });
-      }
+    Object.entries(scenarios).forEach(([scenarioName, { props, expectedResult }]) => {
+      it(`should handle ${scenarioName} scenario`, () => {
+        const { result } = renderHook(() => useHook(props), { wrapper: createWrapper() });
+        
+        if (expectedResult) {
+          Object.entries(expectedResult).forEach(([key, value]) => {
+            expect((result.current as any)[key]).toEqual(value);
+          });
+        }
+      });
     });
 
     // Test async operations

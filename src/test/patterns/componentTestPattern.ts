@@ -1,7 +1,8 @@
 
+import React from 'react';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderWithProviders, testPatterns, runTestScenarios } from '../utils/testHelpers';
+import { renderWithProviders, testPatterns } from '../utils/testHelpers';
 
 // Reusable component test pattern
 export const createComponentTestSuite = <TProps>(
@@ -26,18 +27,20 @@ export const createComponentTestSuite = <TProps>(
     });
 
     it('should render without crashing', () => {
-      renderWithProviders(<Component {...defaultProps} />);
+      renderWithProviders(React.createElement(Component, defaultProps));
       expect(screen.getByRole('main') || document.body).toBeInTheDocument();
     });
 
     // Test different prop scenarios
     if (Object.keys(scenarios).length > 0) {
-      runTestScenarios(scenarios, (scenarioProps, scenarioName) => {
-        renderWithProviders(<Component {...defaultProps} {...scenarioProps} />);
-        
-        if (assertions[scenarioName]) {
-          assertions[scenarioName]();
-        }
+      Object.entries(scenarios).forEach(([scenarioName, scenarioProps]) => {
+        it(`should handle ${scenarioName} scenario`, () => {
+          renderWithProviders(React.createElement(Component, { ...defaultProps, ...scenarioProps }));
+          
+          if (assertions[scenarioName]) {
+            assertions[scenarioName]();
+          }
+        });
       });
     }
 
@@ -45,7 +48,7 @@ export const createComponentTestSuite = <TProps>(
     Object.entries(interactions).forEach(([interactionName, interactionFn]) => {
       it(`should handle ${interactionName}`, async () => {
         const user = userEvent.setup();
-        renderWithProviders(<Component {...defaultProps} />);
+        renderWithProviders(React.createElement(Component, defaultProps));
         
         await interactionFn(user);
       });

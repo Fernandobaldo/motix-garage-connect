@@ -1,10 +1,10 @@
 
+import React from 'react';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import QuotationList from '../QuotationList';
 import { createComponentTestSuite } from '../../../test/patterns/componentTestPattern';
 import { createQuotationScenarios } from '../../../test/factories/quotationFactory';
-import { testPatterns } from '../../../test/utils/testHelpers';
 
 const mockHandlers = {
   onApprove: vi.fn(),
