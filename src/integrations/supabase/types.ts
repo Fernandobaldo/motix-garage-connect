@@ -233,6 +233,74 @@ export type Database = {
           },
         ]
       }
+      maintenance_schedules: {
+        Row: {
+          created_at: string
+          description: string | null
+          estimated_cost: number | null
+          id: string
+          interval_type: string
+          interval_value: number
+          is_overdue: boolean | null
+          last_service_date: string | null
+          last_service_mileage: number | null
+          mileage_interval: number | null
+          next_due_date: string | null
+          next_due_mileage: number | null
+          priority: string | null
+          service_type: string
+          tenant_id: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          estimated_cost?: number | null
+          id?: string
+          interval_type: string
+          interval_value: number
+          is_overdue?: boolean | null
+          last_service_date?: string | null
+          last_service_mileage?: number | null
+          mileage_interval?: number | null
+          next_due_date?: string | null
+          next_due_mileage?: number | null
+          priority?: string | null
+          service_type: string
+          tenant_id: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          estimated_cost?: number | null
+          id?: string
+          interval_type?: string
+          interval_value?: number
+          is_overdue?: boolean | null
+          last_service_date?: string | null
+          last_service_mileage?: number | null
+          mileage_interval?: number | null
+          next_due_date?: string | null
+          next_due_mileage?: number | null
+          priority?: string | null
+          service_type?: string
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_schedules_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -417,11 +485,17 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          images: Json | null
+          labor_hours: number | null
           mileage: number | null
+          next_service_due_at: string | null
+          parts_used: Json | null
           quotation_id: string | null
           service_type: string
+          technician_notes: string | null
           tenant_id: string
           vehicle_id: string
+          warranty_until: string | null
           workshop_id: string
         }
         Insert: {
@@ -431,11 +505,17 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          images?: Json | null
+          labor_hours?: number | null
           mileage?: number | null
+          next_service_due_at?: string | null
+          parts_used?: Json | null
           quotation_id?: string | null
           service_type: string
+          technician_notes?: string | null
           tenant_id: string
           vehicle_id: string
+          warranty_until?: string | null
           workshop_id: string
         }
         Update: {
@@ -445,11 +525,17 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          images?: Json | null
+          labor_hours?: number | null
           mileage?: number | null
+          next_service_due_at?: string | null
+          parts_used?: Json | null
           quotation_id?: string | null
           service_type?: string
+          technician_notes?: string | null
           tenant_id?: string
           vehicle_id?: string
+          warranty_until?: string | null
           workshop_id?: string
         }
         Relationships: [
@@ -516,6 +602,74 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      vehicle_health_reports: {
+        Row: {
+          brake_condition: string | null
+          created_at: string
+          created_by: string | null
+          current_mileage: number | null
+          electrical_condition: string | null
+          engine_condition: string | null
+          fuel_efficiency: number | null
+          id: string
+          inspector_notes: string | null
+          issues_found: Json | null
+          overall_health_score: number | null
+          recommendations: Json | null
+          report_date: string
+          suspension_condition: string | null
+          tenant_id: string
+          transmission_condition: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          brake_condition?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_mileage?: number | null
+          electrical_condition?: string | null
+          engine_condition?: string | null
+          fuel_efficiency?: number | null
+          id?: string
+          inspector_notes?: string | null
+          issues_found?: Json | null
+          overall_health_score?: number | null
+          recommendations?: Json | null
+          report_date?: string
+          suspension_condition?: string | null
+          tenant_id: string
+          transmission_condition?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          brake_condition?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_mileage?: number | null
+          electrical_condition?: string | null
+          engine_condition?: string | null
+          fuel_efficiency?: number | null
+          id?: string
+          inspector_notes?: string | null
+          issues_found?: Json | null
+          overall_health_score?: number | null
+          recommendations?: Json | null
+          report_date?: string
+          suspension_condition?: string | null
+          tenant_id?: string
+          transmission_condition?: string | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_health_reports_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicles: {
         Row: {
@@ -649,6 +803,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_overdue_maintenance: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
