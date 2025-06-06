@@ -1,10 +1,8 @@
+
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Send, Plus, User, Bot, Users, MessageSquare, Download, Image, FileText, Video } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,8 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RealtimeChannel } from '@supabase/supabase-js';
-import FileUpload from './FileUpload';
-import MessageTranslation from './MessageTranslation';
+import ConversationsList from './ConversationsList';
+import ChatWindow from './ChatWindow';
+import { MessageSquare } from "lucide-react";
 
 interface ChatInterfaceProps {
   userRole: 'client' | 'workshop';
@@ -74,16 +73,7 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
   const { user, profile } = useAuth();
   const { tenant } = useTenant();
   const { toast } = useToast();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   const fetchProfiles = async () => {
     if (!tenant) {
@@ -381,75 +371,6 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
     }
   };
 
-  const getConversationPartner = (conversation: Conversation) => {
-    const partner = conversation.participants?.find(p => p.user_id !== user?.id);
-    return partner?.user?.full_name || 'Unknown User';
-  };
-
-  const getFileIcon = (messageType: string) => {
-    switch (messageType) {
-      case 'image':
-        return <Image className="h-4 w-4" />;
-      case 'video':
-        return <Video className="h-4 w-4" />;
-      default:
-        return <FileText className="h-4 w-4" />;
-    }
-  };
-
-  const renderMessageContent = (msg: Message) => {
-    if (msg.file_url) {
-      if (msg.message_type === 'image') {
-        return (
-          <div className="space-y-2">
-            <img 
-              src={msg.file_url} 
-              alt={msg.file_name || 'Image'} 
-              className="max-w-xs rounded-lg cursor-pointer"
-              onClick={() => window.open(msg.file_url, '_blank')}
-            />
-            {msg.file_name && (
-              <p className="text-xs opacity-75">{msg.file_name}</p>
-            )}
-          </div>
-        );
-      } else {
-        return (
-          <div className="flex items-center space-x-2 bg-black bg-opacity-10 p-2 rounded">
-            {getFileIcon(msg.message_type)}
-            <div className="flex-1">
-              <p className="text-sm font-medium">{msg.file_name || 'File'}</p>
-              <a 
-                href={msg.file_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-xs underline opacity-75 hover:opacity-100"
-              >
-                Download
-              </a>
-            </div>
-          </div>
-        );
-      }
-    }
-
-    return (
-      <div>
-        <p className="break-words">{msg.content}</p>
-        {msg.translated_content && Object.keys(msg.translated_content).length > 0 && (
-          <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-            <p className="font-medium text-blue-800">Translations:</p>
-            {Object.entries(msg.translated_content).map(([lang, translation]) => (
-              <p key={lang} className="text-blue-700">
-                <strong>{lang.toUpperCase()}:</strong> {translation as string}
-              </p>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // Show loading only while initially fetching data
   if (loading) {
     return (
@@ -532,154 +453,22 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Conversations List */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Users className="h-5 w-5" />
-              <span>Conversations</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="space-y-1">
-              {conversations.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p>No conversations yet</p>
-                  <p className="text-xs mt-1">Click "New Conversation" to start chatting</p>
-                </div>
-              ) : (
-                conversations.map((conversation) => (
-                  <div 
-                    key={conversation.id} 
-                    className={`p-4 hover:bg-gray-50 cursor-pointer border-b transition-colors ${
-                      selectedConversation === conversation.id ? 'bg-blue-50 border-blue-200' : ''
-                    }`}
-                    onClick={() => setSelectedConversation(conversation.id)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback>
-                          <User className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900">
-                          {conversation.title || getConversationPartner(conversation)}
-                        </p>
-                        <p className="text-sm text-gray-500 truncate">
-                          {new Date(conversation.updated_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <ConversationsList
+          conversations={conversations}
+          selectedConversation={selectedConversation}
+          onSelectConversation={setSelectedConversation}
+          currentUserId={user?.id}
+        />
 
-        {/* Chat Window */}
-        <Card className="lg:col-span-2">
-          {selectedConversation ? (
-            <>
-              <CardHeader className="border-b">
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarFallback>
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle className="text-lg">
-                      {conversations.find(c => c.id === selectedConversation)?.title || 
-                       getConversationPartner(conversations.find(c => c.id === selectedConversation)!)}
-                    </CardTitle>
-                    <CardDescription>Click to send a message</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="p-0">
-                {/* Messages Area */}
-                <div className="h-96 overflow-y-auto p-4 space-y-4">
-                  {messages.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-gray-500">
-                      <div className="text-center">
-                        <MessageSquare className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                        <p>No messages yet. Start the conversation!</p>
-                      </div>
-                    </div>
-                  ) : (
-                    messages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            msg.sender_id === user?.id
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-900'
-                          }`}
-                        >
-                          {msg.sender_id !== user?.id && (
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="text-xs font-medium opacity-75">
-                                {msg.sender?.full_name || 'Unknown'}
-                              </p>
-                              <MessageTranslation
-                                messageId={msg.id}
-                                originalText={msg.content}
-                                onTranslationComplete={(translatedText, targetLanguage) => 
-                                  handleTranslationComplete(msg.id, translatedText, targetLanguage)
-                                }
-                              />
-                            </div>
-                          )}
-                          {renderMessageContent(msg)}
-                          <p className={`text-xs mt-1 ${
-                            msg.sender_id === user?.id ? 'text-blue-100' : 'text-gray-500'
-                          }`}>
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {/* Message Input */}
-                <div className="border-t p-4">
-                  <div className="flex space-x-2">
-                    <FileUpload 
-                      onFileUploaded={handleFileUploaded}
-                      disabled={!selectedConversation}
-                    />
-                    <Input
-                      placeholder="Type a message..."
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                      className="flex-1"
-                    />
-                    <Button onClick={() => handleSendMessage()} disabled={!message.trim()}>
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </>
-          ) : (
-            <CardContent className="p-6 flex items-center justify-center h-96">
-              <div className="text-center">
-                <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-500">Select a conversation to start chatting</p>
-              </div>
-            </CardContent>
-          )}
-        </Card>
+        <ChatWindow
+          selectedConversation={selectedConversation}
+          conversations={conversations}
+          messages={messages}
+          currentUserId={user?.id}
+          onSendMessage={handleSendMessage}
+          onFileUploaded={handleFileUploaded}
+          onTranslationComplete={handleTranslationComplete}
+        />
       </div>
     </div>
   );
