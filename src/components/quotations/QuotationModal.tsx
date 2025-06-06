@@ -2,9 +2,12 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import { Download } from 'lucide-react';
 import { Quotation } from '@/hooks/useQuotations';
+import { exportQuotationToPDF } from '@/utils/pdfExport';
 
 interface QuotationModalProps {
   quotation: Quotation | null;
@@ -40,18 +43,33 @@ const QuotationModal = ({ quotation, isOpen, onClose }: QuotationModalProps) => 
     return subtotal * (quotation.tax_rate || 0);
   };
 
+  const handleDownloadPDF = () => {
+    exportQuotationToPDF(quotation);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            Quote #{quotation.quote_number}
-            <Badge className={getStatusColor(
-              isExpired(quotation.valid_until) ? 'expired' : quotation.status || 'draft'
-            )}>
-              {isExpired(quotation.valid_until) ? 'expired' : quotation.status}
-            </Badge>
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <DialogTitle>Quote #{quotation.quote_number}</DialogTitle>
+              <Badge className={getStatusColor(
+                isExpired(quotation.valid_until) ? 'expired' : quotation.status || 'draft'
+              )}>
+                {isExpired(quotation.valid_until) ? 'expired' : quotation.status}
+              </Badge>
+            </div>
+            <Button 
+              onClick={handleDownloadPDF}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
