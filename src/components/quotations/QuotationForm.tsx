@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,7 +88,7 @@ const QuotationForm = ({
       // Safely parse template items from JSONB
       try {
         const templateItems = Array.isArray(template.template_items) 
-          ? template.template_items as QuoteItem[]
+          ? (template.template_items as unknown) as QuoteItem[]
           : [];
         
         // Validate and transform the items
