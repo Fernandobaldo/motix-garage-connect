@@ -1,9 +1,9 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Star } from "lucide-react";
 import AuthModal from "@/components/auth/AuthModal";
+import ContactForm from "./ContactForm";
 
 const plans = [
   {
@@ -60,12 +60,13 @@ const plans = [
 
 const PricingSection = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactFormType, setContactFormType] = useState<'contact' | 'demo' | 'premium'>('contact');
 
   const handlePlanClick = (planName: string) => {
     if (planName === "Premium") {
-      // For premium, we would typically open a contact form
-      // For now, let's just open the auth modal
-      setShowAuthModal(true);
+      setContactFormType('premium');
+      setShowContactForm(true);
     } else {
       setShowAuthModal(true);
     }
@@ -139,6 +140,11 @@ const PricingSection = () => {
       </section>
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <ContactForm 
+        isOpen={showContactForm} 
+        onClose={() => setShowContactForm(false)}
+        type={contactFormType}
+      />
     </>
   );
 };
