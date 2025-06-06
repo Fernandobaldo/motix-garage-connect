@@ -86,7 +86,10 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
   }, [messages]);
 
   const fetchProfiles = async () => {
-    if (!tenant) return;
+    if (!tenant) {
+      console.log('No tenant available for fetching profiles');
+      return;
+    }
 
     try {
       const targetRole = userRole === 'client' ? 'workshop' : 'client';
@@ -102,6 +105,7 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
         return;
       }
 
+      console.log('Fetched profiles:', data);
       setProfiles(data || []);
     } catch (error) {
       console.error('Error fetching profiles:', error);
@@ -109,9 +113,15 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
   };
 
   const fetchConversations = async () => {
-    if (!user || !tenant) return;
+    if (!user || !tenant) {
+      console.log('Missing user or tenant for fetching conversations');
+      setLoading(false);
+      return;
+    }
 
     try {
+      console.log('Fetching conversations for user:', user.id, 'tenant:', tenant.id);
+      
       const { data, error } = await supabase
         .from('chat_conversations')
         .select(`
@@ -133,14 +143,19 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
 
       if (error) {
         console.error('Error fetching conversations:', error);
+        setLoading(false);
         return;
       }
+
+      console.log('Raw conversations data:', data);
 
       const userConversations = (data || []).filter(conv => 
         conv.participants?.some(p => p.user_id === user.id)
       );
 
+      console.log('Filtered user conversations:', userConversations);
       setConversations(userConversations);
+      
       if (userConversations.length > 0 && !selectedConversation) {
         setSelectedConversation(userConversations[0].id);
       }
@@ -153,6 +168,8 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
 
   const fetchMessages = async (conversationId: string) => {
     try {
+      console.log('Fetching messages for conversation:', conversationId);
+      
       const { data, error } = await supabase
         .from('chat_messages')
         .select(`
@@ -175,6 +192,7 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
         return;
       }
 
+      console.log('Fetched messages:', data);
       setMessages(data || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -213,9 +231,14 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
   };
 
   useEffect(() => {
-    if (tenant) {
+    console.log('ChatInterface mounted, user:', user?.id, 'tenant:', tenant?.id);
+    
+    if (user && tenant) {
       fetchConversations();
       fetchProfiles();
+    } else {
+      console.log('Missing dependencies for chat initialization');
+      setLoading(false);
     }
   }, [user, tenant]);
 
@@ -350,7 +373,6 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
         return;
       }
 
-      // Refresh messages to show translation
       if (selectedConversation) {
         fetchMessages(selectedConversation);
       }
@@ -428,10 +450,26 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
     );
   };
 
+  // Show loading only while initially fetching data
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading conversations...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if no user or tenant
+  if (!user || !profile) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+          <p className="text-gray-600">Please log in to access messages.</p>
+        </div>
       </div>
     );
   }
@@ -506,7 +544,9 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
             <div className="space-y-1">
               {conversations.length === 0 ? (
                 <div className="p-4 text-center text-gray-500">
-                  No conversations yet
+                  <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                  <p>No conversations yet</p>
+                  <p className="text-xs mt-1">Click "New Conversation" to start chatting</p>
                 </div>
               ) : (
                 conversations.map((conversation) => (
