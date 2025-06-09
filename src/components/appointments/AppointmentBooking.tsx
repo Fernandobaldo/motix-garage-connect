@@ -101,7 +101,7 @@ const AppointmentBooking = () => {
             <span>Service Details</span>
           </CardTitle>
           <CardDescription>
-            Fill out the form below to schedule your appointment
+            Fill out the form below to schedule your appointment. Available time slots are shown in real-time.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -125,6 +125,8 @@ const AppointmentBooking = () => {
                 onTimeChange={setSelectedTime}
                 duration={duration}
                 onDurationChange={setDuration}
+                workshopId={selectedWorkshop}
+                serviceType={serviceType}
               />
             </div>
 
@@ -146,7 +148,7 @@ const AppointmentBooking = () => {
             <Button 
               type="submit" 
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-200"
-              disabled={loading}
+              disabled={loading || !selectedDate || !selectedTime || !serviceType || !vehicleId || !selectedWorkshop}
               size="lg"
             >
               {loading ? (
