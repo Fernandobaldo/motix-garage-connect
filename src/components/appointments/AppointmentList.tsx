@@ -1,239 +1,196 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, Clock, User, Car, Phone, MapPin, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, Clock, MapPin, Car, Filter } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
-import { useAppointmentData } from "./useAppointmentData";
-import type { DatabaseAppointment } from "./types";
 
-const AppointmentList = () => {
-  const { appointments, isLoading } = useAppointmentData();
-  const [selectedAppointment, setSelectedAppointment] = useState<DatabaseAppointment | null>(null);
+interface AppointmentListProps {
+  filter?: 'upcoming' | 'history' | 'all';
+}
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'cancelled':
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'pending':
-        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-      default:
-        return <Clock className="h-4 w-4 text-blue-600" />;
-    }
+interface Appointment {
+  id: string;
+  appointment_date: string;
+  appointment_time: string;
+  status: string;
+  service_type: string;
+  notes?: string;
+  garage: {
+    garage_name: string;
+    location: string;
   };
+  vehicle: {
+    make: string;
+    model: string;
+    year: number;
+    license_plate: string;
+  };
+}
+
+const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
+  const { user } = useAuth();
+  const [sortBy, setSortBy] = useState<string>('date');
+
+  const { data: appointments, isLoading } = useQuery({
+    queryKey: ['appointments', user?.id, filter],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      let query = supabase
+        .from('appointments')
+        .select(`
+          *,
+          garage:garages!garage_id(garage_name, location),
+          vehicle:vehicles!vehicle_id(make, model, year, license_plate)
+        `)
+        .eq('user_id', user.id);
+
+      // Apply filter based on the prop
+      const now = new Date().toISOString();
+      if (filter === 'upcoming') {
+        query = query.gte('appointment_date', now.split('T')[0])
+          .in('status', ['pending', 'confirmed']);
+      } else if (filter === 'history') {
+        query = query.or(`appointment_date.lt.${now.split('T')[0]},status.in.(completed,cancelled)`);
+      }
+
+      const { data, error } = await query.order('appointment_date', { ascending: filter === 'upcoming' });
+
+      if (error) throw error;
+      return data as Appointment[];
+    },
+    enabled: !!user?.id,
+  });
+
+  const sortedAppointments = appointments?.sort((a, b) => {
+    switch (sortBy) {
+      case 'status':
+        return a.status.localeCompare(b.status);
+      case 'garage':
+        return a.garage.garage_name.localeCompare(b.garage.garage_name);
+      case 'vehicle':
+        return `${a.vehicle.make} ${a.vehicle.model}`.localeCompare(`${b.vehicle.make} ${b.vehicle.model}`);
+      case 'date':
+      default:
+        return new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
+    }
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-blue-100 text-blue-800';
+      case 'confirmed': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'completed': return 'bg-blue-100 text-blue-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader>
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </CardHeader>
+          </Card>
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4">
-        {appointments.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No appointments found</h3>
-              <p className="text-gray-500">
-                You don't have any appointments scheduled yet.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          appointments.map((apt: DatabaseAppointment) => (
-            <Card key={apt.id} className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-6" onClick={() => setSelectedAppointment(apt)}>
+    <div className="space-y-4">
+      {filter === 'history' && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Filter className="h-4 w-4" />
+            <span className="text-sm font-medium">Sort by:</span>
+          </div>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Date</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+              <SelectItem value="garage">Garage</SelectItem>
+              <SelectItem value="vehicle">Vehicle</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {!sortedAppointments || sortedAppointments.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-8">
+            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">
+              {filter === 'upcoming' ? 'No upcoming appointments' : 'No appointment history'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {sortedAppointments.map((appointment) => (
+            <Card key={appointment.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      {getStatusIcon(apt.status)}
-                      <h3 className="font-semibold text-gray-900">{apt.service_type}</h3>
-                      <Badge className={getStatusColor(apt.status)}>
-                        {apt.status}
-                      </Badge>
-                    </div>
-                    
-                    <div className="space-y-2 text-sm text-gray-600">
-                      <div className="flex items-center space-x-2">
+                  <div>
+                    <CardTitle className="text-lg">{appointment.service_type}</CardTitle>
+                    <CardDescription className="flex items-center space-x-4 mt-2">
+                      <div className="flex items-center space-x-1">
                         <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(apt.scheduled_at), 'PPP p')}</span>
+                        <span>{format(new Date(appointment.appointment_date), 'PPP')}</span>
                       </div>
-                      
-                      {apt.duration_minutes && (
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4" />
-                          <span>{apt.duration_minutes} minutes</span>
-                        </div>
-                      )}
-                      
-                      {apt.client && (
-                        <div className="flex items-center space-x-2">
-                          <User className="h-4 w-4" />
-                          <span>{apt.client.full_name}</span>
-                          {apt.client.phone && <span>• {apt.client.phone}</span>}
-                        </div>
-                      )}
-                      
-                      {apt.workshop && (
-                        <div className="flex items-center space-x-2">
-                          <MapPin className="h-4 w-4" />
-                          <span>{apt.workshop.name}</span>
-                          {apt.workshop.phone && <span>• {apt.workshop.phone}</span>}
-                        </div>
-                      )}
-                      
-                      {apt.vehicle && (
-                        <div className="flex items-center space-x-2">
-                          <Car className="h-4 w-4" />
-                          <span>
-                            {apt.vehicle.year} {apt.vehicle.make} {apt.vehicle.model} 
-                            • {apt.vehicle.license_plate}
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-4 w-4" />
+                        <span>{appointment.appointment_time}</span>
+                      </div>
+                    </CardDescription>
+                  </div>
+                  <Badge className={getStatusColor(appointment.status)}>
+                    {appointment.status}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <p className="font-medium">{appointment.garage.garage_name}</p>
+                      <p className="text-sm text-gray-600">{appointment.garage.location}</p>
                     </div>
-                    
-                    {apt.description && (
-                      <p className="text-sm text-gray-700 mt-2 line-clamp-2">
-                        {apt.description}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Car className="h-4 w-4 text-gray-500" />
+                    <div>
+                      <p className="font-medium">
+                        {appointment.vehicle.year} {appointment.vehicle.make} {appointment.vehicle.model}
                       </p>
-                    )}
+                      <p className="text-sm text-gray-600">{appointment.vehicle.license_plate}</p>
+                    </div>
                   </div>
                 </div>
+                {appointment.notes && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-700">{appointment.notes}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
-
-      {/* Appointment Details Dialog */}
-      <Dialog open={!!selectedAppointment} onOpenChange={() => setSelectedAppointment(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              {selectedAppointment && getStatusIcon(selectedAppointment.status)}
-              <span>{selectedAppointment?.service_type}</span>
-            </DialogTitle>
-            <DialogDescription>
-              Appointment details and information
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedAppointment && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Date & Time</label>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <span>{format(new Date(selectedAppointment.scheduled_at), 'PPP p')}</span>
-                    </div>
-                  </div>
-                  
-                  {selectedAppointment.duration_minutes && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Duration</label>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Clock className="h-4 w-4 text-gray-500" />
-                        <span>{selectedAppointment.duration_minutes} minutes</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Status</label>
-                    <div className="mt-1">
-                      <Badge className={getStatusColor(selectedAppointment.status)}>
-                        {selectedAppointment.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  {selectedAppointment.client && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Client</label>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <User className="h-4 w-4 text-gray-500" />
-                        <span>{selectedAppointment.client.full_name}</span>
-                      </div>
-                      {selectedAppointment.client.phone && (
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Phone className="h-4 w-4 text-gray-500" />
-                          <span>{selectedAppointment.client.phone}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {selectedAppointment.workshop && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Workshop</label>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <MapPin className="h-4 w-4 text-gray-500" />
-                        <span>{selectedAppointment.workshop.name}</span>
-                      </div>
-                      {selectedAppointment.workshop.phone && (
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Phone className="h-4 w-4 text-gray-500" />
-                          <span>{selectedAppointment.workshop.phone}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {selectedAppointment.vehicle && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Vehicle</label>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Car className="h-4 w-4 text-gray-500" />
-                        <span>
-                          {selectedAppointment.vehicle.year} {selectedAppointment.vehicle.make} {selectedAppointment.vehicle.model}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        License Plate: {selectedAppointment.vehicle.license_plate}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {selectedAppointment.description && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Description</label>
-                  <p className="mt-1 text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
-                    {selectedAppointment.description}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
