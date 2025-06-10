@@ -3,11 +3,14 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Calendar, History } from "lucide-react";
+import { Plus, Calendar, History, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import AppointmentBooking from "../appointments/AppointmentBooking";
 import AppointmentList from "../appointments/AppointmentList";
 import AppointmentCalendar from "../appointments/AppointmentCalendar";
+import ManualAppointmentBooking from "../clients/ManualAppointmentBooking";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ServiceSchedulingProps {
   userRole: 'client' | 'workshop';
@@ -16,7 +19,57 @@ interface ServiceSchedulingProps {
 const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
   const { profile } = useAuth();
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [appointmentView, setAppointmentView] = useState('upcoming');
+  const [showManualBooking, setShowManualBooking] = useState(false);
+
+  const { data: clients } = useQuery({
+    queryKey: ['clients-for-booking', profile?.tenant_id],
+    queryFn: async () => {
+      if (!profile?.tenant_id || userRole !== 'workshop') return [];
+
+      const { data: appointments, error } = await supabase
+        .from('appointments')
+        .select(`
+          client_id,
+          profiles!appointments_client_id_fkey(
+            id,
+            full_name,
+            phone
+          )
+        `)
+        .eq('tenant_id', profile.tenant_id);
+
+      if (error) throw error;
+
+      const uniqueClients = appointments.reduce((acc: any[], appointment) => {
+        const existingClient = acc.find(c => c.id === appointment.client_id);
+        if (!existingClient && appointment.profiles) {
+          acc.push({
+            id: appointment.client_id,
+            full_name: appointment.profiles.full_name,
+            phone: appointment.profiles.phone,
+            email: '',
+            vehicles: [],
+          });
+        }
+        return acc;
+      }, []);
+
+      return Promise.all(
+        uniqueClients.map(async (client) => {
+          const { data: vehicles } = await supabase
+            .from('vehicles')
+            .select('id, make, model, year, license_plate')
+            .eq('owner_id', client.id);
+
+          return {
+            ...client,
+            vehicles: vehicles || [],
+          };
+        })
+      );
+    },
+    enabled: userRole === 'workshop' && !!profile?.tenant_id,
+  });
 
   return (
     <div className="space-y-6">
@@ -25,12 +78,20 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
           <h2 className="text-2xl font-bold text-gray-900">Appointments</h2>
           <p className="text-gray-600">Manage your service appointments</p>
         </div>
-        {userRole === 'client' && (
-          <Button onClick={() => setShowBookingModal(true)} className="flex items-center space-x-2">
-            <Plus className="h-4 w-4" />
-            <span>New Appointment</span>
-          </Button>
-        )}
+        <div className="flex space-x-2">
+          {userRole === 'client' && (
+            <Button onClick={() => setShowBookingModal(true)} className="flex items-center space-x-2">
+              <Plus className="h-4 w-4" />
+              <span>New Appointment</span>
+            </Button>
+          )}
+          {userRole === 'workshop' && (
+            <Button onClick={() => setShowManualBooking(true)} className="flex items-center space-x-2">
+              <UserPlus className="h-4 w-4" />
+              <span>Create for Client</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="list" className="w-full">
@@ -62,7 +123,7 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
         </TabsContent>
       </Tabs>
 
-      {/* New Appointment Modal */}
+      {/* Client Self-Booking Modal */}
       <Dialog open={showBookingModal} onOpenChange={setShowBookingModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -72,6 +133,22 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
             </DialogDescription>
           </DialogHeader>
           <AppointmentBooking onSuccess={() => setShowBookingModal(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Booking Modal for Garages */}
+      <Dialog open={showManualBooking} onOpenChange={setShowManualBooking}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Appointment for Client</DialogTitle>
+            <DialogDescription>
+              Create a new appointment for an existing client or register a new client
+            </DialogDescription>
+          </DialogHeader>
+          <ManualAppointmentBooking 
+            onSuccess={() => setShowManualBooking(false)}
+            existingClients={clients || []}
+          />
         </DialogContent>
       </Dialog>
     </div>
