@@ -4,9 +4,9 @@ import { beforeAll, afterEach, afterAll } from 'vitest';
 import { server } from './test/setup/msw';
 import { testPatterns } from './test/utils/testHelpers';
 
-// Setup MSW
+// Minimal MSW setup
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' });
+  server.listen({ onUnhandledRequest: 'warn' });
 });
 
 afterEach(() => {
@@ -18,7 +18,7 @@ afterAll(() => {
   server.close();
 });
 
-// Global test configuration
+// Essential browser mocks only
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation(query => ({

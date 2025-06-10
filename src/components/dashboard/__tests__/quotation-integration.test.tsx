@@ -1,6 +1,5 @@
-
 import { render } from '@testing-library/react';
-import { screen, fireEvent, waitFor } from '@testing-library/dom';
+import { screen, waitFor } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import QuotationManager from '../QuotationManager';
@@ -16,6 +15,20 @@ vi.mock('@/hooks/use-toast', () => ({
 describe('QuotationManager Integration Tests', () => {
   beforeEach(() => {
     mockToast.mockClear();
+  });
+
+  it('should render quotation manager interface', async () => {
+    render(<QuotationManager userRole="workshop" />);
+    
+    expect(screen.getByText('Quotation Management')).toBeInTheDocument();
+    expect(screen.getByText('New Quote')).toBeInTheDocument();
+  });
+
+  it('should render client interface', async () => {
+    render(<QuotationManager userRole="client" />);
+    
+    expect(screen.getByText('My Quotes')).toBeInTheDocument();
+    expect(screen.queryByText('New Quote')).not.toBeInTheDocument();
   });
 
   it('should complete full quote creation workflow', async () => {

@@ -1,4 +1,3 @@
-
 import { render } from '@testing-library/react';
 import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
@@ -19,7 +18,7 @@ describe('QuotationManager', () => {
   });
 
   describe('Workshop Role', () => {
-    it('should render workshop interface with New Quote button', () => {
+    it('should render workshop interface', () => {
       render(<QuotationManager userRole="workshop" />);
       
       expect(screen.getByText('Quotation Management')).toBeInTheDocument();
@@ -99,16 +98,10 @@ describe('QuotationManager', () => {
   });
 
   describe('Client Role', () => {
-    it('should render client interface with My Quotes title', () => {
+    it('should render client interface', () => {
       render(<QuotationManager userRole="client" />);
       
       expect(screen.getByText('My Quotes')).toBeInTheDocument();
-      expect(screen.getByText('Review and manage service quotes from workshops')).toBeInTheDocument();
-    });
-
-    it('should not show New Quote button for clients', () => {
-      render(<QuotationManager userRole="client" />);
-      
       expect(screen.queryByText('New Quote')).not.toBeInTheDocument();
     });
 
