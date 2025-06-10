@@ -20,7 +20,7 @@ interface VehicleServiceDashboardProps {
 
 const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: VehicleServiceDashboardProps) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const { appointmentsByVehicle } = useAppointmentData();
+  const { appointments } = useAppointmentData();
   
   const {
     serviceHistory,
@@ -35,7 +35,19 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
     updateMaintenanceSchedule,
   } = useServiceHistory(selectedVehicleId);
 
-  const vehicles = Object.values(appointmentsByVehicle);
+  // Group vehicles from appointments
+  const vehicleMap = new Map();
+  appointments?.forEach(appointment => {
+    if (appointment.vehicle) {
+      vehicleMap.set(appointment.vehicle.id, {
+        vehicle: appointment.vehicle,
+        appointments: vehicleMap.get(appointment.vehicle.id)?.appointments || []
+      });
+      vehicleMap.get(appointment.vehicle.id).appointments.push(appointment);
+    }
+  });
+  
+  const vehicles = Array.from(vehicleMap.values());
 
   const handleViewServiceDetails = (record: ServiceHistoryRecord) => {
     console.log('View service details:', record);

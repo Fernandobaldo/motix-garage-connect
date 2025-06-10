@@ -84,7 +84,7 @@ const Dashboard = () => {
         </TabsContent>
 
         <TabsContent value="chat" className="space-y-4">
-          <ChatInterface userRole={userRole} />
+          <ChatInterface />
         </TabsContent>
 
         <TabsContent value="quotations" className="space-y-4">
