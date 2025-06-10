@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -49,7 +48,13 @@ export const useWorkshopAvailability = (workshopId: string, selectedDate: Date |
         return;
       }
 
-      setWorkingHours(data?.working_hours || defaultWorkingHours);
+      // Properly handle the JSON data and ensure type safety
+      const hours = data?.working_hours;
+      if (hours && typeof hours === 'object' && !Array.isArray(hours)) {
+        setWorkingHours(hours as WorkshopHours);
+      } else {
+        setWorkingHours(defaultWorkingHours);
+      }
     };
 
     fetchWorkshopHours();
