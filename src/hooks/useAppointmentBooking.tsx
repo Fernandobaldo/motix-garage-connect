@@ -12,7 +12,7 @@ interface Vehicle {
   license_plate: string;
 }
 
-interface Workshop {
+interface Garage {
   id: string;
   name: string;
   email: string;
@@ -29,17 +29,16 @@ export const useAppointmentBooking = () => {
   const [serviceType, setServiceType] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [description, setDescription] = useState('');
-  const [duration, setDuration] = useState('60');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [workshops, setWorkshops] = useState<Garage[]>([]);
   const [selectedWorkshop, setSelectedWorkshop] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Load user vehicles and available workshops
+  // Load user vehicles and available garages
   useEffect(() => {
     const loadData = async () => {
       if (profile?.role === 'client' && user) {
-        console.log('Loading vehicles and workshops for client:', user.id);
+        console.log('Loading vehicles and garages for client:', user.id);
         
         // Load user's vehicles
         const { data: vehicleData, error: vehicleError } = await supabase
@@ -54,17 +53,17 @@ export const useAppointmentBooking = () => {
           setVehicles(vehicleData || []);
         }
 
-        // Load all public workshops
-        const { data: workshopData, error: workshopError } = await supabase
+        // Load all public garages
+        const { data: garageData, error: garageError } = await supabase
           .from('workshops')
           .select('*')
           .eq('is_public', true);
         
-        if (workshopError) {
-          console.error('Error loading workshops:', workshopError);
+        if (garageError) {
+          console.error('Error loading garages:', garageError);
         } else {
-          console.log('Loaded workshops:', workshopData);
-          setWorkshops(workshopData || []);
+          console.log('Loaded garages:', garageData);
+          setWorkshops(garageData || []);
         }
       }
     };
@@ -72,7 +71,7 @@ export const useAppointmentBooking = () => {
     loadData();
   }, [profile, user]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<boolean> => {
     e.preventDefault();
     
     if (!selectedDate || !selectedTime || !serviceType || !vehicleId || !selectedWorkshop) {
@@ -81,7 +80,7 @@ export const useAppointmentBooking = () => {
         description: 'Please fill in all required fields.',
         variant: 'destructive'
       });
-      return;
+      return false;
     }
 
     if (!user) {
@@ -90,21 +89,21 @@ export const useAppointmentBooking = () => {
         description: 'Please sign in to book an appointment.',
         variant: 'destructive'
       });
-      return;
+      return false;
     }
 
     setLoading(true);
 
     try {
-      // Find the selected workshop to get its tenant_id
-      const workshop = workshops.find(w => w.id === selectedWorkshop);
-      if (!workshop) {
+      // Find the selected garage to get its tenant_id
+      const garage = workshops.find(w => w.id === selectedWorkshop);
+      if (!garage) {
         toast({
-          title: 'Workshop Error',
-          description: 'Selected workshop not found.',
+          title: 'Garage Error',
+          description: 'Selected garage not found.',
           variant: 'destructive'
         });
-        return;
+        return false;
       }
 
       const scheduledAt = new Date(selectedDate);
@@ -112,28 +111,28 @@ export const useAppointmentBooking = () => {
       scheduledAt.setHours(parseInt(hours), parseInt(minutes));
 
       console.log('Creating appointment with data:', {
-        tenant_id: workshop.tenant_id,
+        tenant_id: garage.tenant_id,
         client_id: user.id,
         workshop_id: selectedWorkshop,
         vehicle_id: vehicleId,
         service_type: serviceType,
         description,
         scheduled_at: scheduledAt.toISOString(),
-        duration_minutes: parseInt(duration),
+        duration_minutes: 60, // Default 1 hour
         status: 'pending'
       });
 
       const { error } = await supabase
         .from('appointments')
         .insert({
-          tenant_id: workshop.tenant_id,
+          tenant_id: garage.tenant_id,
           client_id: user.id,
           workshop_id: selectedWorkshop,
           vehicle_id: vehicleId,
           service_type: serviceType,
           description,
           scheduled_at: scheduledAt.toISOString(),
-          duration_minutes: parseInt(duration),
+          duration_minutes: 60, // Default 1 hour as requested
           status: 'pending'
         });
 
@@ -144,7 +143,7 @@ export const useAppointmentBooking = () => {
           description: error.message,
           variant: 'destructive'
         });
-        return;
+        return false;
       }
 
       toast({
@@ -160,6 +159,7 @@ export const useAppointmentBooking = () => {
       setDescription('');
       setSelectedWorkshop('');
       
+      return true;
     } catch (error) {
       console.error('Unexpected error:', error);
       toast({
@@ -167,6 +167,7 @@ export const useAppointmentBooking = () => {
         description: 'An unexpected error occurred.',
         variant: 'destructive'
       });
+      return false;
     } finally {
       setLoading(false);
     }
@@ -183,8 +184,6 @@ export const useAppointmentBooking = () => {
     setVehicleId,
     description,
     setDescription,
-    duration,
-    setDuration,
     vehicles,
     workshops,
     selectedWorkshop,

@@ -1,15 +1,14 @@
 
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Clock, CheckCircle, XCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useWorkshopAvailability } from '@/hooks/useWorkshopAvailability';
+import { Clock, AlertCircle } from 'lucide-react';
+import { useGarageAvailability } from '@/hooks/useGarageAvailability';
 
 interface AvailableTimeSlotsProps {
   selectedDate: Date | undefined;
   selectedTime: string;
   onTimeChange: (time: string) => void;
-  workshopId: string;
+  garageId: string;
   serviceType: string;
 }
 
@@ -17,30 +16,29 @@ const AvailableTimeSlots = ({
   selectedDate,
   selectedTime,
   onTimeChange,
-  workshopId,
+  garageId,
   serviceType,
 }: AvailableTimeSlotsProps) => {
-  const { availableSlots, loading, isTimeSlotAvailable, getServiceDuration } = useWorkshopAvailability(
-    workshopId,
-    selectedDate
-  );
+  const { availableSlots, loading } = useGarageAvailability(garageId, selectedDate);
 
   if (!selectedDate) {
     return (
-      <div>
-        <Label>Available Time Slots</Label>
-        <p className="text-sm text-gray-500 mt-1">Please select a date first</p>
+      <div className="space-y-2">
+        <Label>Available Times</Label>
+        <div className="p-4 border border-dashed rounded-lg text-center text-gray-500">
+          Please select a date first
+        </div>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div>
-        <Label>Available Time Slots</Label>
-        <div className="flex items-center space-x-2 mt-2">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
-          <span className="text-sm text-gray-500">Checking availability...</span>
+      <div className="space-y-2">
+        <Label>Available Times</Label>
+        <div className="flex items-center justify-center p-4 border rounded-lg">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent mr-2"></div>
+          <span className="text-sm text-gray-600">Loading available times...</span>
         </div>
       </div>
     );
@@ -48,67 +46,55 @@ const AvailableTimeSlots = ({
 
   if (availableSlots.length === 0) {
     return (
-      <div>
-        <Label>Available Time Slots</Label>
-        <div className="flex items-center space-x-2 mt-2 p-3 bg-gray-50 rounded-md">
-          <XCircle className="h-4 w-4 text-gray-400" />
-          <span className="text-sm text-gray-600">No available slots for this date</span>
+      <div className="space-y-2">
+        <Label>Available Times</Label>
+        <div className="p-4 border border-amber-200 bg-amber-50 rounded-lg">
+          <div className="flex items-center text-amber-700">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            <span className="text-sm">No available times for the selected date. Garage may be closed or fully booked.</span>
+          </div>
         </div>
       </div>
     );
   }
 
-  const serviceDuration = getServiceDuration(serviceType);
+  const availableTimes = availableSlots.filter(slot => slot.available);
+
+  if (availableTimes.length === 0) {
+    return (
+      <div className="space-y-2">
+        <Label>Available Times</Label>
+        <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
+          <div className="flex items-center text-red-700">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            <span className="text-sm">No available times for the selected date. All slots are booked.</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <Label>Available Time Slots *</Label>
-      <p className="text-xs text-gray-500 mb-3">
-        {serviceType && `Estimated duration: ${serviceDuration} minutes`}
+    <div className="space-y-2">
+      <Label>Available Times *</Label>
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto">
+        {availableTimes.map(({ time }) => (
+          <Button
+            key={time}
+            type="button"
+            variant={selectedTime === time ? "default" : "outline"}
+            size="sm"
+            onClick={() => onTimeChange(time)}
+            className="flex items-center justify-center space-x-1"
+          >
+            <Clock className="h-3 w-3" />
+            <span>{time}</span>
+          </Button>
+        ))}
+      </div>
+      <p className="text-xs text-gray-500">
+        All appointments are scheduled for 1 hour duration. The garage will adjust if needed.
       </p>
-      
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-40 overflow-y-auto">
-        {availableSlots.map((slot) => {
-          const isAvailable = serviceType ? isTimeSlotAvailable(slot.time, serviceType) : slot.available;
-          const isSelected = selectedTime === slot.time;
-          
-          return (
-            <Button
-              key={slot.time}
-              type="button"
-              variant={isSelected ? "default" : "outline"}
-              size="sm"
-              disabled={!isAvailable}
-              onClick={() => onTimeChange(slot.time)}
-              className={cn(
-                "relative text-xs",
-                isSelected && "bg-blue-600 hover:bg-blue-700",
-                !isAvailable && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <div className="flex items-center space-x-1">
-                {isAvailable ? (
-                  <CheckCircle className="h-3 w-3" />
-                ) : (
-                  <XCircle className="h-3 w-3" />
-                )}
-                <span>{slot.time}</span>
-              </div>
-            </Button>
-          );
-        })}
-      </div>
-      
-      <div className="flex items-center space-x-4 mt-3 text-xs text-gray-500">
-        <div className="flex items-center space-x-1">
-          <CheckCircle className="h-3 w-3 text-green-500" />
-          <span>Available</span>
-        </div>
-        <div className="flex items-center space-x-1">
-          <XCircle className="h-3 w-3 text-red-500" />
-          <span>Booked</span>
-        </div>
-      </div>
     </div>
   );
 };

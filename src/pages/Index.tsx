@@ -1,25 +1,24 @@
+
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Settings, User, MessageSquare, FileText, Car, Building, Wrench } from "lucide-react";
+import { Calendar, User, MessageSquare, FileText, Car, Building, Wrench } from "lucide-react";
 import ServiceScheduling from "@/components/dashboard/ServiceScheduling";
 import UserProfileTab from "@/components/dashboard/UserProfileTab";
 import WorkshopTab from "@/components/dashboard/WorkshopTab";
-import TenantSetup from "@/components/tenant/TenantSetup";
-import AppointmentBooking from "@/components/appointments/AppointmentBooking";
-import ChatInterface from "@/components/chat/ChatInterface";
-import RoleGuard from "@/components/auth/RoleGuard";
 import VehicleServiceTab from "@/components/dashboard/VehicleServiceTab";
 import QuotationManager from "@/components/dashboard/QuotationManager";
 import TenantStats from "@/components/dashboard/TenantStats";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import LandingPage from "@/components/landing/LandingPage";
+import ChatInterface from "@/components/chat/ChatInterface";
+import VehicleManager from "@/components/appointments/VehicleManager";
+import RoleGuard from "@/components/auth/RoleGuard";
 
 const Index = () => {
   const { user, signOut, profile } = useAuth();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("appointments");
 
   if (!user) {
     return <LandingPage />;
@@ -38,13 +37,17 @@ const Index = () => {
 
   const userRole = profile.role as 'client' | 'workshop';
 
+  const handleCardClick = (tab: string) => {
+    setActiveTab(tab);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-xl font-semibold text-gray-900">
-              Workshop Management
+              Garage Management
             </h1>
             <div className="flex items-center space-x-4">
               <NotificationBell />
@@ -61,12 +64,12 @@ const Index = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
-          <TenantStats />
+          <TenantStats onCardClick={handleCardClick} />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7">
-            <TabsTrigger value="dashboard" className="flex items-center space-x-2">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="appointments" className="flex items-center space-x-2">
               <Calendar className="h-4 w-4" />
               <span>Appointments</span>
             </TabsTrigger>
@@ -75,20 +78,11 @@ const Index = () => {
               <Wrench className="h-4 w-4" />
               <span>Service Records</span>
             </TabsTrigger>
-            
-            <RoleGuard allowedRoles={['client']} fallback={<div />}>
-              <TabsTrigger value="booking" className="flex items-center space-x-2">
-                <Car className="h-4 w-4" />
-                <span>Book Service</span>
-              </TabsTrigger>
-            </RoleGuard>
 
-            <RoleGuard allowedRoles={['workshop']} fallback={<div />}>
-              <TabsTrigger value="workshop" className="flex items-center space-x-2">
-                <Building className="h-4 w-4" />
-                <span>Workshop</span>
-              </TabsTrigger>
-            </RoleGuard>
+            <TabsTrigger value="vehicles" className="flex items-center space-x-2">
+              <Car className="h-4 w-4" />
+              <span>My Vehicles</span>
+            </TabsTrigger>
 
             <TabsTrigger value="messages" className="flex items-center space-x-2">
               <MessageSquare className="h-4 w-4" />
@@ -99,21 +93,21 @@ const Index = () => {
               <FileText className="h-4 w-4" />
               <span>Quotations</span>
             </TabsTrigger>
-            
+
             <TabsTrigger value="profile" className="flex items-center space-x-2">
               <User className="h-4 w-4" />
               <span>Profile</span>
             </TabsTrigger>
-            
-            <RoleGuard allowedRoles={['workshop']} fallback={<div />}>
-              <TabsTrigger value="settings" className="flex items-center space-x-2">
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
+
+            <RoleGuard allowedRoles={['workshop']} fallback={null}>
+              <TabsTrigger value="garage" className="flex items-center space-x-2">
+                <Building className="h-4 w-4" />
+                <span>Garage Settings</span>
               </TabsTrigger>
             </RoleGuard>
           </TabsList>
 
-          <TabsContent value="dashboard">
+          <TabsContent value="appointments">
             <ServiceScheduling userRole={userRole} />
           </TabsContent>
 
@@ -121,16 +115,8 @@ const Index = () => {
             <VehicleServiceTab />
           </TabsContent>
 
-          <TabsContent value="booking">
-            <RoleGuard allowedRoles={['client']}>
-              <AppointmentBooking />
-            </RoleGuard>
-          </TabsContent>
-
-          <TabsContent value="workshop">
-            <RoleGuard allowedRoles={['workshop']}>
-              <WorkshopTab />
-            </RoleGuard>
+          <TabsContent value="vehicles">
+            <VehicleManager />
           </TabsContent>
 
           <TabsContent value="messages">
@@ -145,9 +131,9 @@ const Index = () => {
             <UserProfileTab />
           </TabsContent>
 
-          <TabsContent value="settings">
+          <TabsContent value="garage">
             <RoleGuard allowedRoles={['workshop']}>
-              <TenantSetup />
+              <WorkshopTab />
             </RoleGuard>
           </TabsContent>
         </Tabs>

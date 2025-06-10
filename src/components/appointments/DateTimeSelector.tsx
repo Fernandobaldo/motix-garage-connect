@@ -7,16 +7,13 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import AvailableTimeSlots from './AvailableTimeSlots';
-import ServiceDurationSelector from './ServiceDurationSelector';
 
 interface DateTimeSelectorProps {
   selectedDate: Date | undefined;
   onDateChange: (date: Date | undefined) => void;
   selectedTime: string;
   onTimeChange: (time: string) => void;
-  duration: string;
-  onDurationChange: (duration: string) => void;
-  workshopId: string;
+  garageId: string;
   serviceType: string;
 }
 
@@ -25,9 +22,7 @@ const DateTimeSelector = ({
   onDateChange,
   selectedTime,
   onTimeChange,
-  duration,
-  onDurationChange,
-  workshopId,
+  garageId,
   serviceType,
 }: DateTimeSelectorProps) => {
   return (
@@ -60,17 +55,11 @@ const DateTimeSelector = ({
         </Popover>
       </div>
 
-      <ServiceDurationSelector
-        serviceType={serviceType}
-        duration={duration}
-        onDurationChange={onDurationChange}
-      />
-
       <AvailableTimeSlots
         selectedDate={selectedDate}
         selectedTime={selectedTime}
         onTimeChange={onTimeChange}
-        workshopId={workshopId}
+        garageId={garageId}
         serviceType={serviceType}
       />
     </>
