@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { MessageSquare, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import ConversationsList from './ConversationsList';
 import ChatWindow from './ChatWindow';
 
 interface ChatInterfaceProps {
@@ -16,7 +17,9 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
   const { user } = useAuth();
   const [appointment, setAppointment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [showChat, setShowChat] = useState(false);
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
     const fetchAppointment = async () => {
@@ -49,6 +52,18 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
     return appointment.status === 'confirmed' || appointment.status === 'in_progress';
   };
 
+  const handleSendMessage = () => {
+    // Implementation for sending messages
+  };
+
+  const handleFileUploaded = () => {
+    // Implementation for file uploads
+  };
+
+  const handleTranslationComplete = () => {
+    // Implementation for translation completion
+  };
+
   if (loading) {
     return (
       <Card>
@@ -61,12 +76,22 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
 
   if (!appointmentId || !appointment) {
     return (
-      <Card>
-        <CardContent className="text-center py-8">
-          <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">Select an appointment to start chatting</p>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ConversationsList 
+          conversations={conversations}
+          selectedConversation={selectedConversation}
+          onSelectConversation={setSelectedConversation}
+        />
+        <ChatWindow
+          selectedConversation={selectedConversation}
+          conversations={conversations}
+          messages={messages}
+          currentUserId={user?.id}
+          onSendMessage={handleSendMessage}
+          onFileUploaded={handleFileUploaded}
+          onTranslationComplete={handleTranslationComplete}
+        />
+      </div>
     );
   }
 
@@ -107,31 +132,24 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
     );
   }
 
-  if (!showChat) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <MessageSquare className="h-5 w-5" />
-            <span>Appointment Chat</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              Chat with the workshop about your {appointment.service_type} appointment.
-            </p>
-            <Button onClick={() => setShowChat(true)} className="w-full">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Open Chat
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return <ChatWindow appointment={appointment} onClose={() => setShowChat(false)} />;
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <ConversationsList 
+        conversations={conversations}
+        selectedConversation={selectedConversation}
+        onSelectConversation={setSelectedConversation}
+      />
+      <ChatWindow
+        selectedConversation={selectedConversation}
+        conversations={conversations}
+        messages={messages}
+        currentUserId={user?.id}
+        onSendMessage={handleSendMessage}
+        onFileUploaded={handleFileUploaded}
+        onTranslationComplete={handleTranslationComplete}
+      />
+    </div>
+  );
 };
 
 export default ChatInterface;

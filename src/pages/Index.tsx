@@ -156,7 +156,7 @@ const Index = () => {
           )}
 
           <TabsContent value="messages">
-            <ChatInterface userRole={userRole} />
+            <ChatInterface />
           </TabsContent>
 
           <TabsContent value="quotations">

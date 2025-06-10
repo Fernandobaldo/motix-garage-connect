@@ -25,7 +25,7 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
   const { appointments, isLoading, refetch } = useAppointmentData();
   const [sortBy, setSortBy] = useState<string>('date');
   const [editingAppointment, setEditingAppointment] = useState<any>(null);
-  const [serviceReportAppointment, setServiceReportAppointment] = useState<any>(null);
+  const [serviceReportAppointmentId, setServiceReportAppointmentId] = useState<string | null>(null);
 
   // Filter appointments based on the filter prop
   const filteredAppointments = appointments.filter(apt => {
@@ -254,7 +254,7 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => setServiceReportAppointment(appointment)}
+                        onClick={() => setServiceReportAppointmentId(appointment.id)}
                       >
                         <FileText className="h-4 w-4 mr-2" />
                         Complete Service
@@ -311,12 +311,14 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
         onUpdate={refetch}
       />
 
-      <ServiceReportModal
-        appointment={serviceReportAppointment}
-        isOpen={!!serviceReportAppointment}
-        onClose={() => setServiceReportAppointment(null)}
-        onComplete={refetch}
-      />
+      {serviceReportAppointmentId && (
+        <ServiceReportModal
+          appointmentId={serviceReportAppointmentId}
+          isOpen={!!serviceReportAppointmentId}
+          onClose={() => setServiceReportAppointmentId(null)}
+          onSuccess={refetch}
+        />
+      )}
     </div>
   );
 };

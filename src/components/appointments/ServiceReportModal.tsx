@@ -34,6 +34,7 @@ const ServiceReportModal = ({ isOpen, onClose, appointmentId, onSuccess }: Servi
     mileage: '',
     cost: 0,
     nextServiceDue: '',
+    serviceType: '',
   });
   
   const [partsUsed, setPartsUsed] = useState<PartUsed[]>([
@@ -59,17 +60,30 @@ const ServiceReportModal = ({ isOpen, onClose, appointmentId, onSuccess }: Servi
     setLoading(true);
 
     try {
+      // First get appointment details to extract service_type and vehicle_id
+      const { data: appointment, error: appointmentError } = await supabase
+        .from('appointments')
+        .select('service_type, vehicle_id')
+        .eq('id', appointmentId)
+        .single();
+
+      if (appointmentError || !appointment) {
+        throw new Error('Failed to fetch appointment details');
+      }
+
       const serviceData = {
         appointment_id: appointmentId,
         workshop_id: profile?.tenant_id,
         tenant_id: profile?.tenant_id,
+        vehicle_id: appointment.vehicle_id,
+        service_type: appointment.service_type,
         description: formData.description,
         labor_hours: formData.laborHours,
         mileage: formData.mileage ? parseInt(formData.mileage) : null,
         cost: formData.cost,
         completed_at: new Date().toISOString(),
         next_service_due_at: formData.nextServiceDue ? new Date(formData.nextServiceDue).toISOString() : null,
-        parts_used: JSON.stringify(partsUsed.filter(part => part.name.trim() !== '')) as any,
+        parts_used: JSON.stringify(partsUsed.filter(part => part.name.trim() !== '')),
       };
 
       const { error } = await supabase
