@@ -49,7 +49,7 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
   const [serviceType, setServiceType] = useState<string>('');
   const [description, setDescription] = useState<string>('');
 
-  // New client form
+  // New client form (simplified - no auth user creation)
   const [newClient, setNewClient] = useState({
     full_name: '',
     phone: '',
@@ -94,22 +94,31 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
       let clientId = selectedClient;
       let vehicleId = selectedVehicle;
 
-      // If creating new client
+      // If creating new client - for now, we'll create a simplified client record
+      // In a real app, you'd want to integrate with proper user registration
       if (appointmentType === 'new') {
-        // Create auth user (this would typically be done through proper signup)
-        // For now, we'll create a profile directly
+        // Generate a temporary UUID for the client
+        const tempClientId = crypto.randomUUID();
+        
+        // Create a basic client profile (this is a simplified approach)
+        // Note: This creates a profile without proper auth user - should be replaced with proper registration flow
         const { data: newProfile, error: profileError } = await supabase
           .from('profiles')
           .insert({
+            id: tempClientId,
             full_name: newClient.full_name,
             phone: newClient.phone,
-            role: 'client',
+            role: 'client' as const,
             tenant_id: profile?.tenant_id,
           })
           .select()
           .single();
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          throw new Error('Failed to create client profile. In a production environment, clients should register through the proper signup flow.');
+        }
+        
         clientId = newProfile.id;
 
         // Create vehicle for new client
@@ -136,7 +145,7 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
         .from('appointments')
         .insert({
           client_id: clientId,
-          workshop_id: profile?.tenant_id, // Assuming workshop_id is the tenant_id
+          workshop_id: profile?.tenant_id,
           vehicle_id: vehicleId,
           service_type: serviceType,
           scheduled_at: scheduledAt.toISOString(),
@@ -149,7 +158,9 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
 
       toast({
         title: "Appointment Created",
-        description: "The appointment has been successfully created.",
+        description: appointmentType === 'new' 
+          ? "Appointment created for new client. Note: In production, clients should register through proper signup."
+          : "The appointment has been successfully created.",
       });
 
       onSuccess();
@@ -221,6 +232,12 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
         </TabsContent>
 
         <TabsContent value="new" className="space-y-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-yellow-800">
+              <strong>Note:</strong> This creates a simplified client record. In production, new clients should register through the proper signup flow.
+            </p>
+          </div>
+          
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">New Client Information</CardTitle>
