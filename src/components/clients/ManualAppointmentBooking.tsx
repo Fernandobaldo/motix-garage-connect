@@ -1,20 +1,15 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Plus, User, UserPlus } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { User, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import ExistingClientSelector from "./ExistingClientSelector";
+import GuestClientForm from "./GuestClientForm";
+import VehicleForm from "./VehicleForm";
+import AppointmentDetailsForm from "./AppointmentDetailsForm";
 
 interface Client {
   id: string;
@@ -65,26 +60,6 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
     fuel_type: '',
     transmission: '',
   });
-
-  const serviceTypes = [
-    'Oil Change',
-    'Brake Service',
-    'Tire Service',
-    'Engine Diagnostics',
-    'Transmission Service',
-    'Air Conditioning',
-    'Battery Service',
-    'General Maintenance',
-    'Inspection',
-    'Other'
-  ];
-
-  const timeSlots = [
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
-    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-    '17:00', '17:30'
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,7 +151,20 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
     }
   };
 
-  const selectedClientData = existingClients.find(c => c.id === selectedClient);
+  const isFormValid = () => {
+    const basicValidation = serviceType && selectedDate && selectedTime;
+    
+    if (appointmentType === 'existing') {
+      return basicValidation && selectedClient && selectedVehicle;
+    } else {
+      return basicValidation && 
+        newClient.full_name && 
+        newClient.phone && 
+        newVehicle.make && 
+        newVehicle.model && 
+        newVehicle.license_plate;
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -193,241 +181,42 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
         </TabsList>
 
         <TabsContent value="existing" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Select Client *</Label>
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {existingClients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.full_name} - {client.phone}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Select Vehicle *</Label>
-              <Select 
-                value={selectedVehicle} 
-                onValueChange={setSelectedVehicle}
-                disabled={!selectedClient}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a vehicle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectedClientData?.vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.year} {vehicle.make} {vehicle.model} - {vehicle.license_plate}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <ExistingClientSelector
+            clients={existingClients}
+            selectedClient={selectedClient}
+            selectedVehicle={selectedVehicle}
+            onClientChange={setSelectedClient}
+            onVehicleChange={setSelectedVehicle}
+          />
         </TabsContent>
 
         <TabsContent value="new" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Guest Client Information</CardTitle>
-              <CardDescription>
-                For clients without an account - information will be stored with the appointment
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Full Name *</Label>
-                  <Input
-                    value={newClient.full_name}
-                    onChange={(e) => setNewClient({ ...newClient, full_name: e.target.value })}
-                    placeholder="Enter full name"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Phone *</Label>
-                  <Input
-                    value={newClient.phone}
-                    onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                    placeholder="Enter phone number"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={newClient.email}
-                    onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                    placeholder="Enter email address"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Vehicle Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label>Make *</Label>
-                  <Input
-                    value={newVehicle.make}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, make: e.target.value })}
-                    placeholder="e.g., Toyota"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Model *</Label>
-                  <Input
-                    value={newVehicle.model}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, model: e.target.value })}
-                    placeholder="e.g., Camry"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Year *</Label>
-                  <Input
-                    type="number"
-                    value={newVehicle.year}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, year: parseInt(e.target.value) })}
-                    min={1900}
-                    max={new Date().getFullYear() + 1}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>License Plate *</Label>
-                  <Input
-                    value={newVehicle.license_plate}
-                    onChange={(e) => setNewVehicle({ ...newVehicle, license_plate: e.target.value })}
-                    placeholder="Enter license plate"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Fuel Type</Label>
-                  <Select value={newVehicle.fuel_type} onValueChange={(value) => setNewVehicle({ ...newVehicle, fuel_type: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select fuel type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gasoline">Gasoline</SelectItem>
-                      <SelectItem value="diesel">Diesel</SelectItem>
-                      <SelectItem value="hybrid">Hybrid</SelectItem>
-                      <SelectItem value="electric">Electric</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Transmission</Label>
-                  <Select value={newVehicle.transmission} onValueChange={(value) => setNewVehicle({ ...newVehicle, transmission: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select transmission" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Manual</SelectItem>
-                      <SelectItem value="automatic">Automatic</SelectItem>
-                      <SelectItem value="cvt">CVT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <GuestClientForm
+            clientData={newClient}
+            onClientDataChange={setNewClient}
+          />
+          <VehicleForm
+            vehicleData={newVehicle}
+            onVehicleDataChange={setNewVehicle}
+          />
         </TabsContent>
       </Tabs>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <Label>Service Type *</Label>
-          <Select value={serviceType} onValueChange={setServiceType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select service" />
-            </SelectTrigger>
-            <SelectContent>
-              {serviceTypes.map((service) => (
-                <SelectItem key={service} value={service}>
-                  {service}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label>Date *</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !selectedDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                disabled={(date) => date < new Date()}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div>
-          <Label>Time *</Label>
-          <Select value={selectedTime} onValueChange={setSelectedTime}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select time" />
-            </SelectTrigger>
-            <SelectContent>
-              {timeSlots.map((time) => (
-                <SelectItem key={time} value={time}>
-                  {time}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div>
-        <Label>Description (Optional)</Label>
-        <Textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe the service needed..."
-          rows={3}
-        />
-      </div>
+      <AppointmentDetailsForm
+        serviceType={serviceType}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        description={description}
+        onServiceTypeChange={setServiceType}
+        onDateChange={setSelectedDate}
+        onTimeChange={setSelectedTime}
+        onDescriptionChange={setDescription}
+      />
 
       <Button 
         type="submit" 
         className="w-full"
-        disabled={loading || !serviceType || !selectedDate || !selectedTime || 
-          (appointmentType === 'existing' && (!selectedClient || !selectedVehicle)) ||
-          (appointmentType === 'new' && (!newClient.full_name || !newClient.phone || !newVehicle.make || !newVehicle.model || !newVehicle.license_plate))
-        }
+        disabled={loading || !isFormValid()}
       >
         {loading ? 'Creating Appointment...' : 'Create Appointment'}
       </Button>

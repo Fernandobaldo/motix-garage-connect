@@ -15,9 +15,9 @@ export const useAppointmentData = () => {
         .from('appointments')
         .select(`
           *,
-          client:profiles(id, full_name, phone),
-          workshop:workshops(id, name, phone, email),
-          vehicle:vehicles(id, make, model, year, license_plate)
+          client:profiles!appointments_client_id_fkey(id, full_name, phone),
+          workshop:workshops!appointments_workshop_id_fkey(id, name, phone, email),
+          vehicle:vehicles!appointments_vehicle_id_fkey(id, make, model, year, license_plate)
         `)
         .order('scheduled_at', { ascending: true });
 

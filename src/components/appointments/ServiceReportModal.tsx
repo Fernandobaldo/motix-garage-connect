@@ -1,99 +1,99 @@
 
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
-
-interface Appointment {
-  id: string;
-  service_type: string;
-  vehicle_id: string | null;
-  workshop_id: string;
-  scheduled_at: string;
-}
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Trash2 } from "lucide-react";
 
 interface ServiceReportModalProps {
-  appointment: Appointment | null;
   isOpen: boolean;
   onClose: () => void;
-  onComplete: () => void;
+  appointmentId: string;
+  onSuccess: () => void;
 }
 
 interface PartUsed {
   name: string;
   quantity: number;
-  cost: number;
+  price: number;
 }
 
-const ServiceReportModal = ({ appointment, isOpen, onClose, onComplete }: ServiceReportModalProps) => {
-  const { toast } = useToast();
+const ServiceReportModal = ({ isOpen, onClose, appointmentId, onSuccess }: ServiceReportModalProps) => {
   const { profile } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
-  const [mileage, setMileage] = useState<number>(0);
-  const [cost, setCost] = useState<number>(0);
-  const [laborHours, setLaborHours] = useState<number>(0);
-  const [description, setDescription] = useState('');
-  const [technicianNotes, setTechnicianNotes] = useState('');
-  const [partsUsed, setPartsUsed] = useState<PartUsed[]>([]);
-  const [newPart, setNewPart] = useState({ name: '', quantity: 1, cost: 0 });
+  const [formData, setFormData] = useState({
+    description: '',
+    laborHours: 0,
+    mileage: '',
+    cost: 0,
+    nextServiceDue: '',
+  });
+  
+  const [partsUsed, setPartsUsed] = useState<PartUsed[]>([
+    { name: '', quantity: 1, price: 0 }
+  ]);
 
   const addPart = () => {
-    if (newPart.name) {
-      setPartsUsed([...partsUsed, newPart]);
-      setNewPart({ name: '', quantity: 1, cost: 0 });
-    }
+    setPartsUsed([...partsUsed, { name: '', quantity: 1, price: 0 }]);
   };
 
   const removePart = (index: number) => {
     setPartsUsed(partsUsed.filter((_, i) => i !== index));
   };
 
+  const updatePart = (index: number, field: keyof PartUsed, value: string | number) => {
+    const updated = [...partsUsed];
+    updated[index] = { ...updated[index], [field]: value };
+    setPartsUsed(updated);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!appointment) return;
-
     setLoading(true);
+
     try {
+      const serviceData = {
+        appointment_id: appointmentId,
+        workshop_id: profile?.tenant_id,
+        tenant_id: profile?.tenant_id,
+        description: formData.description,
+        labor_hours: formData.laborHours,
+        mileage: formData.mileage ? parseInt(formData.mileage) : null,
+        cost: formData.cost,
+        completed_at: new Date().toISOString(),
+        next_service_due_at: formData.nextServiceDue ? new Date(formData.nextServiceDue).toISOString() : null,
+        parts_used: JSON.stringify(partsUsed.filter(part => part.name.trim() !== '')) as any,
+      };
+
       const { error } = await supabase
         .from('service_history')
-        .insert({
-          appointment_id: appointment.id,
-          vehicle_id: appointment.vehicle_id,
-          workshop_id: appointment.workshop_id,
-          tenant_id: profile?.tenant_id,
-          service_type: appointment.service_type,
-          description,
-          technician_notes: technicianNotes,
-          mileage: mileage || null,
-          cost: cost || null,
-          labor_hours: laborHours || null,
-          parts_used: partsUsed,
-          completed_at: new Date().toISOString(),
-        });
+        .insert(serviceData);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Service report creation error:', error);
+        throw new Error(`Failed to create service report: ${error.message}`);
+      }
 
       toast({
-        title: 'Service Report Completed',
-        description: 'The service report has been submitted and appointment marked as completed.',
+        title: "Service Report Created",
+        description: "The service report has been successfully submitted.",
       });
 
-      onComplete();
+      onSuccess();
       onClose();
     } catch (error: any) {
+      console.error('Error in service report creation:', error);
       toast({
-        title: 'Report Failed',
-        description: error.message,
-        variant: 'destructive',
+        title: "Error",
+        description: error.message || "Failed to create service report",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -102,123 +102,132 @@ const ServiceReportModal = ({ appointment, isOpen, onClose, onComplete }: Servic
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Complete Service Report</DialogTitle>
-          <DialogDescription>
-            Fill out the service completion details for this appointment.
-          </DialogDescription>
         </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <Label>Service Description *</Label>
+            <Textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Describe the service performed..."
+              required
+              rows={3}
+            />
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Labor Hours</Label>
+              <Input
+                type="number"
+                step="0.5"
+                value={formData.laborHours}
+                onChange={(e) => setFormData({ ...formData, laborHours: parseFloat(e.target.value) || 0 })}
+                placeholder="0"
+              />
+            </div>
             <div>
               <Label>Current Mileage</Label>
               <Input
                 type="number"
-                value={mileage || ''}
-                onChange={(e) => setMileage(parseInt(e.target.value) || 0)}
-                placeholder="Enter mileage"
+                value={formData.mileage}
+                onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
+                placeholder="Enter current mileage"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Total Cost</Label>
               <Input
                 type="number"
                 step="0.01"
-                value={cost || ''}
-                onChange={(e) => setCost(parseFloat(e.target.value) || 0)}
-                placeholder="Enter total cost"
+                value={formData.cost}
+                onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
               />
             </div>
             <div>
-              <Label>Labor Hours</Label>
+              <Label>Next Service Due Date</Label>
               <Input
-                type="number"
-                step="0.1"
-                value={laborHours || ''}
-                onChange={(e) => setLaborHours(parseFloat(e.target.value) || 0)}
-                placeholder="Enter labor hours"
+                type="date"
+                value={formData.nextServiceDue}
+                onChange={(e) => setFormData({ ...formData, nextServiceDue: e.target.value })}
               />
             </div>
           </div>
 
           <div>
-            <Label>Service Description *</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the work performed..."
-              rows={3}
-              required
-            />
-          </div>
-
-          <div>
-            <Label>Technician Notes</Label>
-            <Textarea
-              value={technicianNotes}
-              onChange={(e) => setTechnicianNotes(e.target.value)}
-              placeholder="Any additional notes or recommendations..."
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label>Parts Used</Label>
-            
-            {partsUsed.length > 0 && (
-              <div className="space-y-2">
-                {partsUsed.map((part, index) => (
-                  <div key={index} className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
-                    <Badge variant="outline">{part.name}</Badge>
-                    <span className="text-sm">Qty: {part.quantity}</span>
-                    <span className="text-sm">Cost: ${part.cost}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removePart(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-              <Input
-                placeholder="Part name"
-                value={newPart.name}
-                onChange={(e) => setNewPart({ ...newPart, name: e.target.value })}
-              />
-              <Input
-                type="number"
-                placeholder="Quantity"
-                value={newPart.quantity}
-                onChange={(e) => setNewPart({ ...newPart, quantity: parseInt(e.target.value) || 1 })}
-              />
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Cost"
-                value={newPart.cost || ''}
-                onChange={(e) => setNewPart({ ...newPart, cost: parseFloat(e.target.value) || 0 })}
-              />
-              <Button type="button" onClick={addPart} disabled={!newPart.name}>
+            <div className="flex items-center justify-between mb-3">
+              <Label>Parts Used</Label>
+              <Button type="button" onClick={addPart} size="sm" variant="outline">
+                <Plus className="h-4 w-4 mr-1" />
                 Add Part
               </Button>
             </div>
+            
+            <div className="space-y-3">
+              {partsUsed.map((part, index) => (
+                <div key={index} className="grid grid-cols-4 gap-2 items-end">
+                  <div className="col-span-2">
+                    <Input
+                      placeholder="Part name"
+                      value={part.name}
+                      onChange={(e) => updatePart(index, 'name', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      type="number"
+                      placeholder="Qty"
+                      value={part.quantity}
+                      onChange={(e) => updatePart(index, 'quantity', parseInt(e.target.value) || 1)}
+                      min={1}
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Price"
+                      value={part.price}
+                      onChange={(e) => updatePart(index, 'price', parseFloat(e.target.value) || 0)}
+                    />
+                    {partsUsed.length > 1 && (
+                      <Button
+                        type="button"
+                        onClick={() => removePart(index)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex space-x-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={loading || !description}
+            <Button
+              type="submit"
+              className="flex-1"
+              disabled={loading || !formData.description.trim()}
             >
               {loading ? 'Submitting...' : 'Complete Service'}
             </Button>

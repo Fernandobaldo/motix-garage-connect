@@ -131,7 +131,7 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
     );
   }
 
-  return <ChatWindow appointmentId={appointmentId} onClose={() => setShowChat(false)} />;
+  return <ChatWindow appointment={appointment} onClose={() => setShowChat(false)} />;
 };
 
 export default ChatInterface;
