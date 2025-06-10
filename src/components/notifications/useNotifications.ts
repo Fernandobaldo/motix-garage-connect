@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,6 +11,7 @@ export const useNotifications = () => {
   const { user } = useAuth();
   const { tenant } = useTenant();
   const queryClient = useQueryClient();
+  const channelRef = useRef<any>(null);
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications', user?.id, tenant?.id],
@@ -34,8 +35,15 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user || !tenant) return;
 
+    // Clean up existing channel if it exists
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    // Create new channel
     const channel = supabase
-      .channel('notifications-channel')
+      .channel(`notifications-${user.id}-${Date.now()}`) // Unique channel name
       .on(
         'postgres_changes',
         {
@@ -62,10 +70,15 @@ export const useNotifications = () => {
       )
       .subscribe();
 
+    channelRef.current = channel;
+
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, [user, tenant, queryClient]);
+  }, [user?.id, tenant?.id, queryClient]);
 
   const markAsRead = async (notificationId: string) => {
     if (!user) return;
