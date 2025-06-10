@@ -49,7 +49,7 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
   const [serviceType, setServiceType] = useState<string>('');
   const [description, setDescription] = useState<string>('');
 
-  // New client form
+  // New client form - simplified for guest booking
   const [newClient, setNewClient] = useState({
     full_name: '',
     phone: '',
@@ -95,40 +95,19 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
       let vehicleId = selectedVehicle;
 
       if (appointmentType === 'new') {
-        console.log('Creating new client profile for manual appointment');
+        console.log('Creating guest client appointment (no auth user)');
         
-        // Create client profile first - this will work for manual creation by workshop
-        const clientData = {
-          full_name: newClient.full_name,
-          phone: newClient.phone,
-          role: 'client' as const,
-          tenant_id: profile?.tenant_id,
-        };
-
-        console.log('Inserting client profile:', clientData);
-
-        const { data: newProfile, error: profileError } = await supabase
-          .from('profiles')
-          .insert(clientData)
-          .select()
-          .single();
-
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          throw new Error(`Failed to create client profile: ${profileError.message}`);
-        }
+        // For new clients without auth accounts, we'll create a temporary client record
+        // and associate the vehicle directly with the appointment
         
-        console.log('Created client profile:', newProfile);
-        clientId = newProfile.id;
-
-        // Create vehicle for new client
+        // Create vehicle for guest client (without owner_id since no auth user exists)
         const vehicleData = {
           ...newVehicle,
-          owner_id: clientId,
+          owner_id: null, // No authenticated user
           tenant_id: profile?.tenant_id,
         };
 
-        console.log('Inserting vehicle:', vehicleData);
+        console.log('Inserting guest vehicle:', vehicleData);
 
         const { data: createdVehicle, error: vehicleError } = await supabase
           .from('vehicles')
@@ -141,8 +120,11 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
           throw new Error(`Failed to create vehicle: ${vehicleError.message}`);
         }
 
-        console.log('Created vehicle:', createdVehicle);
+        console.log('Created guest vehicle:', createdVehicle);
         vehicleId = createdVehicle.id;
+        
+        // For guest appointments, we'll use null as client_id and store client info in description
+        clientId = null;
       }
 
       // Create appointment
@@ -151,12 +133,14 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
       scheduledAt.setHours(parseInt(hours), parseInt(minutes));
 
       const appointmentData = {
-        client_id: clientId,
-        workshop_id: profile?.tenant_id, // This should be the workshop ID, not tenant_id
+        client_id: clientId, // null for guest appointments
+        workshop_id: profile?.tenant_id,
         vehicle_id: vehicleId,
         service_type: serviceType,
         scheduled_at: scheduledAt.toISOString(),
-        description,
+        description: appointmentType === 'new' 
+          ? `Guest appointment for: ${newClient.full_name} (${newClient.phone})\n\n${description}`
+          : description,
         status: 'confirmed',
         tenant_id: profile?.tenant_id,
       };
@@ -175,7 +159,7 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
       toast({
         title: "Appointment Created",
         description: appointmentType === 'new' 
-          ? "Appointment created for new client successfully."
+          ? "Guest appointment created successfully."
           : "The appointment has been successfully created.",
       });
 
@@ -204,7 +188,7 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
           </TabsTrigger>
           <TabsTrigger value="new" className="flex items-center space-x-2">
             <UserPlus className="h-4 w-4" />
-            <span>New Client</span>
+            <span>Guest Appointment</span>
           </TabsTrigger>
         </TabsList>
 
@@ -251,7 +235,10 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
         <TabsContent value="new" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">New Client Information</CardTitle>
+              <CardTitle className="text-lg">Guest Client Information</CardTitle>
+              <CardDescription>
+                For clients without an account - information will be stored with the appointment
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
