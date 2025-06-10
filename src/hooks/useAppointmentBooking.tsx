@@ -118,8 +118,8 @@ export const useAppointmentBooking = () => {
         service_type: serviceType,
         description,
         scheduled_at: scheduledAt.toISOString(),
-        duration_minutes: 60, // Default 1 hour
-        status: 'pending'
+        duration_minutes: 60,
+        status: 'pending' // Client appointments start as pending
       });
 
       const { error } = await supabase
@@ -132,8 +132,8 @@ export const useAppointmentBooking = () => {
           service_type: serviceType,
           description,
           scheduled_at: scheduledAt.toISOString(),
-          duration_minutes: 60, // Default 1 hour as requested
-          status: 'pending'
+          duration_minutes: 60,
+          status: 'pending' // Client appointments start as pending
         });
 
       if (error) {
@@ -148,7 +148,7 @@ export const useAppointmentBooking = () => {
 
       toast({
         title: 'Appointment Booked!',
-        description: 'Your appointment has been successfully scheduled.'
+        description: 'Your appointment has been successfully scheduled and is pending confirmation.'
       });
 
       // Reset form

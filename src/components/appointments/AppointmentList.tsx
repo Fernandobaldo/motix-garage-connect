@@ -2,11 +2,18 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Clock, MapPin, Car, Filter } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Calendar, Clock, MapPin, Car, Filter, Edit, Trash2, FileText, MessageSquare } from "lucide-react";
 import { useAppointmentData } from "./useAppointmentData";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import AppointmentEditModal from "./AppointmentEditModal";
+import ServiceReportModal from "./ServiceReportModal";
+import AppointmentStatusManager from "./AppointmentStatusManager";
 
 interface AppointmentListProps {
   filter?: 'upcoming' | 'history' | 'all';
@@ -14,8 +21,11 @@ interface AppointmentListProps {
 
 const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
   const { profile } = useAuth();
-  const { appointments, isLoading } = useAppointmentData();
+  const { toast } = useToast();
+  const { appointments, isLoading, refetch } = useAppointmentData();
   const [sortBy, setSortBy] = useState<string>('date');
+  const [editingAppointment, setEditingAppointment] = useState<any>(null);
+  const [serviceReportAppointment, setServiceReportAppointment] = useState<any>(null);
 
   // Filter appointments based on the filter prop
   const filteredAppointments = appointments.filter(apt => {
@@ -52,8 +62,57 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'completed': return 'bg-blue-100 text-blue-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'in_progress': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const canEditAppointment = (appointment: any) => {
+    return profile?.role === 'workshop' || appointment.client_id === profile?.id;
+  };
+
+  const canDeleteAppointment = (appointment: any) => {
+    return profile?.role === 'workshop' || appointment.client_id === profile?.id;
+  };
+
+  const canChangeStatus = (appointment: any) => {
+    return profile?.role === 'workshop';
+  };
+
+  const canAddServiceReport = (appointment: any) => {
+    return profile?.role === 'workshop' && appointment.status === 'in_progress';
+  };
+
+  const canAccessChat = (appointment: any) => {
+    return appointment.status === 'confirmed' || appointment.status === 'in_progress';
+  };
+
+  const handleDelete = async (appointmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Appointment Deleted',
+        description: 'The appointment has been successfully deleted.',
+      });
+
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: 'Delete Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleStatusUpdate = (newStatus: string) => {
+    refetch();
   };
 
   if (isLoading) {
@@ -126,9 +185,19 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
                         </div>
                       </CardDescription>
                     </div>
-                    <Badge className={getStatusColor(appointment.status)}>
-                      {appointment.status}
-                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      {canChangeStatus(appointment) ? (
+                        <AppointmentStatusManager
+                          appointmentId={appointment.id}
+                          currentStatus={appointment.status}
+                          onStatusUpdate={handleStatusUpdate}
+                        />
+                      ) : (
+                        <Badge className={getStatusColor(appointment.status)}>
+                          {appointment.status}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -166,17 +235,88 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
                       </div>
                     )}
                   </div>
+                  
                   {appointment.description && (
                     <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                       <p className="text-sm text-gray-700">{appointment.description}</p>
                     </div>
                   )}
+
+                  <div className="flex items-center justify-end space-x-2 mt-4">
+                    {canAccessChat(appointment) && (
+                      <Button variant="outline" size="sm">
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Chat
+                      </Button>
+                    )}
+                    
+                    {canAddServiceReport(appointment) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setServiceReportAppointment(appointment)}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Complete Service
+                      </Button>
+                    )}
+
+                    {canEditAppointment(appointment) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setEditingAppointment(appointment)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    )}
+
+                    {canDeleteAppointment(appointment) && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Appointment</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this appointment? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(appointment.id)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
           })}
         </div>
       )}
+
+      <AppointmentEditModal
+        appointment={editingAppointment}
+        isOpen={!!editingAppointment}
+        onClose={() => setEditingAppointment(null)}
+        onUpdate={refetch}
+      />
+
+      <ServiceReportModal
+        appointment={serviceReportAppointment}
+        isOpen={!!serviceReportAppointment}
+        onClose={() => setServiceReportAppointment(null)}
+        onComplete={refetch}
+      />
     </div>
   );
 };
