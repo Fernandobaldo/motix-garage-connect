@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -33,6 +32,40 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
     sunday: { start: '08:00', end: '13:00', isOpen: false },
   };
 
+  // Convert database format to expected format
+  const convertWorkingHours = (dbHours: any): GarageHours => {
+    const convertedHours: GarageHours = {};
+    
+    Object.keys(dbHours).forEach(day => {
+      const dayData = dbHours[day];
+      
+      if (dayData.closed === true) {
+        // Day is closed
+        convertedHours[day] = {
+          start: '08:00',
+          end: '17:00',
+          isOpen: false
+        };
+      } else if (dayData.open && dayData.close) {
+        // Day is open with hours
+        convertedHours[day] = {
+          start: dayData.open,
+          end: dayData.close,
+          isOpen: true
+        };
+      } else {
+        // Fallback to default
+        convertedHours[day] = defaultWorkingHours[day] || {
+          start: '08:00',
+          end: '17:00',
+          isOpen: true
+        };
+      }
+    });
+    
+    return convertedHours;
+  };
+
   useEffect(() => {
     const fetchGarageHours = async () => {
       if (!garageId) {
@@ -57,11 +90,13 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
 
       console.log('✅ Garage data fetched:', data);
 
-      // Properly handle the JSON data and ensure type safety
+      // Properly handle the JSON data and convert format
       const hours = data?.working_hours;
       if (hours && typeof hours === 'object' && !Array.isArray(hours)) {
-        console.log('✅ Working hours from database:', hours);
-        setWorkingHours(hours as GarageHours);
+        console.log('✅ Working hours from database (raw):', hours);
+        const convertedHours = convertWorkingHours(hours);
+        console.log('✅ Working hours converted to expected format:', convertedHours);
+        setWorkingHours(convertedHours);
       } else {
         console.log('📝 No working hours in database, using defaults');
         setWorkingHours(defaultWorkingHours);
@@ -87,14 +122,16 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
         console.log('📅 Day name:', dayName);
         
         const dayHours = workingHours[dayName];
-        console.log('🕒 Day hours:', dayHours);
+        console.log('🕒 Day hours from working hours:', dayHours);
 
         if (!dayHours?.isOpen) {
-          console.log('❌ Garage is closed on', dayName);
+          console.log('❌ Garage is closed on', dayName, '- isOpen:', dayHours?.isOpen);
           setAvailableSlots([]);
           setLoading(false);
           return;
         }
+
+        console.log('✅ Garage is open on', dayName, 'from', dayHours.start, 'to', dayHours.end);
 
         // Generate time slots for the day
         const slots = generateTimeSlots(dayHours.start, dayHours.end);
