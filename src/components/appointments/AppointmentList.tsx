@@ -14,23 +14,29 @@ interface AppointmentListProps {
   filter?: 'upcoming' | 'history' | 'all';
 }
 
-interface Appointment {
+interface DatabaseAppointment {
   id: string;
-  appointment_date: string;
-  appointment_time: string;
+  scheduled_at: string;
   status: string;
   service_type: string;
-  notes?: string;
+  description?: string;
+  duration_minutes: number;
+  client_id: string;
+  workshop_id: string;
+  vehicle_id: string | null;
+  tenant_id: string;
+  created_at: string;
+  updated_at: string;
   garage: {
-    garage_name: string;
-    location: string;
-  };
+    name: string;
+    address: string;
+  } | null;
   vehicle: {
     make: string;
     model: string;
     year: number;
     license_plate: string;
-  };
+  } | null;
 }
 
 const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
@@ -46,24 +52,24 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
         .from('appointments')
         .select(`
           *,
-          garage:garages!garage_id(garage_name, location),
+          garage:workshops!workshop_id(name, address),
           vehicle:vehicles!vehicle_id(make, model, year, license_plate)
         `)
-        .eq('user_id', user.id);
+        .eq('client_id', user.id);
 
       // Apply filter based on the prop
       const now = new Date().toISOString();
       if (filter === 'upcoming') {
-        query = query.gte('appointment_date', now.split('T')[0])
+        query = query.gte('scheduled_at', now)
           .in('status', ['pending', 'confirmed']);
       } else if (filter === 'history') {
-        query = query.or(`appointment_date.lt.${now.split('T')[0]},status.in.(completed,cancelled)`);
+        query = query.or(`scheduled_at.lt.${now},status.in.(completed,cancelled)`);
       }
 
-      const { data, error } = await query.order('appointment_date', { ascending: filter === 'upcoming' });
+      const { data, error } = await query.order('scheduled_at', { ascending: filter === 'upcoming' });
 
       if (error) throw error;
-      return data as Appointment[];
+      return data as DatabaseAppointment[];
     },
     enabled: !!user?.id,
   });
@@ -73,12 +79,14 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
       case 'status':
         return a.status.localeCompare(b.status);
       case 'garage':
-        return a.garage.garage_name.localeCompare(b.garage.garage_name);
+        return (a.garage?.name || '').localeCompare(b.garage?.name || '');
       case 'vehicle':
-        return `${a.vehicle.make} ${a.vehicle.model}`.localeCompare(`${b.vehicle.make} ${b.vehicle.model}`);
+        const aVehicle = a.vehicle ? `${a.vehicle.make} ${a.vehicle.model}` : '';
+        const bVehicle = b.vehicle ? `${b.vehicle.make} ${b.vehicle.model}` : '';
+        return aVehicle.localeCompare(bVehicle);
       case 'date':
       default:
-        return new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
+        return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
     }
   });
 
@@ -140,55 +148,63 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
         </Card>
       ) : (
         <div className="space-y-4">
-          {sortedAppointments.map((appointment) => (
-            <Card key={appointment.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{appointment.service_type}</CardTitle>
-                    <CardDescription className="flex items-center space-x-4 mt-2">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(appointment.appointment_date), 'PPP')}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{appointment.appointment_time}</span>
-                      </div>
-                    </CardDescription>
-                  </div>
-                  <Badge className={getStatusColor(appointment.status)}>
-                    {appointment.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-4 w-4 text-gray-500" />
+          {sortedAppointments.map((appointment) => {
+            const scheduledDate = new Date(appointment.scheduled_at);
+            const appointmentDate = format(scheduledDate, 'PPP');
+            const appointmentTime = format(scheduledDate, 'HH:mm');
+
+            return (
+              <Card key={appointment.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium">{appointment.garage.garage_name}</p>
-                      <p className="text-sm text-gray-600">{appointment.garage.location}</p>
+                      <CardTitle className="text-lg">{appointment.service_type}</CardTitle>
+                      <CardDescription className="flex items-center space-x-4 mt-2">
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>{appointmentDate}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{appointmentTime}</span>
+                        </div>
+                      </CardDescription>
                     </div>
+                    <Badge className={getStatusColor(appointment.status)}>
+                      {appointment.status}
+                    </Badge>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Car className="h-4 w-4 text-gray-500" />
-                    <div>
-                      <p className="font-medium">
-                        {appointment.vehicle.year} {appointment.vehicle.make} {appointment.vehicle.model}
-                      </p>
-                      <p className="text-sm text-gray-600">{appointment.vehicle.license_plate}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <div>
+                        <p className="font-medium">{appointment.garage?.name || 'Garage'}</p>
+                        <p className="text-sm text-gray-600">{appointment.garage?.address || 'Address not available'}</p>
+                      </div>
                     </div>
+                    {appointment.vehicle && (
+                      <div className="flex items-center space-x-2">
+                        <Car className="h-4 w-4 text-gray-500" />
+                        <div>
+                          <p className="font-medium">
+                            {appointment.vehicle.year} {appointment.vehicle.make} {appointment.vehicle.model}
+                          </p>
+                          <p className="text-sm text-gray-600">{appointment.vehicle.license_plate}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-                {appointment.notes && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-700">{appointment.notes}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  {appointment.description && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-700">{appointment.description}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
