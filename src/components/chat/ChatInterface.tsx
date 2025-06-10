@@ -73,6 +73,7 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
   const { tenant } = useTenant();
   const { toast } = useToast();
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const isSubscribedRef = useRef<boolean>(false);
 
   const fetchProfiles = async () => {
     if (!tenant) {
@@ -188,18 +189,29 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
     }
   };
 
+  const cleanupSubscription = () => {
+    if (channelRef.current) {
+      console.log('Cleaning up subscription');
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+      isSubscribedRef.current = false;
+    }
+  };
+
   const setupRealtimeSubscription = () => {
     if (!selectedConversation) {
       console.log('No selected conversation, skipping subscription');
       return;
     }
 
-    // Clean up existing channel first
-    if (channelRef.current) {
-      console.log('Cleaning up existing channel before creating new one');
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
+    // Don't create a new subscription if we already have one for this conversation
+    if (isSubscribedRef.current && channelRef.current) {
+      console.log('Subscription already exists, skipping');
+      return;
     }
+
+    // Clean up any existing subscription first
+    cleanupSubscription();
 
     console.log('Setting up realtime subscription for conversation:', selectedConversation);
 
@@ -222,10 +234,15 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
       }, (payload) => {
         console.log('Conversation updated via realtime:', payload);
         fetchConversations();
-      })
-      .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
       });
+
+    // Subscribe only once
+    channel.subscribe((status) => {
+      console.log('Realtime subscription status:', status);
+      if (status === 'SUBSCRIBED') {
+        isSubscribedRef.current = true;
+      }
+    });
 
     channelRef.current = channel;
   };
@@ -243,36 +260,23 @@ const ChatInterface = ({ userRole }: ChatInterfaceProps) => {
   }, [user, tenant]);
 
   useEffect(() => {
-    // Clean up previous subscription
-    if (channelRef.current) {
-      console.log('Cleaning up previous subscription due to conversation change');
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
     if (selectedConversation) {
       fetchMessages(selectedConversation);
       setupRealtimeSubscription();
+    } else {
+      cleanupSubscription();
     }
 
     // Cleanup function
     return () => {
-      if (channelRef.current) {
-        console.log('Cleaning up subscription on unmount or conversation change');
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      cleanupSubscription();
     };
   }, [selectedConversation]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (channelRef.current) {
-        console.log('Cleaning up subscription on component unmount');
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      cleanupSubscription();
     };
   }, []);
 
