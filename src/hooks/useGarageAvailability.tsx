@@ -35,25 +35,35 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
 
   useEffect(() => {
     const fetchGarageHours = async () => {
-      if (!garageId) return;
+      if (!garageId) {
+        console.log('❌ No garageId provided');
+        return;
+      }
+
+      console.log('🔍 Fetching garage hours for garageId:', garageId);
 
       const { data, error } = await supabase
         .from('workshops')
-        .select('working_hours')
+        .select('working_hours, name')
         .eq('id', garageId)
         .single();
 
       if (error) {
-        console.error('Error fetching garage hours:', error);
+        console.error('❌ Error fetching garage hours:', error);
+        console.log('📝 Using default working hours');
         setWorkingHours(defaultWorkingHours);
         return;
       }
 
+      console.log('✅ Garage data fetched:', data);
+
       // Properly handle the JSON data and ensure type safety
       const hours = data?.working_hours;
       if (hours && typeof hours === 'object' && !Array.isArray(hours)) {
+        console.log('✅ Working hours from database:', hours);
         setWorkingHours(hours as GarageHours);
       } else {
+        console.log('📝 No working hours in database, using defaults');
         setWorkingHours(defaultWorkingHours);
       }
     };
@@ -64,17 +74,23 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
   useEffect(() => {
     const checkAvailability = async () => {
       if (!selectedDate || !garageId) {
+        console.log('❌ Missing required data - selectedDate:', !!selectedDate, 'garageId:', !!garageId);
         setAvailableSlots([]);
         return;
       }
 
       setLoading(true);
+      console.log('🔍 Checking availability for date:', selectedDate.toDateString());
 
       try {
         const dayName = format(selectedDate, 'EEEE').toLowerCase();
+        console.log('📅 Day name:', dayName);
+        
         const dayHours = workingHours[dayName];
+        console.log('🕒 Day hours:', dayHours);
 
         if (!dayHours?.isOpen) {
+          console.log('❌ Garage is closed on', dayName);
           setAvailableSlots([]);
           setLoading(false);
           return;
@@ -82,6 +98,7 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
 
         // Generate time slots for the day
         const slots = generateTimeSlots(dayHours.start, dayHours.end);
+        console.log('🕒 Generated time slots:', slots);
 
         // Fetch existing appointments for the selected date
         const startOfDay = new Date(selectedDate);
@@ -89,6 +106,8 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
         
         const endOfDay = new Date(selectedDate);
         endOfDay.setHours(23, 59, 59, 999);
+
+        console.log('🔍 Fetching appointments between:', startOfDay.toISOString(), 'and', endOfDay.toISOString());
 
         const { data: appointments, error } = await supabase
           .from('appointments')
@@ -99,16 +118,20 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
           .neq('status', 'cancelled');
 
         if (error) {
-          console.error('Error fetching appointments:', error);
+          console.error('❌ Error fetching appointments:', error);
           setAvailableSlots(slots.map(time => ({ time, available: true })));
           setLoading(false);
           return;
         }
 
+        console.log('✅ Existing appointments:', appointments);
+
         // Check which slots are available
         const availableTimeSlots = slots.map(time => {
           const isAvailable = !isSlotOccupied(time, appointments || [], selectedDate);
           const occupyingAppointment = findOccupyingAppointment(time, appointments || [], selectedDate);
+          
+          console.log(`🕒 Slot ${time}: available=${isAvailable}`, occupyingAppointment ? `(blocked by ${occupyingAppointment.id})` : '');
           
           return {
             time,
@@ -117,19 +140,25 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
           };
         });
 
+        console.log('✅ Final available slots:', availableTimeSlots);
         setAvailableSlots(availableTimeSlots);
       } catch (error) {
-        console.error('Error checking availability:', error);
+        console.error('❌ Error checking availability:', error);
         setAvailableSlots([]);
       } finally {
         setLoading(false);
       }
     };
 
-    checkAvailability();
+    // Only check availability if we have working hours
+    if (Object.keys(workingHours).length > 0) {
+      checkAvailability();
+    }
   }, [selectedDate, garageId, workingHours]);
 
   const generateTimeSlots = (startTime: string, endTime: string): string[] => {
+    console.log('🔧 Generating slots from', startTime, 'to', endTime);
+    
     const slots: string[] = [];
     const [startHour, startMinute] = startTime.split(':').map(Number);
     const [endHour, endMinute] = endTime.split(':').map(Number);
@@ -149,6 +178,7 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
       }
     }
 
+    console.log('✅ Generated slots:', slots);
     return slots;
   };
 
@@ -164,11 +194,17 @@ export const useGarageAvailability = (garageId: string, selectedDate: Date | und
       // Check if the slot overlaps with the appointment
       const slotEnd = new Date(slotDateTime.getTime() + 30 * 60000); // 30 min slot
       
-      return (
+      const overlaps = (
         (slotDateTime >= aptStart && slotDateTime < aptEnd) ||
         (slotEnd > aptStart && slotEnd <= aptEnd) ||
         (slotDateTime <= aptStart && slotEnd >= aptEnd)
       );
+      
+      if (overlaps) {
+        console.log(`⚠️ Slot ${timeSlot} overlaps with appointment ${apt.id} (${new Date(apt.scheduled_at).toLocaleTimeString()} - ${aptEnd.toLocaleTimeString()})`);
+      }
+      
+      return overlaps;
     });
   };
 
