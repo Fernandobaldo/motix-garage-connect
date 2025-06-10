@@ -21,55 +21,64 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showManualBooking, setShowManualBooking] = useState(false);
 
-  const { data: clients } = useQuery({
+  const { data: clients, refetch: refetchClients } = useQuery({
     queryKey: ['clients-for-booking', profile?.tenant_id],
     queryFn: async () => {
       if (!profile?.tenant_id || userRole !== 'workshop') return [];
 
-      const { data: appointments, error } = await supabase
-        .from('appointments')
-        .select(`
-          client_id,
-          profiles!appointments_client_id_fkey(
-            id,
-            full_name,
-            phone
-          )
-        `)
-        .eq('tenant_id', profile.tenant_id);
+      console.log('Fetching clients for workshop:', profile.tenant_id);
 
-      if (error) throw error;
+      // Get all client profiles in this tenant
+      const { data: clientProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, phone')
+        .eq('tenant_id', profile.tenant_id)
+        .eq('role', 'client');
 
-      const uniqueClients = appointments.reduce((acc: any[], appointment) => {
-        const existingClient = acc.find(c => c.id === appointment.client_id);
-        if (!existingClient && appointment.profiles) {
-          acc.push({
-            id: appointment.client_id,
-            full_name: appointment.profiles.full_name,
-            phone: appointment.profiles.phone,
-            email: '',
-            vehicles: [],
-          });
-        }
-        return acc;
-      }, []);
+      if (profilesError) {
+        console.error('Error fetching client profiles:', profilesError);
+        throw profilesError;
+      }
 
-      return Promise.all(
-        uniqueClients.map(async (client) => {
-          const { data: vehicles } = await supabase
+      console.log('Found client profiles:', clientProfiles);
+
+      // For each client, get their vehicles
+      const clientsWithVehicles = await Promise.all(
+        clientProfiles.map(async (client) => {
+          const { data: vehicles, error: vehiclesError } = await supabase
             .from('vehicles')
             .select('id, make, model, year, license_plate')
             .eq('owner_id', client.id);
 
+          if (vehiclesError) {
+            console.error('Error fetching vehicles for client:', client.id, vehiclesError);
+            return {
+              ...client,
+              email: '',
+              vehicles: [],
+            };
+          }
+
           return {
             ...client,
+            email: '',
             vehicles: vehicles || [],
           };
         })
       );
+
+      console.log('Clients with vehicles:', clientsWithVehicles);
+      return clientsWithVehicles;
     },
     enabled: userRole === 'workshop' && !!profile?.tenant_id,
   });
+
+  const handleBookingSuccess = () => {
+    setShowBookingModal(false);
+    setShowManualBooking(false);
+    // Refetch clients to get updated data
+    refetchClients();
+  };
 
   return (
     <div className="space-y-6">
@@ -132,7 +141,7 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
               Schedule a service appointment for your vehicle
             </DialogDescription>
           </DialogHeader>
-          <AppointmentBooking onSuccess={() => setShowBookingModal(false)} />
+          <AppointmentBooking onSuccess={handleBookingSuccess} />
         </DialogContent>
       </Dialog>
 
@@ -146,7 +155,7 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
             </DialogDescription>
           </DialogHeader>
           <ManualAppointmentBooking 
-            onSuccess={() => setShowManualBooking(false)}
+            onSuccess={handleBookingSuccess}
             existingClients={clients || []}
           />
         </DialogContent>

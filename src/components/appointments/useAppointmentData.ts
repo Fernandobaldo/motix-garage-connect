@@ -5,29 +5,52 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 
 export const useAppointmentData = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { tenant } = useTenant();
 
   const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ['appointments', user?.id, tenant?.id],
+    queryKey: ['appointments', user?.id, tenant?.id, profile?.role],
     queryFn: async () => {
-      if (!user || !tenant) return [];
+      if (!user || !tenant || !profile) {
+        console.log('Missing required data for appointments query:', { user: !!user, tenant: !!tenant, profile: !!profile });
+        return [];
+      }
 
-      const { data, error } = await supabase
+      console.log('Fetching appointments for:', { 
+        userId: user.id, 
+        tenantId: tenant.id, 
+        role: profile.role 
+      });
+
+      let query = supabase
         .from('appointments')
         .select(`
           *,
           client:profiles!appointments_client_id_fkey(full_name, phone),
           workshop:workshops!appointments_workshop_id_fkey(name, phone),
           vehicle:vehicles!appointments_vehicle_id_fkey(make, model, year, license_plate)
-        `)
-        .eq('tenant_id', tenant.id)
-        .order('scheduled_at', { ascending: true });
+        `);
 
-      if (error) throw error;
+      // Filter based on user role
+      if (profile.role === 'client') {
+        query = query.eq('client_id', user.id);
+      } else if (profile.role === 'workshop') {
+        query = query.eq('tenant_id', tenant.id);
+      }
+
+      query = query.order('scheduled_at', { ascending: true });
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching appointments:', error);
+        throw error;
+      }
+
+      console.log('Fetched appointments:', data);
       return data || [];
     },
-    enabled: !!user && !!tenant,
+    enabled: !!user && !!tenant && !!profile,
   });
 
   const upcomingAppointments = appointments.filter(apt => {

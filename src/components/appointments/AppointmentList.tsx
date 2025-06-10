@@ -1,12 +1,10 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, MapPin, Car, Filter } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useAppointmentData } from "./useAppointmentData";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 
@@ -14,72 +12,30 @@ interface AppointmentListProps {
   filter?: 'upcoming' | 'history' | 'all';
 }
 
-interface DatabaseAppointment {
-  id: string;
-  scheduled_at: string;
-  status: string;
-  service_type: string;
-  description?: string;
-  duration_minutes: number;
-  client_id: string;
-  workshop_id: string;
-  vehicle_id: string | null;
-  tenant_id: string;
-  created_at: string;
-  updated_at: string;
-  garage: {
-    name: string;
-    address: string;
-  } | null;
-  vehicle: {
-    make: string;
-    model: string;
-    year: number;
-    license_plate: string;
-  } | null;
-}
-
 const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
+  const { appointments, isLoading } = useAppointmentData();
   const [sortBy, setSortBy] = useState<string>('date');
 
-  const { data: appointments, isLoading } = useQuery({
-    queryKey: ['appointments', user?.id, filter],
-    queryFn: async () => {
-      if (!user?.id) return [];
-
-      let query = supabase
-        .from('appointments')
-        .select(`
-          *,
-          garage:workshops!workshop_id(name, address),
-          vehicle:vehicles!vehicle_id(make, model, year, license_plate)
-        `)
-        .eq('client_id', user.id);
-
-      // Apply filter based on the prop
-      const now = new Date().toISOString();
-      if (filter === 'upcoming') {
-        query = query.gte('scheduled_at', now)
-          .in('status', ['pending', 'confirmed']);
-      } else if (filter === 'history') {
-        query = query.or(`scheduled_at.lt.${now},status.in.(completed,cancelled)`);
-      }
-
-      const { data, error } = await query.order('scheduled_at', { ascending: filter === 'upcoming' });
-
-      if (error) throw error;
-      return data as DatabaseAppointment[];
-    },
-    enabled: !!user?.id,
+  // Filter appointments based on the filter prop
+  const filteredAppointments = appointments.filter(apt => {
+    const scheduledDate = new Date(apt.scheduled_at);
+    const now = new Date();
+    
+    if (filter === 'upcoming') {
+      return scheduledDate > now && apt.status !== 'cancelled';
+    } else if (filter === 'history') {
+      return scheduledDate <= now || apt.status === 'completed' || apt.status === 'cancelled';
+    }
+    return true; // 'all' filter
   });
 
-  const sortedAppointments = appointments?.sort((a, b) => {
+  const sortedAppointments = filteredAppointments?.sort((a, b) => {
     switch (sortBy) {
       case 'status':
         return a.status.localeCompare(b.status);
       case 'garage':
-        return (a.garage?.name || '').localeCompare(b.garage?.name || '');
+        return (a.workshop?.name || '').localeCompare(b.workshop?.name || '');
       case 'vehicle':
         const aVehicle = a.vehicle ? `${a.vehicle.make} ${a.vehicle.model}` : '';
         const bVehicle = b.vehicle ? `${b.vehicle.make} ${b.vehicle.model}` : '';
@@ -177,13 +133,27 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
-                      <div>
-                        <p className="font-medium">{appointment.garage?.name || 'Garage'}</p>
-                        <p className="text-sm text-gray-600">{appointment.garage?.address || 'Address not available'}</p>
+                    {/* Show workshop info for clients, client info for workshops */}
+                    {profile?.role === 'client' && appointment.workshop && (
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <div>
+                          <p className="font-medium">{appointment.workshop.name}</p>
+                          <p className="text-sm text-gray-600">{appointment.workshop.phone || 'No phone available'}</p>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    
+                    {profile?.role === 'workshop' && appointment.client && (
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <div>
+                          <p className="font-medium">{appointment.client.full_name}</p>
+                          <p className="text-sm text-gray-600">{appointment.client.phone || 'No phone available'}</p>
+                        </div>
+                      </div>
+                    )}
+
                     {appointment.vehicle && (
                       <div className="flex items-center space-x-2">
                         <Car className="h-4 w-4 text-gray-500" />
