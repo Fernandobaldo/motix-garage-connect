@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import AppointmentEditModal from "./AppointmentEditModal";
 import ServiceReportModal from "./ServiceReportModal";
 import AppointmentStatusManager from "./AppointmentStatusManager";
+import { useNavigate } from "react-router-dom";
 
 interface AppointmentListProps {
   filter?: 'upcoming' | 'history' | 'all';
@@ -22,18 +23,19 @@ interface AppointmentListProps {
 const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { appointments, isLoading, refetch } = useAppointmentData();
   const [sortBy, setSortBy] = useState<string>('date');
   const [editingAppointment, setEditingAppointment] = useState<any>(null);
   const [serviceReportAppointmentId, setServiceReportAppointmentId] = useState<string | null>(null);
 
-  // Filter appointments based on the filter prop
+  // Fix: Include cancelled appointments in history filter
   const filteredAppointments = appointments.filter(apt => {
     const scheduledDate = new Date(apt.scheduled_at);
     const now = new Date();
     
     if (filter === 'upcoming') {
-      return scheduledDate > now && apt.status !== 'cancelled';
+      return scheduledDate > now && apt.status !== 'cancelled' && apt.status !== 'completed';
     } else if (filter === 'history') {
       return scheduledDate <= now || apt.status === 'completed' || apt.status === 'cancelled';
     }
@@ -85,6 +87,22 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
 
   const canAccessChat = (appointment: any) => {
     return appointment.status === 'confirmed' || appointment.status === 'in_progress';
+  };
+
+  // Fix: Handle chat redirection
+  const handleChatClick = (appointment: any) => {
+    // Navigate to messages tab with appointment context
+    const currentPath = window.location.pathname;
+    if (currentPath === '/') {
+      // If on main page, change tab to messages
+      const messagesTab = document.querySelector('[value="messages"]') as HTMLElement;
+      if (messagesTab) {
+        messagesTab.click();
+      }
+    } else {
+      // Navigate to main page with messages tab
+      navigate('/?tab=messages&appointment=' + appointment.id);
+    }
   };
 
   const handleDelete = async (appointmentId: string) => {
@@ -244,7 +262,11 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
 
                   <div className="flex items-center justify-end space-x-2 mt-4">
                     {canAccessChat(appointment) && (
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleChatClick(appointment)}
+                      >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Chat
                       </Button>

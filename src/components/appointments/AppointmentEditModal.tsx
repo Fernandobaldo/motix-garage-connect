@@ -60,15 +60,26 @@ const AppointmentEditModal = ({ appointment, isOpen, onClose, onUpdate }: Appoin
     '17:00', '17:30'
   ];
 
+  // Fix: Properly populate form fields when appointment changes
   useEffect(() => {
-    if (appointment) {
+    if (appointment && isOpen) {
       const scheduledDate = new Date(appointment.scheduled_at);
       setSelectedDate(scheduledDate);
       setSelectedTime(format(scheduledDate, 'HH:mm'));
       setServiceType(appointment.service_type);
       setDescription(appointment.description || '');
     }
-  }, [appointment]);
+  }, [appointment, isOpen]);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedDate(undefined);
+      setSelectedTime('');
+      setServiceType('');
+      setDescription('');
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

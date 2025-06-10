@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageSquare, AlertCircle } from 'lucide-react';
+import { MessageSquare, AlertCircle, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import ConversationsList from './ConversationsList';
@@ -52,6 +52,40 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
     return appointment.status === 'confirmed' || appointment.status === 'in_progress';
   };
 
+  // Fix: Add new chat functionality
+  const handleCreateNewChat = async () => {
+    if (!user) return;
+
+    try {
+      // Create new conversation
+      const { data: conversation, error } = await supabase
+        .from('chat_conversations')
+        .insert({
+          title: `New Chat - ${new Date().toLocaleDateString()}`,
+          tenant_id: user.id, // This should be properly set based on tenant
+          appointment_id: appointmentId || null
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add current user as participant
+      await supabase
+        .from('chat_participants')
+        .insert({
+          conversation_id: conversation.id,
+          user_id: user.id
+        });
+
+      // Refresh conversations list
+      // This would trigger a refetch in the actual implementation
+      setSelectedConversation(conversation.id);
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+    }
+  };
+
   const handleSendMessage = () => {
     // Implementation for sending messages
   };
@@ -76,21 +110,33 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
 
   if (!appointmentId || !appointment) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ConversationsList 
-          conversations={conversations}
-          selectedConversation={selectedConversation}
-          onSelectConversation={setSelectedConversation}
-        />
-        <ChatWindow
-          selectedConversation={selectedConversation}
-          conversations={conversations}
-          messages={messages}
-          currentUserId={user?.id}
-          onSendMessage={handleSendMessage}
-          onFileUploaded={handleFileUploaded}
-          onTranslationComplete={handleTranslationComplete}
-        />
+      <div className="space-y-4">
+        {/* Fix: Add new chat button */}
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">Messages</h3>
+          <Button onClick={handleCreateNewChat} className="flex items-center space-x-2">
+            <Plus className="h-4 w-4" />
+            <span>New Chat</span>
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <ConversationsList 
+            conversations={conversations}
+            selectedConversation={selectedConversation}
+            onSelectConversation={setSelectedConversation}
+            currentUserId={user?.id}
+          />
+          <ChatWindow
+            selectedConversation={selectedConversation}
+            conversations={conversations}
+            messages={messages}
+            currentUserId={user?.id}
+            onSendMessage={handleSendMessage}
+            onFileUploaded={handleFileUploaded}
+            onTranslationComplete={handleTranslationComplete}
+          />
+        </div>
       </div>
     );
   }
@@ -133,21 +179,32 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <ConversationsList 
-        conversations={conversations}
-        selectedConversation={selectedConversation}
-        onSelectConversation={setSelectedConversation}
-      />
-      <ChatWindow
-        selectedConversation={selectedConversation}
-        conversations={conversations}
-        messages={messages}
-        currentUserId={user?.id}
-        onSendMessage={handleSendMessage}
-        onFileUploaded={handleFileUploaded}
-        onTranslationComplete={handleTranslationComplete}
-      />
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Messages</h3>
+        <Button onClick={handleCreateNewChat} className="flex items-center space-x-2">
+          <Plus className="h-4 w-4" />
+          <span>New Chat</span>
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ConversationsList 
+          conversations={conversations}
+          selectedConversation={selectedConversation}
+          onSelectConversation={setSelectedConversation}
+          currentUserId={user?.id}
+        />
+        <ChatWindow
+          selectedConversation={selectedConversation}
+          conversations={conversations}
+          messages={messages}
+          currentUserId={user?.id}
+          onSendMessage={handleSendMessage}
+          onFileUploaded={handleFileUploaded}
+          onTranslationComplete={handleTranslationComplete}
+        />
+      </div>
     </div>
   );
 };

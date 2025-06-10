@@ -13,27 +13,36 @@ export const useNotifications = () => {
   const queryClient = useQueryClient();
   const channelRef = useRef<any>(null);
 
+  // Fix: Improved query to only get user's notifications
   const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ['notifications', user?.id, tenant?.id],
+    queryKey: ['notifications', user?.id],
     queryFn: async () => {
-      if (!user || !tenant) return [];
+      if (!user) return [];
+
+      console.log('Fetching notifications for user:', user.id);
 
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .eq('tenant_id', tenant.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        throw error;
+      }
+      
+      console.log('Notifications fetched:', data);
       return data as Notification[];
     },
-    enabled: !!user && !!tenant,
+    enabled: !!user,
   });
 
   // Set up real-time subscription
   useEffect(() => {
-    if (!user || !tenant) return;
+    if (!user) return;
+
+    console.log('Setting up notifications subscription for user:', user.id);
 
     // Clean up existing channel if it exists
     if (channelRef.current) {
@@ -53,10 +62,11 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          console.log('New notification received:', payload);
           const newNotification = payload.new as Notification;
           
           // Add to cache
-          queryClient.setQueryData(['notifications', user.id, tenant.id], (old: Notification[] = []) => 
+          queryClient.setQueryData(['notifications', user.id], (old: Notification[] = []) => 
             [newNotification, ...old]
           );
 
@@ -68,17 +78,20 @@ export const useNotifications = () => {
           });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Notification subscription status:', status);
+      });
 
     channelRef.current = channel;
 
     return () => {
       if (channelRef.current) {
+        console.log('Cleaning up notifications subscription');
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-  }, [user?.id, tenant?.id, queryClient]);
+  }, [user?.id, queryClient]);
 
   const markAsRead = async (notificationId: string) => {
     if (!user) return;
@@ -99,7 +112,7 @@ export const useNotifications = () => {
     }
 
     // Update cache
-    queryClient.setQueryData(['notifications', user.id, tenant?.id], (old: Notification[] = []) =>
+    queryClient.setQueryData(['notifications', user.id], (old: Notification[] = []) =>
       old.map(notif => 
         notif.id === notificationId 
           ? { ...notif, read_at: new Date().toISOString() }
@@ -109,7 +122,7 @@ export const useNotifications = () => {
   };
 
   const markAllAsRead = async () => {
-    if (!user || !tenant) return;
+    if (!user) return;
 
     const unreadIds = notifications
       .filter(n => !n.read_at)
@@ -134,7 +147,7 @@ export const useNotifications = () => {
 
     // Update cache
     const now = new Date().toISOString();
-    queryClient.setQueryData(['notifications', user.id, tenant.id], (old: Notification[] = []) =>
+    queryClient.setQueryData(['notifications', user.id], (old: Notification[] = []) =>
       old.map(notif => ({ ...notif, read_at: notif.read_at || now }))
     );
   };
