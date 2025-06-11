@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 
 interface AppointmentFiltersProps {
   onFilterChange: (filters: AppointmentFilterState) => void;
@@ -18,10 +19,7 @@ interface AppointmentFiltersProps {
 export interface AppointmentFilterState {
   status?: string;
   workshop?: string;
-  dateRange?: {
-    from?: Date;
-    to?: Date;
-  };
+  dateRange?: DateRange;
   serviceType?: string;
 }
 
@@ -153,8 +151,9 @@ const AppointmentFilters = ({ onFilterChange, workshops = [], showWorkshopFilter
                 mode="range"
                 defaultMonth={filters.dateRange?.from}
                 selected={filters.dateRange}
-                onSelect={(range) => updateFilters({ dateRange: range })}
+                onSelect={(range: DateRange | undefined) => updateFilters({ dateRange: range })}
                 numberOfMonths={2}
+                className="p-3 pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
