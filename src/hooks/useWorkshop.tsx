@@ -16,6 +16,10 @@ interface Workshop {
   languages_spoken: string[] | null;
   working_hours: any;
   is_public: boolean | null;
+  logo_url: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  accent_color: string | null;
   created_at: string;
   updated_at: string;
 }
