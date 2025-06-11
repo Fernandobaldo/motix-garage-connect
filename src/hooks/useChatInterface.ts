@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,12 +68,7 @@ export const useChatInterface = (appointmentId?: string | null) => {
             .from('chat_participants')
             .select(`
               user_id,
-              profiles!inner(
-                id,
-                full_name,
-                role,
-                tenant_id
-              )
+              profiles!inner(*)
             `)
             .eq('conversation_id', conv.id)
             .eq('profiles.tenant_id', profile.tenant_id); // Ensure participants are from same tenant
@@ -123,12 +117,7 @@ export const useChatInterface = (appointmentId?: string | null) => {
         .from('chat_messages')
         .select(`
           *,
-          profiles!sender_id(
-            id,
-            full_name,
-            role,
-            tenant_id
-          )
+          profiles!sender_id(*)
         `)
         .eq('conversation_id', selectedConversation)
         .eq('profiles.tenant_id', profile.tenant_id) // Ensure sender is from same tenant

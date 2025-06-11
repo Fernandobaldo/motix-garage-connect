@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,9 +25,9 @@ export const useQuotations = () => {
         .select(`
           *,
           items:quotation_items(*),
-          client:profiles!quotations_client_id_fkey(id, full_name, tenant_id),
-          vehicle:vehicles(id, make, model, year, license_plate, tenant_id),
-          workshop:workshops(id, name, tenant_id)
+          client:profiles!quotations_client_id_fkey(*),
+          vehicle:vehicles(*),
+          workshop:workshops(*)
         `)
         .eq('tenant_id', profile.tenant_id) // Enforce tenant isolation
         .order('created_at', { ascending: false });
@@ -51,24 +50,9 @@ export const useQuotations = () => {
       }).map(item => ({
         ...item,
         items: Array.isArray(item.items) ? item.items : [],
-        client: item.client ? { 
-          id: item.client.id,
-          full_name: item.client.full_name 
-        } : undefined,
-        vehicle: item.vehicle ? {
-          id: item.vehicle.id,
-          make: item.vehicle.make,
-          model: item.vehicle.model,
-          year: item.vehicle.year,
-          license_plate: item.vehicle.license_plate
-        } : undefined,
-        workshop: item.workshop ? { 
-          id: item.workshop.id,
-          name: item.workshop.name 
-        } : undefined
       })) || [];
 
-      setQuotations(transformedData);
+      setQuotations(transformedData as Quotation[]);
     } catch (error) {
       console.error('Error fetching quotations:', error);
       toast({
