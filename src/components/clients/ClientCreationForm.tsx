@@ -83,13 +83,17 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
     setIsSubmitting(true);
 
     try {
+      // Generate a UUID for the client profile
+      const clientId = crypto.randomUUID();
+
       // Create the client profile
       const { data: clientProfile, error: profileError } = await supabase
         .from('profiles')
         .insert({
+          id: clientId,
           full_name: data.full_name,
           phone: data.phone,
-          role: 'client',
+          role: 'client' as const,
           tenant_id: profile.tenant_id,
         })
         .select()
