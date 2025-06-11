@@ -48,6 +48,14 @@ const AppointmentFilters = ({ onFilterChange, workshops = [], showWorkshopFilter
 
   const updateFilters = (newFilters: Partial<AppointmentFilterState>) => {
     const updatedFilters = { ...filters, ...newFilters };
+    
+    // Convert "all" values to undefined for the filter state
+    Object.keys(updatedFilters).forEach(key => {
+      if (updatedFilters[key as keyof AppointmentFilterState] === 'all') {
+        updatedFilters[key as keyof AppointmentFilterState] = undefined as any;
+      }
+    });
+    
     setFilters(updatedFilters);
     onFilterChange(updatedFilters);
   };
@@ -68,12 +76,12 @@ const AppointmentFilters = ({ onFilterChange, workshops = [], showWorkshopFilter
         {/* Status Filter */}
         <div className="flex flex-col space-y-1">
           <label className="text-xs font-medium text-gray-700">Status</label>
-          <Select value={filters.status || ''} onValueChange={(value) => updateFilters({ status: value || undefined })}>
+          <Select value={filters.status || 'all'} onValueChange={(value) => updateFilters({ status: value })}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All statuses</SelectItem>
+              <SelectItem value="all">All statuses</SelectItem>
               {statusOptions.map((status) => (
                 <SelectItem key={status.value} value={status.value}>
                   <div className="flex items-center space-x-2">
@@ -90,12 +98,12 @@ const AppointmentFilters = ({ onFilterChange, workshops = [], showWorkshopFilter
         {showWorkshopFilter && workshops.length > 0 && (
           <div className="flex flex-col space-y-1">
             <label className="text-xs font-medium text-gray-700">Workshop</label>
-            <Select value={filters.workshop || ''} onValueChange={(value) => updateFilters({ workshop: value || undefined })}>
+            <Select value={filters.workshop || 'all'} onValueChange={(value) => updateFilters({ workshop: value })}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="All workshops" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All workshops</SelectItem>
+                <SelectItem value="all">All workshops</SelectItem>
                 {workshops.map((workshop) => (
                   <SelectItem key={workshop.id} value={workshop.id}>
                     {workshop.name}
@@ -109,12 +117,12 @@ const AppointmentFilters = ({ onFilterChange, workshops = [], showWorkshopFilter
         {/* Service Type Filter */}
         <div className="flex flex-col space-y-1">
           <label className="text-xs font-medium text-gray-700">Service Type</label>
-          <Select value={filters.serviceType || ''} onValueChange={(value) => updateFilters({ serviceType: value || undefined })}>
+          <Select value={filters.serviceType || 'all'} onValueChange={(value) => updateFilters({ serviceType: value })}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="All services" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All services</SelectItem>
+              <SelectItem value="all">All services</SelectItem>
               {serviceTypeOptions.map((service) => (
                 <SelectItem key={service} value={service}>
                   {service}
