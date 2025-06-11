@@ -15,24 +15,25 @@ export const useAppointmentFiltering = (appointments: any[], filter: 'upcoming' 
       const now = new Date();
       
       if (filter === 'upcoming') {
-        // Show pending, confirmed, and in_progress appointments that are scheduled for today or future
-        const isUpcoming = scheduledDate >= now || apt.status === 'confirmed' || apt.status === 'in_progress';
-        const isNotCompleted = apt.status !== 'cancelled' && apt.status !== 'completed';
-        const result = isUpcoming && isNotCompleted;
+        // Show appointments that are pending, confirmed, or in_progress
+        // Also include future appointments regardless of status (except completed/cancelled)
+        const isNotFinished = apt.status !== 'cancelled' && apt.status !== 'completed';
+        const isFutureOrActive = scheduledDate >= now || apt.status === 'confirmed' || apt.status === 'in_progress' || apt.status === 'pending';
+        const result = isNotFinished && (isFutureOrActive || apt.status === 'pending');
         console.log('Upcoming filter for appointment:', apt.id, 'scheduled:', scheduledDate, 'status:', apt.status, 'result:', result);
         return result;
       } else if (filter === 'history') {
-        // Show completed, cancelled appointments, or past appointments
+        // Show completed, cancelled appointments, or past appointments that are finished
         const isPast = scheduledDate < now;
         const isFinished = apt.status === 'completed' || apt.status === 'cancelled';
-        const result = isPast || isFinished;
+        const result = isFinished || (isPast && apt.status !== 'pending' && apt.status !== 'confirmed' && apt.status !== 'in_progress');
         console.log('History filter for appointment:', apt.id, 'scheduled:', scheduledDate, 'status:', apt.status, 'result:', result);
         return result;
       }
       return true; // 'all' filter
     });
 
-    console.log('Filtered result:', filtered.length, 'appointments');
+    console.log('Filtered result:', filtered.length, 'appointments for filter:', filter);
     return filtered;
   }, [appointments, filter]);
 

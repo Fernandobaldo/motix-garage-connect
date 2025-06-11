@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Calendar, Clock, MapPin, Car, Edit, Trash2, FileText, MessageSquare } from "lucide-react";
+import { Calendar, Clock, MapPin, Car, Edit, Trash2, FileText, MessageSquare, User } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import AppointmentStatusManager from "./AppointmentStatusManager";
@@ -62,6 +62,26 @@ const AppointmentCard = ({
   const appointmentDate = format(scheduledDate, 'PPP');
   const appointmentTime = format(scheduledDate, 'HH:mm');
 
+  // Get client display name
+  const getClientDisplayName = () => {
+    if (appointment.client && appointment.client.full_name) {
+      return appointment.client.full_name;
+    }
+    if (appointment.client_id && !appointment.client) {
+      return 'Client information unavailable';
+    }
+    return 'Guest Client';
+  };
+
+  const getClientPhone = () => {
+    if (appointment.client && appointment.client.phone) {
+      return appointment.client.phone;
+    }
+    return 'No phone available';
+  };
+
+  console.log('Rendering appointment card for:', appointment.id, 'client data:', appointment.client, 'client_id:', appointment.client_id);
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader>
@@ -107,12 +127,12 @@ const AppointmentCard = ({
             </div>
           )}
           
-          {profile?.role === 'workshop' && appointment.client && (
+          {profile?.role === 'workshop' && (
             <div className="flex items-center space-x-2">
-              <MapPin className="h-4 w-4 text-gray-500" />
+              <User className="h-4 w-4 text-gray-500" />
               <div>
-                <p className="font-medium">{appointment.client.full_name}</p>
-                <p className="text-sm text-gray-600">{appointment.client.phone || 'No phone available'}</p>
+                <p className="font-medium">{getClientDisplayName()}</p>
+                <p className="text-sm text-gray-600">{getClientPhone()}</p>
               </div>
             </div>
           )}

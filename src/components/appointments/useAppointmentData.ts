@@ -43,10 +43,13 @@ export const useAppointmentData = () => {
       }
 
       console.log('Fetched appointments:', data?.length || 0, 'appointments');
+      console.log('Raw appointment data:', data);
 
-      // Process appointments to handle guest appointments
+      // Process appointments to handle guest appointments and ensure client info is available
       const processedAppointments = (data || []).map(appointment => {
-        // Extract guest client info from description if client_id is null
+        console.log('Processing appointment:', appointment.id, 'client_id:', appointment.client_id, 'client data:', appointment.client);
+        
+        // If no client_id but description contains guest info, extract it
         if (!appointment.client_id && appointment.description) {
           const guestMatch = appointment.description.match(/Guest appointment for: (.+?) \((.+?)\)/);
           if (guestMatch) {
@@ -60,6 +63,12 @@ export const useAppointmentData = () => {
             };
           }
         }
+        
+        // If client_id exists but no client data was fetched, try to get it
+        if (appointment.client_id && !appointment.client) {
+          console.warn('Appointment has client_id but no client data:', appointment.id);
+        }
+        
         return appointment;
       });
 

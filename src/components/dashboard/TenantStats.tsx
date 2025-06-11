@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useTenant } from '@/hooks/useTenant';
@@ -17,23 +16,45 @@ const TenantStats = ({ onCardClick }: TenantStatsProps) => {
 
   // Fetch real appointment stats
   const { data: appointmentStats } = useQuery({
-    queryKey: ['appointment-stats', profile?.tenant_id],
+    queryKey: ['appointment-stats', profile?.tenant_id, profile?.role, profile?.id],
     queryFn: async () => {
-      if (!profile?.tenant_id) return { active: 0, total: 0 };
+      if (!profile) return { active: 0, total: 0 };
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('appointments')
-        .select('status')
-        .eq('tenant_id', profile.tenant_id);
+        .select('status, scheduled_at');
 
-      if (error) throw error;
+      // Filter based on user role
+      if (profile.role === 'client') {
+        query = query.eq('client_id', profile.id);
+      } else if (profile.role === 'workshop' && profile.tenant_id) {
+        query = query.eq('tenant_id', profile.tenant_id);
+      }
 
-      const active = data?.filter(a => a.status === 'pending' || a.status === 'confirmed').length || 0;
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching appointment stats:', error);
+        throw error;
+      }
+
+      console.log('Appointment stats data:', data);
+
+      const now = new Date();
+      const active = data?.filter(a => {
+        const scheduledDate = new Date(a.scheduled_at);
+        const isNotFinished = a.status !== 'cancelled' && a.status !== 'completed';
+        const isFutureOrActive = scheduledDate >= now || a.status === 'confirmed' || a.status === 'in_progress' || a.status === 'pending';
+        return isNotFinished && (isFutureOrActive || a.status === 'pending');
+      }).length || 0;
+      
       const total = data?.length || 0;
+
+      console.log('Calculated stats - active:', active, 'total:', total);
 
       return { active, total };
     },
-    enabled: !!profile?.tenant_id,
+    enabled: !!profile,
   });
 
   // Fetch real conversation stats
