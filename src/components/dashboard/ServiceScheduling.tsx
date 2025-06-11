@@ -28,7 +28,7 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
 
       console.log('Fetching clients for workshop:', profile.tenant_id);
 
-      // Get all client profiles in this tenant
+      // Get all client profiles in this tenant (including those with tenant_id set)
       const { data: clientProfiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, full_name, phone')

@@ -23,7 +23,7 @@ export const useChatInterface = (appointmentId?: string | null) => {
     }
   }, [appointmentId]);
 
-  // Fetch conversations for the current user with proper join
+  // Simplified conversations query to avoid RLS recursion
   const { data: conversations = [], refetch: refetchConversations } = useQuery({
     queryKey: ['conversations', user?.id, profile?.tenant_id],
     queryFn: async () => {
@@ -31,34 +31,62 @@ export const useChatInterface = (appointmentId?: string | null) => {
 
       console.log('Fetching conversations for user:', user.id, 'tenant:', profile.tenant_id);
 
-      const { data, error } = await supabase
-        .from('chat_conversations')
-        .select(`
-          *,
-          chat_participants!inner(
-            user_id,
-            profiles!inner(
-              id,
-              full_name,
-              role
-            )
-          )
-        `)
-        .eq('tenant_id', profile.tenant_id)
-        .order('updated_at', { ascending: false });
+      // First, get conversations where user is a participant
+      const { data: participantData, error: participantError } = await supabase
+        .from('chat_participants')
+        .select('conversation_id')
+        .eq('user_id', user.id);
 
-      if (error) {
-        console.error('Error fetching conversations:', error);
+      if (participantError) {
+        console.error('Error fetching user participations:', participantError);
         return [];
       }
 
-      // Filter conversations where user is a participant
-      const userConversations = data?.filter(conv => 
-        conv.chat_participants?.some((p: any) => p.user_id === user.id)
-      ) || [];
+      if (!participantData || participantData.length === 0) {
+        return [];
+      }
 
-      console.log('User conversations:', userConversations);
-      return userConversations;
+      const conversationIds = participantData.map(p => p.conversation_id);
+
+      // Then get the conversation details
+      const { data: conversationsData, error: conversationsError } = await supabase
+        .from('chat_conversations')
+        .select('*')
+        .in('id', conversationIds)
+        .eq('tenant_id', profile.tenant_id)
+        .order('updated_at', { ascending: false });
+
+      if (conversationsError) {
+        console.error('Error fetching conversations:', conversationsError);
+        return [];
+      }
+
+      // For each conversation, get the participants separately
+      const conversationsWithParticipants = await Promise.all(
+        (conversationsData || []).map(async (conv) => {
+          const { data: participants, error: partError } = await supabase
+            .from('chat_participants')
+            .select(`
+              user_id,
+              profiles!inner(
+                id,
+                full_name,
+                role
+              )
+            `)
+            .eq('conversation_id', conv.id);
+
+          if (partError) {
+            console.error('Error fetching participants for conversation:', conv.id, partError);
+            return { ...conv, chat_participants: [] };
+          }
+
+          return { ...conv, chat_participants: participants || [] };
+        })
+      );
+
+      console.log('User conversations:', conversationsWithParticipants);
+      return conversationsWithParticipants;
     },
     enabled: !!user && !!profile?.tenant_id,
   });

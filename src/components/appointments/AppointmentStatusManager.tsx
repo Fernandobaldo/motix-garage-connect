@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { useNotificationSender } from '@/hooks/useNotificationSender';
 import { ChevronDown } from 'lucide-react';
 
 interface AppointmentStatusManagerProps {
@@ -45,7 +44,6 @@ const AppointmentStatusManager = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const { sendNotification } = useNotificationSender();
 
   const getConfirmationMessage = (newStatus: string) => {
     switch (newStatus) {
@@ -84,25 +82,21 @@ const AppointmentStatusManager = ({
 
       if (error) throw error;
 
-      // Send notification based on status change
-      let triggerEvent = '';
-      switch (pendingStatus) {
-        case 'confirmed':
-          triggerEvent = 'appointment_confirmed';
-          break;
-        case 'in_progress':
-          triggerEvent = 'appointment_in_progress';
-          break;
-        case 'completed':
-          triggerEvent = 'appointment_completed';
-          break;
-        case 'cancelled':
-          triggerEvent = 'appointment_cancelled';
-          break;
-      }
+      // Try to send notification, but don't fail if it doesn't work
+      try {
+        const { error: notificationError } = await supabase.functions.invoke('send-notification', {
+          body: { 
+            appointmentId, 
+            triggerEvent: `appointment_${pendingStatus}`
+          }
+        });
 
-      if (triggerEvent) {
-        sendNotification(appointmentId, triggerEvent);
+        if (notificationError) {
+          console.warn('Notification failed to send:', notificationError);
+          // Don't show error to user for notification failures
+        }
+      } catch (notifError) {
+        console.warn('Notification service unavailable:', notifError);
       }
 
       onStatusUpdate(pendingStatus);
