@@ -23,6 +23,8 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
   const { handleChatClick, handleDelete, handleStatusUpdate } = useAppointmentActions(refetch);
   const sortedAppointments = useAppointmentFiltering(appointments, filter, sortBy);
 
+  const isHistoryView = filter === 'history';
+
   if (isLoading) {
     return <AppointmentLoadingState />;
   }
@@ -48,6 +50,7 @@ const AppointmentList = ({ filter = 'upcoming' }: AppointmentListProps) => {
               onServiceReport={setServiceReportAppointmentId}
               onChatClick={handleChatClick}
               onStatusUpdate={handleStatusUpdate}
+              isHistoryView={isHistoryView}
             />
           ))}
         </div>

@@ -19,6 +19,21 @@ interface VehicleFormProps {
 }
 
 const VehicleForm = ({ vehicleData, onVehicleDataChange }: VehicleFormProps) => {
+  const fuelTypes = ['Gasoline', 'Diesel', 'Electric', 'Hybrid', 'Natural Gas', 'Propane'];
+  const transmissionTypes = ['Manual', 'Automatic', 'CVT', 'Semi-Automatic'];
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 50 }, (_, i) => currentYear - i);
+
+  // Enhanced list of famous car makes sorted in descending order
+  const popularMakes = [
+    'Volvo', 'Volkswagen', 'Toyota', 'Tesla', 'Subaru', 'Skoda', 'Seat',
+    'Renault', 'Porsche', 'Peugeot', 'Opel', 'Nissan', 'Mini', 'Mercedes-Benz',
+    'Mazda', 'Maserati', 'Lexus', 'Land Rover', 'Lamborghini', 'Kia', 
+    'Jeep', 'Jaguar', 'Infiniti', 'Hyundai', 'Honda', 'GMC', 'Genesis',
+    'Ford', 'Fiat', 'Ferrari', 'Dodge', 'Citroen', 'Chrysler', 'Chevrolet',
+    'Cadillac', 'Buick', 'BMW', 'Bentley', 'Audi', 'Alfa Romeo', 'Acura', 'Other'
+  ].sort((a, b) => b.localeCompare(a));
+
   return (
     <Card>
       <CardHeader>
@@ -28,13 +43,31 @@ const VehicleForm = ({ vehicleData, onVehicleDataChange }: VehicleFormProps) => 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label>Make *</Label>
-            <Input
-              value={vehicleData.make}
-              onChange={(e) => onVehicleDataChange({ ...vehicleData, make: e.target.value })}
-              placeholder="e.g., Toyota"
-              required
-            />
+            <Select 
+              value={vehicleData.make} 
+              onValueChange={(value) => onVehicleDataChange({ ...vehicleData, make: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select vehicle make" />
+              </SelectTrigger>
+              <SelectContent>
+                {popularMakes.map((make) => (
+                  <SelectItem key={make} value={make}>
+                    {make}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {vehicleData.make === 'Other' && (
+              <Input
+                className="mt-2"
+                placeholder="Enter vehicle make"
+                value={vehicleData.make === 'Other' ? '' : vehicleData.make}
+                onChange={(e) => onVehicleDataChange({ ...vehicleData, make: e.target.value })}
+              />
+            )}
           </div>
+          
           <div>
             <Label>Model *</Label>
             <Input
@@ -44,17 +77,26 @@ const VehicleForm = ({ vehicleData, onVehicleDataChange }: VehicleFormProps) => 
               required
             />
           </div>
+          
           <div>
             <Label>Year *</Label>
-            <Input
-              type="number"
-              value={vehicleData.year}
-              onChange={(e) => onVehicleDataChange({ ...vehicleData, year: parseInt(e.target.value) })}
-              min={1900}
-              max={new Date().getFullYear() + 1}
-              required
-            />
+            <Select 
+              value={vehicleData.year.toString()} 
+              onValueChange={(value) => onVehicleDataChange({ ...vehicleData, year: parseInt(value) })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select year" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+          
           <div>
             <Label>License Plate *</Label>
             <Input
@@ -64,30 +106,41 @@ const VehicleForm = ({ vehicleData, onVehicleDataChange }: VehicleFormProps) => 
               required
             />
           </div>
+          
           <div>
             <Label>Fuel Type</Label>
-            <Select value={vehicleData.fuel_type} onValueChange={(value) => onVehicleDataChange({ ...vehicleData, fuel_type: value })}>
+            <Select 
+              value={vehicleData.fuel_type} 
+              onValueChange={(value) => onVehicleDataChange({ ...vehicleData, fuel_type: value })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select fuel type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gasoline">Gasoline</SelectItem>
-                <SelectItem value="diesel">Diesel</SelectItem>
-                <SelectItem value="hybrid">Hybrid</SelectItem>
-                <SelectItem value="electric">Electric</SelectItem>
+                {fuelTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
+          
           <div>
             <Label>Transmission</Label>
-            <Select value={vehicleData.transmission} onValueChange={(value) => onVehicleDataChange({ ...vehicleData, transmission: value })}>
+            <Select 
+              value={vehicleData.transmission} 
+              onValueChange={(value) => onVehicleDataChange({ ...vehicleData, transmission: value })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select transmission" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="manual">Manual</SelectItem>
-                <SelectItem value="automatic">Automatic</SelectItem>
-                <SelectItem value="cvt">CVT</SelectItem>
+                {transmissionTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

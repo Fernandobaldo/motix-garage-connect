@@ -15,6 +15,7 @@ interface AppointmentCardProps {
   onServiceReport: (appointmentId: string) => void;
   onChatClick: (appointment: any) => void;
   onStatusUpdate: (newStatus: string) => void;
+  isHistoryView?: boolean;
 }
 
 const AppointmentCard = ({ 
@@ -23,11 +24,16 @@ const AppointmentCard = ({
   onDelete, 
   onServiceReport, 
   onChatClick, 
-  onStatusUpdate 
+  onStatusUpdate,
+  isHistoryView = false
 }: AppointmentCardProps) => {
   const { profile } = useAuth();
 
   const canEditAppointment = () => {
+    // In history view, hide edit for completed appointments
+    if (isHistoryView && appointment.status === 'completed') {
+      return false;
+    }
     return profile?.role === 'workshop' || appointment.client_id === profile?.id;
   };
 
@@ -41,10 +47,16 @@ const AppointmentCard = ({
 
   const canAddServiceReport = () => {
     return profile?.role === 'workshop' && 
-           (appointment.status === 'in_progress' || appointment.status === 'confirmed');
+           (appointment.status === 'in_progress' || 
+            appointment.status === 'confirmed' ||
+            (isHistoryView && appointment.status === 'completed'));
   };
 
   const canAccessChat = () => {
+    // In history view, hide chat for completed appointments
+    if (isHistoryView && appointment.status === 'completed') {
+      return false;
+    }
     return appointment.status === 'confirmed' || 
            appointment.status === 'in_progress' || 
            appointment.status === 'completed';
@@ -70,6 +82,13 @@ const AppointmentCard = ({
       return appointment.client.phone;
     }
     return 'No phone available';
+  };
+
+  const getServiceReportButtonText = () => {
+    if (isHistoryView && appointment.status === 'completed') {
+      return 'View Service Report';
+    }
+    return 'Complete Service';
   };
 
   console.log('Rendering appointment card for:', appointment.id, 'client data:', appointment.client, 'client_id:', appointment.client_id);
@@ -180,7 +199,7 @@ const AppointmentCard = ({
               onClick={() => onServiceReport(appointment.id)}
             >
               <FileText className="h-4 w-4 mr-2" />
-              Complete Service
+              {getServiceReportButtonText()}
             </Button>
           )}
 
