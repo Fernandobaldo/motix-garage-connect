@@ -60,10 +60,10 @@ const ServiceReportModal = ({ isOpen, onClose, appointmentId, onSuccess }: Servi
     setLoading(true);
 
     try {
-      // First get appointment details to extract service_type and vehicle_id
+      // First get appointment details to extract service_type, vehicle_id, and workshop_id
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
-        .select('service_type, vehicle_id')
+        .select('service_type, vehicle_id, workshop_id')
         .eq('id', appointmentId)
         .single();
 
@@ -73,7 +73,7 @@ const ServiceReportModal = ({ isOpen, onClose, appointmentId, onSuccess }: Servi
 
       const serviceData = {
         appointment_id: appointmentId,
-        workshop_id: profile?.tenant_id,
+        workshop_id: appointment.workshop_id, // Use the actual workshop_id from appointment
         tenant_id: profile?.tenant_id,
         vehicle_id: appointment.vehicle_id,
         service_type: appointment.service_type,
