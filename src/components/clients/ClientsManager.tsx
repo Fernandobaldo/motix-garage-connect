@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, Search, Phone, Mail, Car, Calendar, Plus } from "lucide-react";
+import { Users, Search, Phone, Mail, Car, Calendar, UserPlus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import ManualAppointmentBooking from "./ManualAppointmentBooking";
+import ClientCreationForm from "./ClientCreationForm";
 
 interface Client {
   id: string;
@@ -30,69 +30,69 @@ interface Client {
 const ClientsManager = () => {
   const { profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [showManualBooking, setShowManualBooking] = useState(false);
+  const [showClientCreation, setShowClientCreation] = useState(false);
 
-  const { data: clients, isLoading } = useQuery({
+  const { data: clients, isLoading, refetch } = useQuery({
     queryKey: ['clients', profile?.tenant_id],
     queryFn: async () => {
       if (!profile?.tenant_id) return [];
 
-      // Get all clients who have had appointments with this garage
-      const { data: appointments, error } = await supabase
-        .from('appointments')
-        .select(`
-          client_id,
-          profiles!appointments_client_id_fkey(
-            id,
-            full_name,
-            phone
-          )
-        `)
-        .eq('tenant_id', profile.tenant_id);
+      console.log('Fetching clients for tenant:', profile.tenant_id);
 
-      if (error) throw error;
+      // Get all clients in this tenant
+      const { data: clientProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, phone')
+        .eq('tenant_id', profile.tenant_id)
+        .eq('role', 'client');
 
-      // Get unique clients
-      const uniqueClients = appointments.reduce((acc: any[], appointment) => {
-        const existingClient = acc.find(c => c.id === appointment.client_id);
-        if (!existingClient && appointment.profiles) {
-          acc.push({
-            id: appointment.client_id,
-            full_name: appointment.profiles.full_name,
-            phone: appointment.profiles.phone,
-            email: '', // We'll need to get this from auth.users if needed
-          });
-        }
-        return acc;
-      }, []);
+      if (profilesError) {
+        console.error('Error fetching client profiles:', profilesError);
+        throw profilesError;
+      }
+
+      console.log('Found client profiles:', clientProfiles);
 
       // For each client, get their vehicles and service history
       const clientsWithDetails = await Promise.all(
-        uniqueClients.map(async (client) => {
+        clientProfiles.map(async (client) => {
           // Get client's vehicles
           const { data: vehicles } = await supabase
             .from('vehicles')
             .select('id, make, model, year, license_plate')
             .eq('owner_id', client.id);
 
-          // Get service count and last service
-          const { data: serviceHistory, count } = await supabase
-            .from('service_history')
-            .select('completed_at', { count: 'exact' })
-            .eq('tenant_id', profile.tenant_id)
-            .eq('vehicle_id', vehicles?.[0]?.id || '')
-            .order('completed_at', { ascending: false })
-            .limit(1);
+          // Get service count for this client across all their vehicles
+          let serviceCount = 0;
+          let lastServiceDate = null;
+
+          if (vehicles && vehicles.length > 0) {
+            const vehicleIds = vehicles.map(v => v.id);
+            
+            const { data: serviceHistory, error: serviceError } = await supabase
+              .from('service_history')
+              .select('completed_at')
+              .eq('tenant_id', profile.tenant_id)
+              .in('vehicle_id', vehicleIds)
+              .order('completed_at', { ascending: false });
+
+            if (!serviceError && serviceHistory) {
+              serviceCount = serviceHistory.length;
+              lastServiceDate = serviceHistory[0]?.completed_at || null;
+            }
+          }
 
           return {
             ...client,
+            email: '', // We don't have email in profiles, could add later
             vehicles: vehicles || [],
-            service_count: count || 0,
-            last_service_date: serviceHistory?.[0]?.completed_at || null,
+            service_count: serviceCount,
+            last_service_date: lastServiceDate,
           };
         })
       );
 
+      console.log('Clients with details:', clientsWithDetails);
       return clientsWithDetails;
     },
     enabled: !!profile?.tenant_id,
@@ -106,6 +106,11 @@ const ClientsManager = () => {
       v.license_plate.toLowerCase().includes(searchTerm.toLowerCase())
     )
   ) || [];
+
+  const handleClientCreated = () => {
+    setShowClientCreation(false);
+    refetch();
+  };
 
   if (isLoading) {
     return (
@@ -129,9 +134,9 @@ const ClientsManager = () => {
           <Users className="h-6 w-6 text-blue-600" />
           <h2 className="text-2xl font-bold text-gray-900">Clients Database</h2>
         </div>
-        <Button onClick={() => setShowManualBooking(true)} className="flex items-center space-x-2">
-          <Plus className="h-4 w-4" />
-          <span>Create Appointment</span>
+        <Button onClick={() => setShowClientCreation(true)} className="flex items-center space-x-2">
+          <UserPlus className="h-4 w-4" />
+          <span>Create Client</span>
         </Button>
       </div>
 
@@ -217,18 +222,15 @@ const ClientsManager = () => {
         </div>
       )}
 
-      <Dialog open={showManualBooking} onOpenChange={setShowManualBooking}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={showClientCreation} onOpenChange={setShowClientCreation}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Appointment for Client</DialogTitle>
+            <DialogTitle>Create New Client</DialogTitle>
             <DialogDescription>
-              Create a new appointment for an existing client or register a new client
+              Add a new client to your database with their basic information
             </DialogDescription>
           </DialogHeader>
-          <ManualAppointmentBooking 
-            onSuccess={() => setShowManualBooking(false)}
-            existingClients={clients || []}
-          />
+          <ClientCreationForm onSuccess={handleClientCreated} />
         </DialogContent>
       </Dialog>
     </div>

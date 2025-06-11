@@ -8,18 +8,17 @@ export const useAppointmentActions = (refetch: () => void) => {
   const navigate = useNavigate();
 
   const handleChatClick = (appointment: any) => {
-    // Navigate to messages tab with appointment context
-    const currentPath = window.location.pathname;
-    if (currentPath === '/') {
-      // If on main page, change tab to messages
-      const messagesTab = document.querySelector('[value="messages"]') as HTMLElement;
-      if (messagesTab) {
-        messagesTab.click();
-      }
-    } else {
-      // Navigate to main page with messages tab
-      navigate('/?tab=messages&appointment=' + appointment.id);
-    }
+    // Store appointment context in sessionStorage for chat interface
+    sessionStorage.setItem('selectedAppointment', JSON.stringify(appointment));
+    
+    // Navigate to messages tab by updating the URL hash
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'messages');
+    url.searchParams.set('appointment', appointment.id);
+    window.history.pushState({}, '', url.toString());
+    
+    // Trigger a custom event to notify the tab change
+    window.dispatchEvent(new CustomEvent('tabChange', { detail: 'messages' }));
   };
 
   const handleDelete = async (appointmentId: string) => {

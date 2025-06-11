@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +20,31 @@ import ClientsManager from "@/components/clients/ClientsManager";
 const Index = () => {
   const { user, signOut, profile } = useAuth();
   const [activeTab, setActiveTab] = useState("appointments");
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check URL parameters for tab and appointment
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    const appointmentParam = urlParams.get('appointment');
+
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+    if (appointmentParam) {
+      setSelectedAppointmentId(appointmentParam);
+    }
+
+    // Listen for tab change events
+    const handleTabChange = (event: CustomEvent) => {
+      setActiveTab(event.detail);
+    };
+
+    window.addEventListener('tabChange', handleTabChange as EventListener);
+    return () => {
+      window.removeEventListener('tabChange', handleTabChange as EventListener);
+    };
+  }, []);
 
   if (!user) {
     return <LandingPage />;
@@ -156,7 +181,7 @@ const Index = () => {
           )}
 
           <TabsContent value="messages">
-            <ChatInterface />
+            <ChatInterface appointmentId={selectedAppointmentId} />
           </TabsContent>
 
           <TabsContent value="quotations">
