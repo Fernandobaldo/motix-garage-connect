@@ -74,6 +74,11 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
     // TODO: Implement create health report modal/form
   };
 
+  const handleAddServiceRecord = () => {
+    console.log('Add service record');
+    // TODO: Implement add service record modal/form
+  };
+
   const getOverallVehicleStats = () => {
     const totalServices = serviceHistory.length;
     const totalOverdue = overdueSchedules.length;
@@ -176,6 +181,15 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {/* Add Service Record Button - Moved here from history tab */}
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Quick Actions</h3>
+            <Button onClick={handleAddServiceRecord}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Service Record
+            </Button>
+          </div>
+
           {/* Overdue Maintenance Alert */}
           {overdueSchedules.length > 0 && (
             <Card className="border-red-200 bg-red-50">
@@ -252,10 +266,6 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
         <TabsContent value="history" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Service History</h3>
-            <Button onClick={() => console.log('Add service record')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Service Record
-            </Button>
           </div>
           <ServiceHistoryList
             records={serviceHistory}

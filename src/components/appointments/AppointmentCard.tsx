@@ -27,17 +27,6 @@ const AppointmentCard = ({
 }: AppointmentCardProps) => {
   const { profile } = useAuth();
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-blue-100 text-blue-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      case 'in_progress': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const canEditAppointment = () => {
     return profile?.role === 'workshop' || appointment.client_id === profile?.id;
   };
@@ -51,11 +40,14 @@ const AppointmentCard = ({
   };
 
   const canAddServiceReport = () => {
-    return profile?.role === 'workshop' && appointment.status === 'in_progress';
+    return profile?.role === 'workshop' && 
+           (appointment.status === 'in_progress' || appointment.status === 'confirmed');
   };
 
   const canAccessChat = () => {
-    return appointment.status === 'confirmed' || appointment.status === 'in_progress';
+    return appointment.status === 'confirmed' || 
+           appointment.status === 'in_progress' || 
+           appointment.status === 'completed';
   };
 
   const scheduledDate = new Date(appointment.scheduled_at);
@@ -81,6 +73,7 @@ const AppointmentCard = ({
   };
 
   console.log('Rendering appointment card for:', appointment.id, 'client data:', appointment.client, 'client_id:', appointment.client_id);
+  console.log('Can add service report:', canAddServiceReport(), 'Status:', appointment.status, 'Role:', profile?.role);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -107,7 +100,19 @@ const AppointmentCard = ({
                 onStatusUpdate={onStatusUpdate}
               />
             ) : (
-              <Badge className={getStatusColor(appointment.status)}>
+              <Badge className={
+                appointment.status === 'pending' 
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : appointment.status === 'confirmed'
+                  ? 'bg-green-100 text-green-800'
+                  : appointment.status === 'in_progress'
+                  ? 'bg-purple-100 text-purple-800'
+                  : appointment.status === 'completed'
+                  ? 'bg-blue-100 text-blue-800'
+                  : appointment.status === 'cancelled'
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-gray-100 text-gray-800'
+              }>
                 {appointment.status}
               </Badge>
             )}

@@ -1,23 +1,32 @@
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 
 export const useAppointmentActions = (refetch: () => void) => {
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const handleChatClick = (appointment: any) => {
+    console.log('Chat clicked for appointment:', appointment.id);
+    
     // Store appointment context for chat interface
     sessionStorage.setItem('selectedAppointment', JSON.stringify(appointment));
     
     // Trigger a custom event to switch to messages tab with appointment context
-    window.dispatchEvent(new CustomEvent('switchToChat', { 
+    const event = new CustomEvent('switchToChat', { 
       detail: { 
         appointmentId: appointment.id,
         appointment: appointment
       } 
-    }));
+    });
+    
+    console.log('Dispatching switchToChat event:', event.detail);
+    window.dispatchEvent(event);
+    
+    // Show feedback to user
+    toast({
+      title: 'Opening Chat',
+      description: 'Switching to messages for this appointment.',
+    });
   };
 
   const handleDelete = async (appointmentId: string) => {
