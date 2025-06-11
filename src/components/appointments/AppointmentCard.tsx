@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import AppointmentCardHeader from "./AppointmentCardHeader";
 import AppointmentCardInfo from "./AppointmentCardInfo";
 import AppointmentCardActions from "./AppointmentCardActions";
+import AppointmentStatusBadge from "./AppointmentStatusBadge";
 import type { AppointmentCardProps } from "@/types/database";
 
 const AppointmentCard = ({ 
@@ -23,7 +24,13 @@ const AppointmentCard = ({
         onStatusUpdate={onStatusUpdate}
       />
       <CardContent>
-        <AppointmentCardInfo appointment={appointment} />
+        <div className="flex items-start justify-between mb-4">
+          <AppointmentCardInfo appointment={appointment} />
+          <AppointmentStatusBadge 
+            status={appointment.status || 'pending'} 
+            className="ml-4" 
+          />
+        </div>
         
         {appointment.description && (
           <div className="mt-4 p-3 bg-gray-50 rounded-lg">
