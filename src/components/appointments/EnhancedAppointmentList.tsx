@@ -31,8 +31,21 @@ const EnhancedAppointmentList = ({ filter = 'upcoming' }: EnhancedAppointmentLis
     const now = new Date();
 
     // Apply main filter (upcoming/history/all)
-    if (filter === 'upcoming' && appointmentDate < now) return false;
-    if (filter === 'history' && appointmentDate >= now) return false;
+    if (filter === 'upcoming') {
+      // Show only active appointments (pending, confirmed, in_progress)
+      const isActiveStatus = appointment.status === 'pending' || 
+                            appointment.status === 'confirmed' || 
+                            appointment.status === 'in_progress';
+      if (!isActiveStatus) return false;
+    } else if (filter === 'history') {
+      // Show completed, cancelled, or past appointments
+      const isFinishedStatus = appointment.status === 'completed' || appointment.status === 'cancelled';
+      const isPastAndNotActive = appointmentDate < now && 
+                                appointment.status !== 'pending' && 
+                                appointment.status !== 'confirmed' && 
+                                appointment.status !== 'in_progress';
+      if (!isFinishedStatus && !isPastAndNotActive) return false;
+    }
 
     // Apply status filter
     if (filters.status && appointment.status !== filters.status) return false;

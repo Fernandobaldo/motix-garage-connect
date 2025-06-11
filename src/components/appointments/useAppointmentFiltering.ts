@@ -16,17 +16,16 @@ export const useAppointmentFiltering = (appointments: any[], filter: 'upcoming' 
       
       if (filter === 'upcoming') {
         // Show appointments that are pending, confirmed, or in_progress
-        // Also include future appointments regardless of status (except completed/cancelled)
-        const isNotFinished = apt.status !== 'cancelled' && apt.status !== 'completed';
-        const isFutureOrActive = scheduledDate >= now || apt.status === 'confirmed' || apt.status === 'in_progress' || apt.status === 'pending';
-        const result = isNotFinished && (isFutureOrActive || apt.status === 'pending');
+        // Exclude completed and cancelled appointments regardless of date
+        const isActiveStatus = apt.status === 'pending' || apt.status === 'confirmed' || apt.status === 'in_progress';
+        const result = isActiveStatus;
         console.log('Upcoming filter for appointment:', apt.id, 'scheduled:', scheduledDate, 'status:', apt.status, 'result:', result);
         return result;
       } else if (filter === 'history') {
-        // Show completed, cancelled appointments, or past appointments that are finished
-        const isPast = scheduledDate < now;
-        const isFinished = apt.status === 'completed' || apt.status === 'cancelled';
-        const result = isFinished || (isPast && apt.status !== 'pending' && apt.status !== 'confirmed' && apt.status !== 'in_progress');
+        // Show completed, cancelled appointments, or past appointments
+        const isFinishedStatus = apt.status === 'completed' || apt.status === 'cancelled';
+        const isPastAndNotActive = scheduledDate < now && apt.status !== 'pending' && apt.status !== 'confirmed' && apt.status !== 'in_progress';
+        const result = isFinishedStatus || isPastAndNotActive;
         console.log('History filter for appointment:', apt.id, 'scheduled:', scheduledDate, 'status:', apt.status, 'result:', result);
         return result;
       }
@@ -56,18 +55,14 @@ export const useAppointmentFiltering = (appointments: any[], filter: 'upcoming' 
         default:
           // For upcoming appointments, show earliest first
           // For history, show most recent first
-          if (filteredAppointments.some(apt => {
-            const scheduledDate = new Date(apt.scheduled_at);
-            const now = new Date();
-            return scheduledDate >= now && apt.status !== 'cancelled' && apt.status !== 'completed';
-          })) {
+          if (filter === 'upcoming') {
             return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
           } else {
             return new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime();
           }
       }
     });
-  }, [filteredAppointments, sortBy]);
+  }, [filteredAppointments, sortBy, filter]);
 
   return sortedAppointments;
 };
