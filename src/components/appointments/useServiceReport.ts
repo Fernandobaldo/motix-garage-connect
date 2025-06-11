@@ -3,21 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-interface PartUsed {
-  name: string;
-  quantity: number;
-  price: number;
-}
-
-interface ServiceReportFormData {
-  description: string;
-  laborHours: number;
-  mileage: string;
-  cost: number;
-  nextServiceDue: string;
-  serviceType: string;
-}
+import type { ServiceReportFormData, PartUsed } from '@/types/database';
 
 export const useServiceReport = (appointmentId: string, onSuccess: () => void, onClose: () => void) => {
   const { profile } = useAuth();

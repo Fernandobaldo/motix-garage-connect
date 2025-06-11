@@ -1,21 +1,11 @@
 
-export interface Appointment {
-  id: string;
-  service_type: string;
-  scheduled_at: string;
-  duration_minutes: number;
-  status: string;
-  client: {
-    full_name: string;
-  } | null;
-  vehicle: {
-    make: string;
-    model: string;
-    year: number;
-  } | null;
-}
+import type { AppointmentWithRelations } from "@/types/database";
 
-export interface AppointmentListItem extends Appointment {
+// Re-export the main appointment type
+export type { AppointmentWithRelations as Appointment };
+
+// Legacy compatibility - these can be removed after migration
+export interface AppointmentListItem extends AppointmentWithRelations {
   description: string;
   client: {
     id: string;
@@ -35,7 +25,7 @@ export interface AppointmentListItem extends Appointment {
   } | null;
 }
 
-// Additional type for database appointments
+// Database appointment type for raw queries
 export interface DatabaseAppointment {
   id: string;
   client_id: string;

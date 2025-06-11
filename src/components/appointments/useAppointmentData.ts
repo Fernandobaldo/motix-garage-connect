@@ -2,13 +2,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import type { AppointmentWithRelations } from '@/types/database';
 
 export const useAppointmentData = () => {
   const { profile, user } = useAuth();
 
   const { data: appointments = [], isLoading, refetch } = useQuery({
     queryKey: ['appointments', user?.id, profile?.tenant_id, profile?.role],
-    queryFn: async () => {
+    queryFn: async (): Promise<AppointmentWithRelations[]> => {
       if (!user || !profile) {
         console.log('No user or profile, returning empty appointments');
         return [];
@@ -26,13 +27,18 @@ export const useAppointmentData = () => {
         `)
         .order('scheduled_at', { ascending: false });
 
+      // Always filter by tenant_id for security
+      if (profile.tenant_id) {
+        query = query.eq('tenant_id', profile.tenant_id);
+      }
+
       // Filter based on user role
       if (profile.role === 'client') {
         console.log('Filtering appointments for client:', user.id);
         query = query.eq('client_id', user.id);
-      } else if (profile.role === 'workshop' && profile.tenant_id) {
+      } else if (profile.role === 'workshop') {
         console.log('Filtering appointments for workshop tenant:', profile.tenant_id);
-        query = query.eq('tenant_id', profile.tenant_id);
+        // Workshop users see all appointments in their tenant (already filtered above)
       }
 
       const { data, error } = await query;
@@ -46,7 +52,7 @@ export const useAppointmentData = () => {
       console.log('Raw appointment data:', data);
 
       // Process appointments to handle guest appointments and ensure client info is available
-      const processedAppointments = (data || []).map(appointment => {
+      const processedAppointments: AppointmentWithRelations[] = (data || []).map(appointment => {
         console.log('Processing appointment:', appointment.id, 'client_id:', appointment.client_id, 'client data:', appointment.client);
         
         // If no client_id but description contains guest info, extract it
@@ -56,9 +62,13 @@ export const useAppointmentData = () => {
             return {
               ...appointment,
               client: {
-                id: null,
+                id: null as any, // Guest clients don't have real IDs
                 full_name: guestMatch[1],
-                phone: guestMatch[2]
+                phone: guestMatch[2],
+                created_at: '',
+                updated_at: '',
+                tenant_id: null,
+                role: 'client' as const
               }
             };
           }
@@ -69,7 +79,7 @@ export const useAppointmentData = () => {
           console.warn('Appointment has client_id but no client data:', appointment.id);
         }
         
-        return appointment;
+        return appointment as AppointmentWithRelations;
       });
 
       console.log('Processed appointments:', processedAppointments);

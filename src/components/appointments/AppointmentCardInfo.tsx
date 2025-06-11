@@ -1,9 +1,10 @@
 
 import { MapPin, Car, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import type { AppointmentWithRelations } from "@/types/database";
 
 interface AppointmentCardInfoProps {
-  appointment: any;
+  appointment: AppointmentWithRelations;
 }
 
 const AppointmentCardInfo = ({ appointment }: AppointmentCardInfoProps) => {

@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Edit, Trash2, FileText, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import type { AppointmentWithRelations } from "@/types/database";
 
 interface AppointmentCardActionsProps {
-  appointment: any;
-  onEdit: (appointment: any) => void;
+  appointment: AppointmentWithRelations;
+  onEdit: (appointment: AppointmentWithRelations) => void;
   onDelete: (appointmentId: string) => void;
   onServiceReport: (appointmentId: string) => void;
-  onChatClick: (appointment: any) => void;
+  onChatClick: (appointment: AppointmentWithRelations) => void;
   isHistoryView?: boolean;
 }
 

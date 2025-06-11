@@ -4,14 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Tables, TablesInsert } from '@/integrations/supabase/types';
+import type { QuotationWithRelations } from '@/types/database';
 
-export type Quotation = Tables<'quotations'> & {
-  items?: QuotationItem[];
-  client?: { full_name: string; email?: string };
-  vehicle?: { make: string; model: string; year: number; license_plate: string };
-  workshop?: { name: string };
-};
-
+export type Quotation = QuotationWithRelations;
 export type QuotationItem = Tables<'quotation_items'>;
 export type QuoteTemplate = Tables<'quote_templates'>;
 
@@ -31,27 +26,46 @@ export const useQuotations = () => {
         .select(`
           *,
           items:quotation_items(*),
-          client:profiles!quotations_client_id_fkey(full_name),
-          vehicle:vehicles(make, model, year, license_plate),
-          workshop:workshops(name)
+          client:profiles!quotations_client_id_fkey(id, full_name, tenant_id),
+          vehicle:vehicles(id, make, model, year, license_plate, tenant_id),
+          workshop:workshops(id, name, tenant_id)
         `)
-        .eq('tenant_id', profile.tenant_id)
+        .eq('tenant_id', profile.tenant_id) // Enforce tenant isolation
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Transform the data to match our Quotation type
-      const transformedData = data?.map(item => ({
+      // Transform and validate tenant consistency
+      const transformedData = data?.filter(item => {
+        // Double-check all related entities belong to the same tenant
+        const clientTenantMatch = !item.client || item.client.tenant_id === profile.tenant_id;
+        const vehicleTenantMatch = !item.vehicle || item.vehicle.tenant_id === profile.tenant_id;
+        const workshopTenantMatch = !item.workshop || item.workshop.tenant_id === profile.tenant_id;
+        
+        if (!clientTenantMatch || !vehicleTenantMatch || !workshopTenantMatch) {
+          console.warn('Tenant mismatch in quotation data:', item.id);
+          return false;
+        }
+        
+        return true;
+      }).map(item => ({
         ...item,
         items: Array.isArray(item.items) ? item.items : [],
-        client: item.client ? { full_name: item.client.full_name } : undefined,
+        client: item.client ? { 
+          id: item.client.id,
+          full_name: item.client.full_name 
+        } : undefined,
         vehicle: item.vehicle ? {
+          id: item.vehicle.id,
           make: item.vehicle.make,
           model: item.vehicle.model,
           year: item.vehicle.year,
           license_plate: item.vehicle.license_plate
         } : undefined,
-        workshop: item.workshop ? { name: item.workshop.name } : undefined
+        workshop: item.workshop ? { 
+          id: item.workshop.id,
+          name: item.workshop.name 
+        } : undefined
       })) || [];
 
       setQuotations(transformedData);
@@ -72,7 +86,7 @@ export const useQuotations = () => {
       const { data, error } = await supabase
         .from('quote_templates')
         .select('*')
-        .eq('tenant_id', profile.tenant_id)
+        .eq('tenant_id', profile.tenant_id) // Enforce tenant isolation
         .eq('is_active', true)
         .order('name');
 
@@ -100,15 +114,42 @@ export const useQuotations = () => {
     if (!profile?.tenant_id) throw new Error('No tenant ID');
 
     try {
+      // Validate that client, workshop, and vehicle belong to the same tenant
+      if (quotationData.client_id) {
+        const { data: client, error: clientError } = await supabase
+          .from('profiles')
+          .select('tenant_id')
+          .eq('id', quotationData.client_id)
+          .eq('tenant_id', profile.tenant_id)
+          .single();
+          
+        if (clientError || !client) {
+          throw new Error('Client not found or access denied');
+        }
+      }
+
+      if (quotationData.vehicle_id) {
+        const { data: vehicle, error: vehicleError } = await supabase
+          .from('vehicles')
+          .select('tenant_id')
+          .eq('id', quotationData.vehicle_id)
+          .eq('tenant_id', profile.tenant_id)
+          .single();
+          
+        if (vehicleError || !vehicle) {
+          throw new Error('Vehicle not found or access denied');
+        }
+      }
+
       // Generate quote number
       const { data: quoteNumber, error: numberError } = await supabase
         .rpc('generate_quote_number', { tenant_uuid: profile.tenant_id });
 
       if (numberError) throw numberError;
 
-      // Create quotation
+      // Create quotation with tenant_id
       const quotationInsert: TablesInsert<'quotations'> = {
-        tenant_id: profile.tenant_id,
+        tenant_id: profile.tenant_id, // Enforce tenant isolation
         client_id: quotationData.client_id,
         workshop_id: quotationData.workshop_id,
         vehicle_id: quotationData.vehicle_id,
@@ -165,7 +206,21 @@ export const useQuotations = () => {
   };
 
   const updateQuotationStatus = async (id: string, status: string, approvedAt?: string) => {
+    if (!profile?.tenant_id) return;
+
     try {
+      // Verify quotation belongs to user's tenant
+      const { data: existing, error: checkError } = await supabase
+        .from('quotations')
+        .select('id')
+        .eq('id', id)
+        .eq('tenant_id', profile.tenant_id)
+        .single();
+
+      if (checkError || !existing) {
+        throw new Error('Quotation not found or access denied');
+      }
+
       const updateData: any = { status };
       if (approvedAt) {
         updateData.approved_at = approvedAt;
@@ -174,7 +229,8 @@ export const useQuotations = () => {
       const { error } = await supabase
         .from('quotations')
         .update(updateData)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', profile.tenant_id); // Double-check tenant isolation
 
       if (error) throw error;
 
@@ -211,7 +267,7 @@ export const useQuotations = () => {
       const { error } = await supabase
         .from('quote_templates')
         .insert({
-          tenant_id: profile.tenant_id,
+          tenant_id: profile.tenant_id, // Enforce tenant isolation
           created_by: profile.id,
           ...templateData,
         });

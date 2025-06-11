@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import ServiceReportBasicInfo from "./ServiceReportBasicInfo";
 import ServiceReportPartsSection from "./ServiceReportPartsSection";
 import { useServiceReport } from "./useServiceReport";
-
-interface ServiceReportModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  appointmentId: string;
-  onSuccess: () => void;
-}
+import type { ServiceReportModalProps } from "@/types/database";
 
 const ServiceReportModal = ({ isOpen, onClose, appointmentId, onSuccess }: ServiceReportModalProps) => {
   const {

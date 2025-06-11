@@ -3,16 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import AppointmentCardHeader from "./AppointmentCardHeader";
 import AppointmentCardInfo from "./AppointmentCardInfo";
 import AppointmentCardActions from "./AppointmentCardActions";
-
-interface AppointmentCardProps {
-  appointment: any;
-  onEdit: (appointment: any) => void;
-  onDelete: (appointmentId: string) => void;
-  onServiceReport: (appointmentId: string) => void;
-  onChatClick: (appointment: any) => void;
-  onStatusUpdate: (newStatus: string) => void;
-  isHistoryView?: boolean;
-}
+import type { AppointmentCardProps } from "@/types/database";
 
 const AppointmentCard = ({ 
   appointment, 

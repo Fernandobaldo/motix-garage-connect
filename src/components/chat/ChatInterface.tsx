@@ -4,10 +4,7 @@ import ChatWindow from './ChatWindow';
 import ChatAccessRestriction from './ChatAccessRestriction';
 import ChatHeader from './ChatHeader';
 import { useChatInterface } from '@/hooks/useChatInterface';
-
-interface ChatInterfaceProps {
-  appointmentId?: string | null;
-}
+import type { ChatInterfaceProps } from '@/types/database';
 
 const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
   const {

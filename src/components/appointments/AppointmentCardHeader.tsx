@@ -5,9 +5,10 @@ import { Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import AppointmentStatusManager from "./AppointmentStatusManager";
+import type { AppointmentWithRelations } from "@/types/database";
 
 interface AppointmentCardHeaderProps {
-  appointment: any;
+  appointment: AppointmentWithRelations;
   onStatusUpdate: (newStatus: string) => void;
 }
 
@@ -42,7 +43,7 @@ const AppointmentCardHeader = ({ appointment, onStatusUpdate }: AppointmentCardH
           {canChangeStatus() ? (
             <AppointmentStatusManager
               appointmentId={appointment.id}
-              currentStatus={appointment.status}
+              currentStatus={appointment.status || 'pending'}
               onStatusUpdate={onStatusUpdate}
             />
           ) : (
@@ -59,7 +60,7 @@ const AppointmentCardHeader = ({ appointment, onStatusUpdate }: AppointmentCardH
                 ? 'bg-red-100 text-red-800'
                 : 'bg-gray-100 text-gray-800'
             }>
-              {appointment.status}
+              {appointment.status || 'pending'}
             </Badge>
           )}
         </div>

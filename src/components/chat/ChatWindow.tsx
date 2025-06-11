@@ -5,49 +5,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { User, MessageSquare } from "lucide-react";
 import MessageItem from './MessageItem';
 import MessageInput from './MessageInput';
-
-interface Message {
-  id: string;
-  content: string;
-  sender_id: string;
-  message_type: string;
-  created_at: string;
-  conversation_id: string;
-  file_url?: string;
-  file_name?: string;
-  translated_content?: any;
-  sender?: {
-    full_name: string;
-    role: string;
-  };
-}
-
-interface Conversation {
-  id: string;
-  title: string | null;
-  created_at: string;
-  updated_at: string;
-  tenant_id: string;
-  participants?: Participant[];
-}
-
-interface Participant {
-  id: string;
-  user_id: string;
-  conversation_id: string;
-  joined_at: string;
-  user?: {
-    full_name: string;
-    role: string;
-  };
-}
+import type { ChatConversationWithParticipants, ChatMessageWithSender } from '@/types/database';
 
 interface ChatWindowProps {
   selectedConversation: string | null;
-  conversations: Conversation[];
-  messages: Message[];
+  conversations: ChatConversationWithParticipants[];
+  messages: ChatMessageWithSender[];
   currentUserId?: string;
-  onSendMessage: (messageType?: string, fileUrl?: string, fileName?: string) => void;
+  onSendMessage: (content: string, messageType?: string, fileUrl?: string, fileName?: string) => void;
   onFileUploaded: (fileUrl: string, fileName: string, fileType: string) => void;
   onTranslationComplete: (messageId: string, translatedText: string, targetLanguage: string) => void;
 }
@@ -71,9 +36,9 @@ const ChatWindow = ({
     scrollToBottom();
   }, [messages]);
 
-  const getConversationPartner = (conversation: Conversation) => {
-    const partner = conversation.participants?.find(p => p.user_id !== currentUserId);
-    return partner?.user?.full_name || 'Unknown User';
+  const getConversationPartner = (conversation: ChatConversationWithParticipants) => {
+    const partner = conversation.chat_participants?.find(p => p.user_id !== currentUserId);
+    return partner?.profiles?.full_name || 'Unknown User';
   };
 
   const selectedConv = conversations.find(c => c.id === selectedConversation);
