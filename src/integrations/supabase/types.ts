@@ -301,6 +301,87 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          email_enabled: boolean | null
+          email_service: string | null
+          id: string
+          reminder_24h_enabled: boolean | null
+          reminder_2h_enabled: boolean | null
+          sms_enabled: boolean | null
+          sms_service: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean | null
+          email_service?: string | null
+          id?: string
+          reminder_24h_enabled?: boolean | null
+          reminder_2h_enabled?: boolean | null
+          sms_enabled?: boolean | null
+          sms_service?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean | null
+          email_service?: string | null
+          id?: string
+          reminder_24h_enabled?: boolean | null
+          reminder_2h_enabled?: boolean | null
+          sms_enabled?: boolean | null
+          sms_service?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_templates: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string | null
+          tenant_id: string
+          trigger_event: string
+          type: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject?: string | null
+          tenant_id: string
+          trigger_event: string
+          type: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string | null
+          tenant_id?: string
+          trigger_event?: string
+          type?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -820,45 +901,57 @@ export type Database = {
       }
       workshops: {
         Row: {
+          accent_color: string | null
           address: string | null
           created_at: string
           email: string | null
           id: string
           is_public: boolean | null
           languages_spoken: string[] | null
+          logo_url: string | null
           name: string
           owner_id: string
           phone: string | null
+          primary_color: string | null
+          secondary_color: string | null
           services_offered: string[] | null
           tenant_id: string | null
           updated_at: string
           working_hours: Json | null
         }
         Insert: {
+          accent_color?: string | null
           address?: string | null
           created_at?: string
           email?: string | null
           id?: string
           is_public?: boolean | null
           languages_spoken?: string[] | null
+          logo_url?: string | null
           name: string
           owner_id: string
           phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
           services_offered?: string[] | null
           tenant_id?: string | null
           updated_at?: string
           working_hours?: Json | null
         }
         Update: {
+          accent_color?: string | null
           address?: string | null
           created_at?: string
           email?: string | null
           id?: string
           is_public?: boolean | null
           languages_spoken?: string[] | null
+          logo_url?: string | null
           name?: string
           owner_id?: string
           phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
           services_offered?: string[] | null
           tenant_id?: string | null
           updated_at?: string
@@ -892,6 +985,10 @@ export type Database = {
       }
       check_overdue_maintenance: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      create_default_notification_templates: {
+        Args: { workshop_tenant_id: string }
         Returns: undefined
       }
       generate_quote_number: {
