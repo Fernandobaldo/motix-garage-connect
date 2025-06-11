@@ -25,6 +25,8 @@ interface Client {
   }>;
   service_count: number;
   last_service_date: string;
+  appointment_count: number;
+  last_appointment_date: string;
 }
 
 const ClientsManager = () => {
@@ -39,8 +41,19 @@ const ClientsManager = () => {
 
       console.log('Fetching clients for tenant:', profile.tenant_id);
 
-      // Get all clients in this tenant
-      const { data: clientProfiles, error: profilesError } = await supabase
+      // Get all unique client IDs from appointments in this tenant
+      const { data: appointmentClients, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select('client_id')
+        .eq('tenant_id', profile.tenant_id);
+
+      if (appointmentsError) {
+        console.error('Error fetching appointment clients:', appointmentsError);
+        throw appointmentsError;
+      }
+
+      // Get all clients in this tenant (both from appointments and manually created)
+      const { data: allClientProfiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, full_name, phone')
         .eq('tenant_id', profile.tenant_id)
@@ -51,16 +64,38 @@ const ClientsManager = () => {
         throw profilesError;
       }
 
-      console.log('Found client profiles:', clientProfiles);
+      // Combine unique client IDs
+      const appointmentClientIds = new Set(appointmentClients?.map(a => a.client_id) || []);
+      const allClientIds = new Set(allClientProfiles?.map(p => p.id) || []);
+      const uniqueClientIds = new Set([...appointmentClientIds, ...allClientIds]);
 
-      // For each client, get their vehicles and service history
+      console.log('Found unique client IDs:', Array.from(uniqueClientIds));
+
+      // For each unique client, get their details, vehicles, and service history
       const clientsWithDetails = await Promise.all(
-        clientProfiles.map(async (client) => {
+        Array.from(uniqueClientIds).map(async (clientId) => {
+          // Get client profile
+          const { data: clientProfile } = await supabase
+            .from('profiles')
+            .select('id, full_name, phone')
+            .eq('id', clientId)
+            .single();
+
+          if (!clientProfile) return null;
+
           // Get client's vehicles
           const { data: vehicles } = await supabase
             .from('vehicles')
             .select('id, make, model, year, license_plate')
-            .eq('owner_id', client.id);
+            .eq('owner_id', clientId);
+
+          // Get appointment count and last appointment
+          const { data: appointments } = await supabase
+            .from('appointments')
+            .select('scheduled_at')
+            .eq('client_id', clientId)
+            .eq('tenant_id', profile.tenant_id)
+            .order('scheduled_at', { ascending: false });
 
           // Get service count for this client across all their vehicles
           let serviceCount = 0;
@@ -83,17 +118,20 @@ const ClientsManager = () => {
           }
 
           return {
-            ...client,
+            ...clientProfile,
             email: '', // We don't have email in profiles, could add later
             vehicles: vehicles || [],
             service_count: serviceCount,
             last_service_date: lastServiceDate,
+            appointment_count: appointments?.length || 0,
+            last_appointment_date: appointments?.[0]?.scheduled_at || null,
           };
         })
       );
 
-      console.log('Clients with details:', clientsWithDetails);
-      return clientsWithDetails;
+      const validClients = clientsWithDetails.filter(client => client !== null);
+      console.log('Clients with details:', validClients);
+      return validClients;
     },
     enabled: !!profile?.tenant_id,
   });
@@ -162,6 +200,9 @@ const ClientsManager = () => {
             <p className="text-gray-500">
               {searchTerm ? 'No clients found matching your search' : 'No clients yet'}
             </p>
+            <p className="text-sm text-gray-400 mt-2">
+              Clients will appear here when they book appointments or when you create them manually
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -204,16 +245,29 @@ const ClientsManager = () => {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-3 w-3 text-gray-400" />
-                      <span className="text-gray-600">Services: {client.service_count}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-1">
+                        <Calendar className="h-3 w-3 text-gray-400" />
+                        <span className="text-gray-600">Appointments: {client.appointment_count}</span>
+                      </div>
+                      {client.last_appointment_date && (
+                        <span className="text-gray-500">
+                          Last: {new Date(client.last_appointment_date).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
-                    {client.last_service_date && (
-                      <span className="text-gray-500">
-                        Last: {new Date(client.last_service_date).toLocaleDateString()}
-                      </span>
-                    )}
+                    
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-1">
+                        <span className="text-gray-600">Services: {client.service_count}</span>
+                      </div>
+                      {client.last_service_date && (
+                        <span className="text-gray-500">
+                          Last service: {new Date(client.last_service_date).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -227,7 +281,7 @@ const ClientsManager = () => {
           <DialogHeader>
             <DialogTitle>Create New Client</DialogTitle>
             <DialogDescription>
-              Add a new client to your database with their basic information
+              Add a new client to your database with their basic information and vehicles
             </DialogDescription>
           </DialogHeader>
           <ClientCreationForm onSuccess={handleClientCreated} />

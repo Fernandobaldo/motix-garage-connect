@@ -12,6 +12,7 @@ import { Building, Clock, Globe, Save, Bell, Palette } from 'lucide-react';
 import NotificationTemplateManager from '@/components/notifications/NotificationTemplateManager';
 import NotificationPreferences from '@/components/notifications/NotificationPreferences';
 import BrandingManager from '@/components/workshop/BrandingManager';
+import AddressFields from './AddressFields';
 
 interface WorkshopProfileFormProps {
   formData: {
@@ -85,6 +86,10 @@ const WorkshopProfileForm = ({ formData, onFormDataChange, onSubmit, isSubmittin
     onFormDataChange({ ...formData, working_hours: newWorkingHours });
   };
 
+  const handleAddressChange = (address: string) => {
+    onFormDataChange({ ...formData, address });
+  };
+
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
   return (
@@ -145,14 +150,13 @@ const WorkshopProfileForm = ({ formData, onFormDataChange, onSubmit, isSubmittin
               </div>
 
               <div>
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => onFormDataChange({ ...formData, address: e.target.value })}
-                  placeholder="Enter workshop address"
-                  rows={3}
-                />
+                <Label>Workshop Address</Label>
+                <div className="mt-2">
+                  <AddressFields 
+                    address={formData.address}
+                    onAddressChange={handleAddressChange}
+                  />
+                </div>
               </div>
 
               <div>

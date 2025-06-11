@@ -8,17 +8,16 @@ export const useAppointmentActions = (refetch: () => void) => {
   const navigate = useNavigate();
 
   const handleChatClick = (appointment: any) => {
-    // Store appointment context in sessionStorage for chat interface
+    // Store appointment context for chat interface
     sessionStorage.setItem('selectedAppointment', JSON.stringify(appointment));
     
-    // Navigate to messages tab by updating the URL hash
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'messages');
-    url.searchParams.set('appointment', appointment.id);
-    window.history.pushState({}, '', url.toString());
-    
-    // Trigger a custom event to notify the tab change
-    window.dispatchEvent(new CustomEvent('tabChange', { detail: 'messages' }));
+    // Trigger a custom event to switch to messages tab with appointment context
+    window.dispatchEvent(new CustomEvent('switchToChat', { 
+      detail: { 
+        appointmentId: appointment.id,
+        appointment: appointment
+      } 
+    }));
   };
 
   const handleDelete = async (appointmentId: string) => {

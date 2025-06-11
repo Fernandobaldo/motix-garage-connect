@@ -35,14 +35,22 @@ const Index = () => {
       setSelectedAppointmentId(appointmentParam);
     }
 
-    // Listen for tab change events
-    const handleTabChange = (event: CustomEvent) => {
-      setActiveTab(event.detail);
+    // Listen for chat navigation events
+    const handleSwitchToChat = (event: CustomEvent) => {
+      const { appointmentId, appointment } = event.detail;
+      setSelectedAppointmentId(appointmentId);
+      setActiveTab('messages');
+      
+      // Store appointment context
+      if (appointment) {
+        sessionStorage.setItem('selectedAppointment', JSON.stringify(appointment));
+      }
     };
 
-    window.addEventListener('tabChange', handleTabChange as EventListener);
+    window.addEventListener('switchToChat', handleSwitchToChat as EventListener);
+    
     return () => {
-      window.removeEventListener('tabChange', handleTabChange as EventListener);
+      window.removeEventListener('switchToChat', handleSwitchToChat as EventListener);
     };
   }, []);
 

@@ -18,6 +18,22 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
   const { user, profile } = useAuth();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
 
+  // Get appointment context from sessionStorage if appointmentId is provided
+  const [appointmentContext, setAppointmentContext] = useState<any>(null);
+
+  useEffect(() => {
+    if (appointmentId) {
+      const storedAppointment = sessionStorage.getItem('selectedAppointment');
+      if (storedAppointment) {
+        try {
+          setAppointmentContext(JSON.parse(storedAppointment));
+        } catch (error) {
+          console.error('Error parsing stored appointment:', error);
+        }
+      }
+    }
+  }, [appointmentId]);
+
   // Fetch conversations for the current user
   const { data: conversations = [], refetch: refetchConversations } = useQuery({
     queryKey: ['conversations', user?.id, profile?.tenant_id],
@@ -85,7 +101,7 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
   const { data: appointment } = useQuery({
     queryKey: ['appointment', appointmentId],
     queryFn: async () => {
-      if (!appointmentId) return null;
+      if (!appointmentId) return appointmentContext;
 
       const { data, error } = await supabase
         .from('appointments')
@@ -95,7 +111,7 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
 
       if (error) {
         console.error('Error fetching appointment:', error);
-        return null;
+        return appointmentContext;
       }
 
       return data;
@@ -104,20 +120,27 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
   });
 
   const canAccessChat = () => {
-    if (!appointment) return true; // Allow general chat
-    return appointment.status === 'confirmed' || appointment.status === 'in_progress' || appointment.status === 'completed';
+    const currentAppointment = appointment || appointmentContext;
+    if (!currentAppointment) return true; // Allow general chat
+    return currentAppointment.status === 'confirmed' || 
+           currentAppointment.status === 'in_progress' || 
+           currentAppointment.status === 'completed';
   };
 
   const handleCreateNewChat = async () => {
     if (!user || !profile?.tenant_id) return;
 
     try {
+      const currentAppointment = appointment || appointmentContext;
+      
       const { data: conversation, error } = await supabase
         .from('chat_conversations')
         .insert({
-          title: `New Chat - ${new Date().toLocaleDateString()}`,
+          title: currentAppointment 
+            ? `Chat for ${currentAppointment.service_type} appointment` 
+            : `New Chat - ${new Date().toLocaleDateString()}`,
           tenant_id: profile.tenant_id,
-          appointment_id: appointmentId || null
+          appointment_id: currentAppointment?.id || null
         })
         .select()
         .single();
@@ -177,7 +200,9 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
     // Implementation for translation completion
   };
 
-  if (appointmentId && appointment && !canAccessChat()) {
+  const currentAppointment = appointment || appointmentContext;
+
+  if (appointmentId && currentAppointment && !canAccessChat()) {
     return (
       <Card>
         <CardHeader>
@@ -195,15 +220,15 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
               <span className="text-sm">Current status:</span>
               <Badge 
                 className={
-                  appointment.status === 'pending' 
+                  currentAppointment.status === 'pending' 
                     ? 'bg-yellow-100 text-yellow-800'
                     : 'bg-gray-100 text-gray-800'
                 }
               >
-                {appointment.status}
+                {currentAppointment.status}
               </Badge>
             </div>
-            {appointment.status === 'pending' && (
+            {currentAppointment.status === 'pending' && (
               <p className="text-sm text-gray-500">
                 Please wait for the workshop to confirm your appointment.
               </p>
@@ -217,7 +242,9 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Messages</h3>
+        <h3 className="text-lg font-semibold">
+          {currentAppointment ? `Messages for ${currentAppointment.service_type} appointment` : 'Messages'}
+        </h3>
         <Button onClick={handleCreateNewChat} className="flex items-center space-x-2">
           <Plus className="h-4 w-4" />
           <span>New Chat</span>
