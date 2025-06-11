@@ -3,3 +3,14 @@ project_id = "hkstdutebohloapdyznl"
 
 [functions.send-notification]
 verify_jwt = false
+
+[storage]
+# Enable storage
+image_transformation = { enabled = true }
+
+# Create buckets
+[[storage.buckets]]
+name = "chat-files"
+public = true
+file_size_limit = "10MB"
+allowed_mime_types = ["image/*", "video/*", "application/pdf", "text/*", "application/msword", "application/vnd.openxmlformats-officedocument.*"]

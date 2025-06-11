@@ -6,7 +6,7 @@ import { Send } from "lucide-react";
 import FileUpload from './FileUpload';
 
 interface MessageInputProps {
-  onSendMessage: (messageType?: string, fileUrl?: string, fileName?: string) => void;
+  onSendMessage: (content: string, messageType?: string, fileUrl?: string, fileName?: string) => void;
   onFileUploaded: (fileUrl: string, fileName: string, fileType: string) => void;
   disabled?: boolean;
 }
@@ -16,7 +16,7 @@ const MessageInput = ({ onSendMessage, onFileUploaded, disabled }: MessageInputP
 
   const handleSendMessage = () => {
     if (!message.trim()) return;
-    onSendMessage();
+    onSendMessage(message);
     setMessage('');
   };
 
@@ -40,8 +40,9 @@ const MessageInput = ({ onSendMessage, onFileUploaded, disabled }: MessageInputP
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           className="flex-1"
+          disabled={disabled}
         />
-        <Button onClick={handleSendMessage} disabled={!message.trim()}>
+        <Button onClick={handleSendMessage} disabled={!message.trim() || disabled}>
           <Send className="h-4 w-4" />
         </Button>
       </div>

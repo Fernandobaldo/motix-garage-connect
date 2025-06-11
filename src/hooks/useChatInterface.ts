@@ -35,9 +35,9 @@ export const useChatInterface = (appointmentId?: string | null) => {
         .from('chat_conversations')
         .select(`
           *,
-          chat_participants(
+          chat_participants!inner(
             user_id,
-            profiles(
+            profiles!inner(
               id,
               full_name,
               role
@@ -73,7 +73,7 @@ export const useChatInterface = (appointmentId?: string | null) => {
         .from('chat_messages')
         .select(`
           *,
-          profiles(
+          profiles!sender_id(
             full_name,
             role
           )
