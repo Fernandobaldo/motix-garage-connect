@@ -7,9 +7,14 @@ export const useAppointmentData = () => {
   const { profile, user } = useAuth();
 
   const { data: appointments = [], isLoading, refetch } = useQuery({
-    queryKey: ['appointments', user?.id, profile?.tenant_id],
+    queryKey: ['appointments', user?.id, profile?.tenant_id, profile?.role],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user || !profile) {
+        console.log('No user or profile, returning empty appointments');
+        return [];
+      }
+
+      console.log('Fetching appointments for user:', user.id, 'role:', profile.role, 'tenant:', profile.tenant_id);
 
       let query = supabase
         .from('appointments')
@@ -19,12 +24,14 @@ export const useAppointmentData = () => {
           workshop:workshops!appointments_workshop_id_fkey(id, name, phone, email),
           vehicle:vehicles!appointments_vehicle_id_fkey(id, make, model, year, license_plate)
         `)
-        .order('scheduled_at', { ascending: true });
+        .order('scheduled_at', { ascending: false });
 
       // Filter based on user role
-      if (profile?.role === 'client') {
+      if (profile.role === 'client') {
+        console.log('Filtering appointments for client:', user.id);
         query = query.eq('client_id', user.id);
-      } else if (profile?.role === 'workshop' && profile?.tenant_id) {
+      } else if (profile.role === 'workshop' && profile.tenant_id) {
+        console.log('Filtering appointments for workshop tenant:', profile.tenant_id);
         query = query.eq('tenant_id', profile.tenant_id);
       }
 
@@ -35,8 +42,10 @@ export const useAppointmentData = () => {
         throw error;
       }
 
+      console.log('Fetched appointments:', data?.length || 0, 'appointments');
+
       // Process appointments to handle guest appointments
-      return (data || []).map(appointment => {
+      const processedAppointments = (data || []).map(appointment => {
         // Extract guest client info from description if client_id is null
         if (!appointment.client_id && appointment.description) {
           const guestMatch = appointment.description.match(/Guest appointment for: (.+?) \((.+?)\)/);
@@ -53,6 +62,9 @@ export const useAppointmentData = () => {
         }
         return appointment;
       });
+
+      console.log('Processed appointments:', processedAppointments);
+      return processedAppointments;
     },
     enabled: !!user && !!profile,
   });

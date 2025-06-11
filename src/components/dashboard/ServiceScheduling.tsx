@@ -103,11 +103,11 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
         </div>
       </div>
 
-      <Tabs defaultValue="list" className="w-full">
+      <Tabs defaultValue="upcoming" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="list" className="flex items-center space-x-2">
+          <TabsTrigger value="upcoming" className="flex items-center space-x-2">
             <Calendar className="h-4 w-4" />
-            <span>Upcoming</span>
+            <span>Active Appointments</span>
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center space-x-2">
             <History className="h-4 w-4" />
@@ -119,7 +119,7 @@ const ServiceScheduling = ({ userRole }: ServiceSchedulingProps) => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="list" className="space-y-4">
+        <TabsContent value="upcoming" className="space-y-4">
           <AppointmentList filter="upcoming" />
         </TabsContent>
 
