@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +27,14 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import EditPlanModal from './EditPlanModal';
 import ViewUsersModal from './ViewUsersModal';
+
+interface WorkshopStats {
+  user_count: number;
+  appointment_count: number;
+  vehicle_count: number;
+  monthly_appointments: number;
+  monthly_storage: number;
+}
 
 interface WorkshopData {
   id: string;
@@ -90,11 +97,14 @@ const WorkshopManagementTable = () => {
             };
           }
           
+          // Type cast the JSON response to our expected structure
+          const workshopStats = stats as WorkshopStats;
+          
           return {
             ...tenant,
-            user_count: stats?.user_count || 0,
-            appointment_count: stats?.appointment_count || 0,
-            vehicle_count: stats?.vehicle_count || 0,
+            user_count: workshopStats?.user_count || 0,
+            appointment_count: workshopStats?.appointment_count || 0,
+            vehicle_count: workshopStats?.vehicle_count || 0,
           };
         })
       );
