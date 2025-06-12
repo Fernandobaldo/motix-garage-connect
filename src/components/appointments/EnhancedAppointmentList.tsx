@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAppointmentData } from "./useAppointmentData";
 import AppointmentEditModal from "./AppointmentEditModal";
@@ -164,9 +163,8 @@ const EnhancedAppointmentList = ({ filter = 'upcoming' }: EnhancedAppointmentLis
         </CardHeader>
         <CardContent>
           <AppointmentFilters
+            filters={filters}
             onFiltersChange={setFilters}
-            workshops={workshops}
-            showWorkshopFilter={workshops.length > 1}
           />
         </CardContent>
       </Card>
