@@ -74,6 +74,8 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           id: string
+          reservation_expires_at: string | null
+          reservation_token: string | null
           scheduled_at: string
           service_type: string
           status: string | null
@@ -88,6 +90,8 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          reservation_expires_at?: string | null
+          reservation_token?: string | null
           scheduled_at: string
           service_type: string
           status?: string | null
@@ -102,6 +106,8 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          reservation_expires_at?: string | null
+          reservation_token?: string | null
           scheduled_at?: string
           service_type?: string
           status?: string | null
@@ -1046,6 +1052,54 @@ export type Database = {
           },
         ]
       }
+      workshop_public_links: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          settings: Json | null
+          slug: string
+          tenant_id: string
+          updated_at: string
+          workshop_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          settings?: Json | null
+          slug: string
+          tenant_id: string
+          updated_at?: string
+          workshop_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          settings?: Json | null
+          slug?: string
+          tenant_id?: string
+          updated_at?: string
+          workshop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshop_public_links_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workshop_public_links_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workshops: {
         Row: {
           accent_color: string | null
@@ -1138,13 +1192,46 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      cleanup_expired_reservations: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      confirm_reservation: {
+        Args: { p_reservation_token: string; p_user_id: string }
+        Returns: boolean
+      }
       create_default_notification_templates: {
         Args: { workshop_tenant_id: string }
         Returns: undefined
       }
+      create_temporary_reservation: {
+        Args: {
+          p_workshop_id: string
+          p_tenant_id: string
+          p_scheduled_at: string
+          p_service_type: string
+          p_client_email: string
+          p_client_name: string
+          p_client_phone?: string
+          p_vehicle_info?: string
+          p_notes?: string
+        }
+        Returns: {
+          appointment_id: string
+          reservation_token: string
+        }[]
+      }
       generate_quote_number: {
         Args: { tenant_uuid: string }
         Returns: string
+      }
+      generate_workshop_public_link: {
+        Args: { p_workshop_id: string; p_custom_slug?: string }
+        Returns: {
+          link_id: string
+          slug: string
+          public_url: string
+        }[]
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
@@ -1164,6 +1251,23 @@ export type Database = {
       get_user_tenant_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_workshop_public_data: {
+        Args: { workshop_slug: string }
+        Returns: {
+          workshop_id: string
+          workshop_name: string
+          workshop_email: string
+          workshop_phone: string
+          workshop_address: string
+          working_hours: Json
+          logo_url: string
+          primary_color: string
+          secondary_color: string
+          accent_color: string
+          services_offered: string[]
+          tenant_id: string
+        }[]
       }
       get_workshop_stats: {
         Args: { workshop_tenant_id: string }
