@@ -9,63 +9,86 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
+// Simple interfaces to avoid complex Supabase type inference
+interface SimpleAppointment {
+  id: string;
+  scheduled_at: string;
+  service_type: string;
+  status: string;
+}
+
+interface SimpleQuotation {
+  id: string;
+  quote_number: string;
+  total_cost: number | null;
+  status: string;
+  created_at: string;
+}
+
+interface SimpleServiceHistory {
+  id: string;
+  service_type: string;
+  completed_at: string;
+  description: string | null;
+}
+
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
-  // Simple next appointment query
+  // Simple next appointment query with explicit field selection
   const { data: nextAppointment } = useQuery({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<SimpleAppointment | null> => {
       if (!user?.id) return null;
       
       const { data } = await supabase
         .from('appointments')
-        .select('*')
+        .select('id, scheduled_at, service_type, status')
         .eq('client_id', user.id)
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(1)
         .maybeSingle();
 
-      return data;
+      return data as SimpleAppointment | null;
     },
     enabled: !!user?.id,
   });
 
-  // Simple latest quotation query
+  // Simple latest quotation query with explicit field selection
   const { data: latestQuotation } = useQuery({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<SimpleQuotation | null> => {
       if (!user?.id) return null;
       
       const { data } = await supabase
         .from('quotations')
-        .select('*')
+        .select('id, quote_number, total_cost, status, created_at')
         .eq('client_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      return data;
+      return data as SimpleQuotation | null;
     },
     enabled: !!user?.id,
   });
 
-  // Simple service history query
+  // Simple service history query with explicit field selection
   const { data: lastService } = useQuery({
     queryKey: ['lastService', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<SimpleServiceHistory | null> => {
       if (!user?.id) return null;
       
       const { data } = await supabase
         .from('service_history')
-        .select('*')
-        .eq('user_id', user.id)
+        .select('id, service_type, completed_at, description')
+        .eq('vehicle_id', user.id) // This might need to be adjusted based on your data model
         .order('completed_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      return data;
+      return data as SimpleServiceHistory | null;
     },
     enabled: !!user?.id,
   });
