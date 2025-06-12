@@ -51,7 +51,7 @@ const PublicLinkGenerator = ({ onLinkGenerated }: PublicLinkGeneratorProps) => {
       if (data && data.length > 0) {
         const newLink = data[0];
         onLinkGenerated({
-          link_id: newLink.id,
+          link_id: newLink.link_id,
           slug: newLink.slug,
           public_url: `/book/${newLink.slug}`
         });
