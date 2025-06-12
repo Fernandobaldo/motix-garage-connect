@@ -1,6 +1,5 @@
 
 import { ScrollProgress } from "@/components/ui/scroll-progress";
-import { LanguageProvider } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -30,39 +29,37 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <LanguageProvider>
-      <div className="min-h-screen bg-white">
-        <ScrollProgress />
-        
-        {/* Header with Login Button */}
-        <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <h1 className="text-xl font-bold text-gray-900">Garage Manager</h1>
-              <Button 
-                onClick={() => navigate('/auth')}
-                className="flex items-center space-x-2"
-              >
-                <LogIn className="h-4 w-4" />
-                <span>Login</span>
-              </Button>
-            </div>
+    <div className="min-h-screen bg-white">
+      <ScrollProgress />
+      
+      {/* Header with Login Button */}
+      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <h1 className="text-xl font-bold text-gray-900">Garage Manager</h1>
+            <Button 
+              onClick={() => navigate('/auth')}
+              className="flex items-center space-x-2"
+            >
+              <LogIn className="h-4 w-4" />
+              <span>Login</span>
+            </Button>
           </div>
-        </header>
-
-        <div className="pt-16">
-          <HeroSection />
-          <CustomerLogosSection />
-          <BenefitsSection />
-          <DemoVideoSection />
-          <ComparisonSection />
-          <PricingSection />
-          <TestimonialsSection />
-          <FAQSection />
-          <LandingFooter />
         </div>
+      </header>
+
+      <div className="pt-16">
+        <HeroSection />
+        <CustomerLogosSection />
+        <BenefitsSection />
+        <DemoVideoSection />
+        <ComparisonSection />
+        <PricingSection />
+        <TestimonialsSection />
+        <FAQSection />
+        <LandingFooter />
       </div>
-    </LanguageProvider>
+    </div>
   );
 };
 
