@@ -23,7 +23,7 @@ export const FeatureAccess: React.FC<FeatureAccessProps> = ({
   const { tenant } = useTenant();
   const { toast } = useToast();
   
-  const plan = userPlan || tenant?.subscription_plan || 'free';
+  const plan = userPlan || (tenant?.subscription_plan as PlanType) || 'free';
   const hasFeatureAccess = hasAccess(plan, feature);
 
   const handleUpgradeClick = () => {

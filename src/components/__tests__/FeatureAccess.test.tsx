@@ -17,12 +17,24 @@ describe('FeatureAccess Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseToast.mockReturnValue({ toast: mockToast });
+    mockUseToast.mockReturnValue({ 
+      toast: mockToast,
+      dismiss: vi.fn(),
+      toasts: []
+    });
   });
 
   it('should render children when user has access', () => {
     mockUseTenant.mockReturnValue({
-      tenant: { subscription_plan: 'pro' },
+      tenant: { 
+        id: 'test-id',
+        name: 'Test Tenant',
+        subscription_plan: 'pro',
+        settings: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        subdomain: null,
+      },
       loading: false,
       updateTenant: vi.fn(),
       refreshTenant: vi.fn(),
@@ -40,7 +52,15 @@ describe('FeatureAccess Component', () => {
 
   it('should show upgrade prompt when user lacks access', () => {
     mockUseTenant.mockReturnValue({
-      tenant: { subscription_plan: 'free' },
+      tenant: { 
+        id: 'test-id',
+        name: 'Test Tenant',
+        subscription_plan: 'free',
+        settings: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        subdomain: null,
+      },
       loading: false,
       updateTenant: vi.fn(),
       refreshTenant: vi.fn(),
@@ -60,7 +80,15 @@ describe('FeatureAccess Component', () => {
 
   it('should show custom fallback when provided', () => {
     mockUseTenant.mockReturnValue({
-      tenant: { subscription_plan: 'free' },
+      tenant: { 
+        id: 'test-id',
+        name: 'Test Tenant',
+        subscription_plan: 'free',
+        settings: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        subdomain: null,
+      },
       loading: false,
       updateTenant: vi.fn(),
       refreshTenant: vi.fn(),
@@ -80,7 +108,15 @@ describe('FeatureAccess Component', () => {
 
   it('should handle upgrade click and show toast', () => {
     mockUseTenant.mockReturnValue({
-      tenant: { subscription_plan: 'free' },
+      tenant: { 
+        id: 'test-id',
+        name: 'Test Tenant',
+        subscription_plan: 'free',
+        settings: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        subdomain: null,
+      },
       loading: false,
       updateTenant: vi.fn(),
       refreshTenant: vi.fn(),
@@ -104,7 +140,15 @@ describe('FeatureAccess Component', () => {
 
   it('should use userPlan prop when provided', () => {
     mockUseTenant.mockReturnValue({
-      tenant: { subscription_plan: 'free' },
+      tenant: { 
+        id: 'test-id',
+        name: 'Test Tenant',
+        subscription_plan: 'free',
+        settings: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        subdomain: null,
+      },
       loading: false,
       updateTenant: vi.fn(),
       refreshTenant: vi.fn(),

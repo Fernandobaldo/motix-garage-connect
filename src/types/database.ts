@@ -12,6 +12,11 @@ export type ChatConversation = Tables<'chat_conversations'>;
 export type ChatMessage = Tables<'chat_messages'>;
 export type ChatParticipant = Tables<'chat_participants'>;
 
+// Extended Tenant type with subscription_plan
+export interface Tenant extends Tables<'tenants'> {
+  subscription_plan?: 'free' | 'starter' | 'pro' | 'enterprise';
+}
+
 // Extended types with relations
 export interface AppointmentWithRelations extends Tables<'appointments'> {
   client?: Profile | null;

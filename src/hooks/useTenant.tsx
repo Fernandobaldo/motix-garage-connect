@@ -3,15 +3,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-
-interface Tenant {
-  id: string;
-  name: string;
-  subdomain: string | null;
-  settings: any;
-  created_at: string;
-  updated_at: string;
-}
+import { Tenant } from '@/types/database';
 
 interface TenantContextType {
   tenant: Tenant | null;

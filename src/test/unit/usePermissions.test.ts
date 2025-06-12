@@ -11,7 +11,15 @@ const mockUseTenant = vi.mocked(useTenant);
 describe('usePermissions Hook', () => {
   it('should return correct permissions for free plan', () => {
     mockUseTenant.mockReturnValue({
-      tenant: { subscription_plan: 'free' },
+      tenant: { 
+        id: 'test-id',
+        name: 'Test Tenant',
+        subscription_plan: 'free',
+        settings: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        subdomain: null,
+      },
       loading: false,
       updateTenant: vi.fn(),
       refreshTenant: vi.fn(),
@@ -31,7 +39,15 @@ describe('usePermissions Hook', () => {
 
   it('should return correct permissions for enterprise plan', () => {
     mockUseTenant.mockReturnValue({
-      tenant: { subscription_plan: 'enterprise' },
+      tenant: { 
+        id: 'test-id',
+        name: 'Test Tenant',
+        subscription_plan: 'enterprise',
+        settings: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        subdomain: null,
+      },
       loading: false,
       updateTenant: vi.fn(),
       refreshTenant: vi.fn(),

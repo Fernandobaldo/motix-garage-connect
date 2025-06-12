@@ -47,7 +47,22 @@ describe('Plan Access Flow System Tests', () => {
 
   it('should show appropriate features for free plan user', async () => {
     mockUseAuth.mockReturnValue({
-      user: { id: 'test-user' },
+      user: { 
+        id: 'test-user',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        email: 'test@example.com',
+        email_confirmed_at: new Date().toISOString(),
+        phone: null,
+        confirmed_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+        role: 'authenticated',
+        factors: [],
+        identities: [],
+      },
       profile: {
         id: 'test-user',
         role: 'workshop',
@@ -90,7 +105,22 @@ describe('Plan Access Flow System Tests', () => {
 
   it('should show all features for enterprise plan user', async () => {
     mockUseAuth.mockReturnValue({
-      user: { id: 'test-user' },
+      user: { 
+        id: 'test-user',
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        email: 'test@example.com',
+        email_confirmed_at: new Date().toISOString(),
+        phone: null,
+        confirmed_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+        role: 'authenticated',
+        factors: [],
+        identities: [],
+      },
       profile: {
         id: 'test-user',
         role: 'workshop',
