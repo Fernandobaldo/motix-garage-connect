@@ -1,68 +1,103 @@
 
 import { useMemo } from 'react';
+import type { AppointmentWithRelations } from '@/types/database';
+import type { AppointmentFilterState } from './AppointmentFilters';
 
-export const useAppointmentFiltering = (appointments: any[], filter: 'upcoming' | 'history' | 'all', sortBy: string) => {
+export const useAppointmentFiltering = (
+  appointments: AppointmentWithRelations[],
+  filters: AppointmentFilterState
+) => {
   const filteredAppointments = useMemo(() => {
-    console.log('Filtering appointments:', appointments?.length || 0, 'with filter:', filter);
-    
-    if (!appointments || appointments.length === 0) {
-      console.log('No appointments to filter');
-      return [];
-    }
+    if (!appointments) return [];
 
-    const filtered = appointments.filter(apt => {
-      const scheduledDate = new Date(apt.scheduled_at);
-      const now = new Date();
-      
-      if (filter === 'upcoming') {
-        // Show appointments that are pending, confirmed, or in_progress
-        // Exclude completed and cancelled appointments regardless of date
-        const isActiveStatus = apt.status === 'pending' || apt.status === 'confirmed' || apt.status === 'in_progress';
-        const result = isActiveStatus;
-        console.log('Upcoming filter for appointment:', apt.id, 'scheduled:', scheduledDate, 'status:', apt.status, 'result:', result);
-        return result;
-      } else if (filter === 'history') {
-        // Show completed, cancelled appointments, or past appointments
-        const isFinishedStatus = apt.status === 'completed' || apt.status === 'cancelled';
-        const isPastAndNotActive = scheduledDate < now && apt.status !== 'pending' && apt.status !== 'confirmed' && apt.status !== 'in_progress';
-        const result = isFinishedStatus || isPastAndNotActive;
-        console.log('History filter for appointment:', apt.id, 'scheduled:', scheduledDate, 'status:', apt.status, 'result:', result);
-        return result;
+    return appointments.filter((appointment) => {
+      // Status filter
+      if (filters.status && appointment.status !== filters.status) {
+        return false;
       }
-      return true; // 'all' filter
-    });
 
-    console.log('Filtered result:', filtered.length, 'appointments for filter:', filter);
-    return filtered;
-  }, [appointments, filter]);
-
-  const sortedAppointments = useMemo(() => {
-    if (!filteredAppointments || filteredAppointments.length === 0) {
-      return [];
-    }
-
-    return [...filteredAppointments].sort((a, b) => {
-      switch (sortBy) {
-        case 'status':
-          return a.status.localeCompare(b.status);
-        case 'garage':
-          return (a.workshop?.name || '').localeCompare(b.workshop?.name || '');
-        case 'vehicle':
-          const aVehicle = a.vehicle ? `${a.vehicle.make} ${a.vehicle.model}` : '';
-          const bVehicle = b.vehicle ? `${b.vehicle.make} ${b.vehicle.model}` : '';
-          return aVehicle.localeCompare(bVehicle);
-        case 'date':
-        default:
-          // For upcoming appointments, show earliest first
-          // For history, show most recent first
-          if (filter === 'upcoming') {
-            return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
-          } else {
-            return new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime();
-          }
+      // Service type filter
+      if (filters.serviceType && appointment.service_type !== filters.serviceType) {
+        return false;
       }
-    });
-  }, [filteredAppointments, sortBy, filter]);
 
-  return sortedAppointments;
+      // Client name filter (case-insensitive)
+      if (filters.clientName) {
+        const clientName = appointment.client?.full_name?.toLowerCase() || '';
+        if (!clientName.includes(filters.clientName.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // License plate filter (case-insensitive)
+      if (filters.licensePlate) {
+        const licensePlate = appointment.vehicle?.license_plate?.toLowerCase() || '';
+        if (!licensePlate.includes(filters.licensePlate.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Date range filter
+      if (filters.dateRange && filters.dateRange !== 'all') {
+        const appointmentDate = new Date(appointment.scheduled_at);
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        switch (filters.dateRange) {
+          case 'today':
+            const appointmentToday = new Date(
+              appointmentDate.getFullYear(),
+              appointmentDate.getMonth(),
+              appointmentDate.getDate()
+            );
+            if (appointmentToday.getTime() !== today.getTime()) {
+              return false;
+            }
+            break;
+            
+          case 'week':
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            
+            if (appointmentDate < weekStart || appointmentDate > weekEnd) {
+              return false;
+            }
+            break;
+            
+          case 'month':
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            monthEnd.setHours(23, 59, 59, 999);
+            
+            if (appointmentDate < monthStart || appointmentDate > monthEnd) {
+              return false;
+            }
+            break;
+        }
+      }
+
+      return true;
+    });
+  }, [appointments, filters]);
+
+  const filterStats = useMemo(() => {
+    const total = appointments?.length || 0;
+    const filtered = filteredAppointments.length;
+    const hidden = total - filtered;
+
+    return {
+      total,
+      filtered,
+      hidden,
+      hasActiveFilters: Object.values(filters).some(Boolean),
+    };
+  }, [appointments, filteredAppointments, filters]);
+
+  return {
+    filteredAppointments,
+    filterStats,
+  };
 };

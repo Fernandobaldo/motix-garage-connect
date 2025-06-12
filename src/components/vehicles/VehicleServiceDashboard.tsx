@@ -11,6 +11,9 @@ import { useAppointmentData } from '../appointments/useAppointmentData';
 import ServiceHistoryList from './ServiceHistoryList';
 import MaintenanceScheduleList from './MaintenanceScheduleList';
 import VehicleHealthReports from './VehicleHealthReports';
+import ServiceRecordModal from './ServiceRecordModal';
+import ServiceHistoryDetailModal from './ServiceHistoryDetailModal';
+import LicensePlateFilter from '../common/LicensePlateFilter';
 import { ServiceHistoryRecord, MaintenanceSchedule, VehicleHealthReport } from './types';
 
 interface VehicleServiceDashboardProps {
@@ -18,8 +21,16 @@ interface VehicleServiceDashboardProps {
   onVehicleChange?: (vehicleId: string) => void;
 }
 
-const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: VehicleServiceDashboardProps) => {
+const VehicleServiceDashboard = ({ selectedVehicleI
+
+
+onVehicleChange }: VehicleServiceDashboardProps) => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [showServiceRecordModal, setShowServiceRecordModal] = useState(false);
+  const [showServiceDetailModal, setShowServiceDetailModal] = useState(false);
+  const [selectedServiceRecord, setSelectedServiceRecord] = useState<ServiceHistoryRecord | null>(null);
+  const [licensePlateFilter, setLicensePlateFilter] = useState('');
+  
   const { appointments } = useAppointmentData();
   
   const {
@@ -49,9 +60,27 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
   
   const vehicles = Array.from(vehicleMap.values());
 
+  // Filter vehicles by license plate
+  const filteredVehicles = vehicles.filter(({ vehicle }) => {
+    if (!licensePlateFilter) return true;
+    return vehicle.license_plate.toLowerCase().includes(licensePlateFilter);
+  });
+
+  // Filter service history by license plate
+  const filteredServiceHistory = serviceHistory.filter(record => {
+    if (!licensePlateFilter) return true;
+    return record.vehicle?.license_plate?.toLowerCase().includes(licensePlateFilter);
+  });
+
+  // Filter maintenance schedules by license plate
+  const filteredMaintenanceSchedules = maintenanceSchedules.filter(schedule => {
+    if (!licensePlateFilter) return true;
+    return schedule.vehicle?.license_plate?.toLowerCase().includes(licensePlateFilter);
+  });
+
   const handleViewServiceDetails = (record: ServiceHistoryRecord) => {
-    console.log('View service details:', record);
-    // TODO: Implement service details modal/page
+    setSelectedServiceRecord(record);
+    setShowServiceDetailModal(true);
   };
 
   const handleMarkScheduleCompleted = (schedule: MaintenanceSchedule) => {
@@ -75,15 +104,26 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
   };
 
   const handleAddServiceRecord = () => {
-    console.log('Add service record');
-    // TODO: Implement add service record modal/form
+    setShowServiceRecordModal(true);
+  };
+
+  const handleServiceRecordSuccess = () => {
+    setShowServiceRecordModal(false);
+    // Refresh service history data
+    window.location.reload(); // Simple refresh for now
   };
 
   const getOverallVehicleStats = () => {
-    const totalServices = serviceHistory.length;
-    const totalOverdue = overdueSchedules.length;
-    const totalUpcoming = upcomingSchedules.length;
-    const latestReport = healthReports[0];
+    const totalServices = filteredServiceHistory.length;
+    const totalOverdue = overdueSchedules.filter(schedule => 
+      !licensePlateFilter || schedule.vehicle?.license_plate?.toLowerCase().includes(licensePlateFilter)
+    ).length;
+    const totalUpcoming = upcomingSchedules.filter(schedule => 
+      !licensePlateFilter || schedule.vehicle?.license_plate?.toLowerCase().includes(licensePlateFilter)
+    ).length;
+    const latestReport = healthReports.find(report => 
+      !licensePlateFilter || report.vehicle?.license_plate?.toLowerCase().includes(licensePlateFilter)
+    );
     
     return {
       totalServices,
@@ -108,24 +148,34 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
 
   return (
     <div className="space-y-6">
-      {vehicles.length > 1 && (
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium">Vehicle:</label>
-          <Select value={selectedVehicleId || ''} onValueChange={onVehicleChange}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Select a vehicle" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All Vehicles</SelectItem>
-              {vehicles.map(({ vehicle }) => (
-                <SelectItem key={vehicle.id} value={vehicle.id}>
-                  {vehicle.year} {vehicle.make} {vehicle.model} ({vehicle.license_plate})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      {/* Vehicle Selection and License Plate Filter */}
+      <div className="flex flex-col md:flex-row gap-4">
+        {vehicles.length > 1 && (
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium">Vehicle:</label>
+            <Select value={selectedVehicleId || ''} onValueChange={onVehicleChange}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Select a vehicle" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Vehicles</SelectItem>
+                {vehicles.map(({ vehicle }) => (
+                  <SelectItem key={vehicle.id} value={vehicle.id}>
+                    {vehicle.year} {vehicle.make} {vehicle.model} ({vehicle.license_plate})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
+        <LicensePlateFilter
+          onFilterChange={setLicensePlateFilter}
+          placeholder="Filter by license plate..."
+          label="Filter Vehicles"
+          className="flex-1 max-w-md"
+        />
+      </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -181,7 +231,7 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          {/* Add Service Record Button - Moved here from history tab */}
+          {/* Add Service Record Button */}
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Quick Actions</h3>
             <Button onClick={handleAddServiceRecord}>
@@ -268,7 +318,7 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
             <h3 className="text-lg font-semibold">Service History</h3>
           </div>
           <ServiceHistoryList
-            records={serviceHistory}
+            records={filteredServiceHistory}
             onViewDetails={handleViewServiceDetails}
           />
         </TabsContent>
@@ -282,7 +332,7 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
             </Button>
           </div>
           <MaintenanceScheduleList
-            schedules={maintenanceSchedules}
+            schedules={filteredMaintenanceSchedules}
             onMarkCompleted={handleMarkScheduleCompleted}
             onEditSchedule={handleEditSchedule}
           />
@@ -296,6 +346,22 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
           />
         </TabsContent>
       </Tabs>
+
+      {/* Service Record Modal */}
+      <ServiceRecordModal
+        isOpen={showServiceRecordModal}
+        onClose={() => setShowServiceRecordModal(false)}
+        onSuccess={handleServiceRecordSuccess}
+        vehicles={filteredVehicles.map(({ vehicle }) => vehicle)}
+        preselectedVehicleId={selectedVehicleId}
+      />
+
+      {/* Service Detail Modal */}
+      <ServiceHistoryDetailModal
+        isOpen={showServiceDetailModal}
+        onClose={() => setShowServiceDetailModal(false)}
+        record={selectedServiceRecord}
+      />
     </div>
   );
 };
