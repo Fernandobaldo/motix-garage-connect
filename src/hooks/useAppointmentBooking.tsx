@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Vehicle {
   id: string;
@@ -23,6 +24,7 @@ interface Garage {
 export const useAppointmentBooking = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const permissions = usePermissions();
   
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState('');
@@ -92,6 +94,16 @@ export const useAppointmentBooking = () => {
       return false;
     }
 
+    // Check if user can create appointment based on plan limits
+    if (!permissions.canCreateAppointment) {
+      toast({
+        title: 'Appointment Limit Reached',
+        description: `You've reached your monthly appointment limit of ${permissions.limits.appointments}. Please upgrade your plan to book more appointments.`,
+        variant: 'destructive'
+      });
+      return false;
+    }
+
     setLoading(true);
 
     try {
@@ -101,6 +113,31 @@ export const useAppointmentBooking = () => {
         toast({
           title: 'Garage Error',
           description: 'Selected garage not found.',
+          variant: 'destructive'
+        });
+        return false;
+      }
+
+      // Check if garage can accept appointments (their plan limits)
+      const { data: canCreate, error: checkError } = await supabase
+        .rpc('can_create_appointment', {
+          p_tenant_id: garage.tenant_id
+        });
+
+      if (checkError) {
+        console.error('Error checking appointment limits:', checkError);
+        toast({
+          title: 'Error',
+          description: 'Unable to verify appointment availability.',
+          variant: 'destructive'
+        });
+        return false;
+      }
+
+      if (!canCreate) {
+        toast({
+          title: 'Workshop Unavailable',
+          description: 'This workshop has reached their monthly appointment limit.',
           variant: 'destructive'
         });
         return false;
@@ -119,7 +156,7 @@ export const useAppointmentBooking = () => {
         description,
         scheduled_at: scheduledAt.toISOString(),
         duration_minutes: 60,
-        status: 'pending' // Client appointments start as pending
+        status: 'pending'
       });
 
       const { error } = await supabase
@@ -133,7 +170,7 @@ export const useAppointmentBooking = () => {
           description,
           scheduled_at: scheduledAt.toISOString(),
           duration_minutes: 60,
-          status: 'pending' // Client appointments start as pending
+          status: 'pending'
         });
 
       if (error) {
@@ -190,5 +227,7 @@ export const useAppointmentBooking = () => {
     setSelectedWorkshop,
     loading,
     handleSubmit,
+    canCreateAppointment: permissions.canCreateAppointment,
+    appointmentLimitReached: !permissions.canCreateAppointment,
   };
 };

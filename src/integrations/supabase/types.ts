@@ -301,6 +301,42 @@ export type Database = {
           },
         ]
       }
+      monthly_usage: {
+        Row: {
+          appointments_count: number
+          created_at: string
+          id: string
+          month: number
+          storage_used: number
+          tenant_id: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          appointments_count?: number
+          created_at?: string
+          id?: string
+          month: number
+          storage_used?: number
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          appointments_count?: number
+          created_at?: string
+          id?: string
+          month?: number
+          storage_used?: number
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       notification_preferences: {
         Row: {
           created_at: string
@@ -421,6 +457,36 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      plan_changes: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          id: string
+          new_plan: string
+          old_plan: string | null
+          reason: string | null
+          tenant_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          id?: string
+          new_plan: string
+          old_plan?: string | null
+          reason?: string | null
+          tenant_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          new_plan?: string
+          old_plan?: string | null
+          reason?: string | null
+          tenant_id?: string
         }
         Relationships: []
       }
@@ -986,6 +1052,10 @@ export type Database = {
         Args: { quotation_uuid: string }
         Returns: undefined
       }
+      can_create_appointment: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
       check_overdue_maintenance: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1006,9 +1076,20 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_monthly_usage: {
+        Args: { p_tenant_id: string; p_user_id?: string }
+        Returns: {
+          appointments_used: number
+          storage_used: number
+        }[]
+      }
       get_user_tenant_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      increment_monthly_usage: {
+        Args: { p_tenant_id: string; p_user_id: string; p_type?: string }
+        Returns: undefined
       }
       user_belongs_to_tenant: {
         Args: { check_tenant_id: string }
