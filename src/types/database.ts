@@ -14,7 +14,16 @@ export type ChatParticipant = Tables<'chat_participants'>;
 
 // Extended Tenant type with subscription_plan
 export interface Tenant extends Tables<'tenants'> {
-  subscription_plan?: 'free' | 'starter' | 'pro' | 'enterprise';
+  subscription_plan: 'free' | 'starter' | 'pro' | 'enterprise';
+}
+
+// Tenant settings interface for type safety
+export interface TenantSettings {
+  address?: string;
+  phone?: string;
+  email?: string;
+  services_offered?: string[];
+  working_hours?: Record<string, any>;
 }
 
 // Extended types with relations

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { TenantSettings } from '@/types/database';
 import { Building, Settings, Save } from 'lucide-react';
 
 const TenantSetup = () => {
@@ -25,14 +26,15 @@ const TenantSetup = () => {
 
   useEffect(() => {
     if (tenant) {
+      const settings = (tenant.settings as TenantSettings) || {};
       setFormData({
         name: tenant.name || '',
         subdomain: tenant.subdomain || '',
-        address: tenant.settings?.address || '',
-        phone: tenant.settings?.phone || '',
-        email: tenant.settings?.email || '',
-        services_offered: tenant.settings?.services_offered || [],
-        working_hours: tenant.settings?.working_hours || {},
+        address: settings.address || '',
+        phone: settings.phone || '',
+        email: settings.email || '',
+        services_offered: settings.services_offered || [],
+        working_hours: settings.working_hours || {},
       });
     }
   }, [tenant]);

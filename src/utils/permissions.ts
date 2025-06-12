@@ -16,8 +16,10 @@ export type PlanType = 'free' | 'starter' | 'pro' | 'enterprise';
 export type FeatureType = keyof typeof planFeatures;
 
 export function hasAccess(plan: PlanType | string, feature: FeatureType): boolean {
-  // Fallback to free if plan is missing or invalid
-  const validPlan = planFeatures[feature].includes(plan as PlanType) ? plan as PlanType : 'free';
+  // Ensure plan is a valid PlanType, fallback to 'free' if invalid
+  const validPlan = (['free', 'starter', 'pro', 'enterprise'] as const).includes(plan as PlanType) 
+    ? (plan as PlanType) 
+    : 'free';
   return planFeatures[feature].includes(validPlan);
 }
 

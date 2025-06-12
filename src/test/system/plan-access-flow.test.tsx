@@ -72,8 +72,12 @@ describe('Plan Access Flow System Tests', () => {
         updated_at: new Date().toISOString(),
         phone: null,
       },
+      session: null,
       loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
       signOut: vi.fn(),
+      updateProfile: vi.fn(),
     });
 
     // Mock tenant with free plan
@@ -130,8 +134,12 @@ describe('Plan Access Flow System Tests', () => {
         updated_at: new Date().toISOString(),
         phone: null,
       },
+      session: null,
       loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
       signOut: vi.fn(),
+      updateProfile: vi.fn(),
     });
 
     // Mock tenant with enterprise plan
