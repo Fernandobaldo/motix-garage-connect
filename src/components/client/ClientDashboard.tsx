@@ -44,14 +44,14 @@ interface DashboardService {
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
-  // Completely bypass type inference with any
-  const { data: nextAppointment } = useQuery({
+  // Next appointment with no type inference
+  const nextAppointmentQuery = useQuery({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<DashboardAppointment | null> => {
       if (!user) return null;
       
       try {
-        const query = supabase
+        const { data, error } = await supabase
           .from('appointments')
           .select(`
             id,
@@ -64,47 +64,39 @@ const ClientDashboard = () => {
           .eq('client_id', user.id)
           .gte('scheduled_at', new Date().toISOString())
           .order('scheduled_at', { ascending: true })
-          .limit(1);
+          .limit(1)
+          .maybeSingle();
 
-        const { data, error } = await query.maybeSingle();
+        if (error || !data) return null;
 
-        if (error) {
-          console.error('Error fetching next appointment:', error);
-          return null;
-        }
-
-        if (!data) return null;
-
-        // Manual transformation to avoid type issues
-        const result: DashboardAppointment = {
-          id: data.id,
-          scheduled_at: data.scheduled_at,
-          service_type: data.service_type,
-          status: data.status,
-          workshop_name: (data as any).workshop?.name || undefined,
-          workshop_phone: (data as any).workshop?.phone || undefined,
-          vehicle_make: (data as any).vehicle?.make || undefined,
-          vehicle_model: (data as any).vehicle?.model || undefined,
-          vehicle_year: (data as any).vehicle?.year || undefined,
+        const rawData = data as any;
+        return {
+          id: rawData.id,
+          scheduled_at: rawData.scheduled_at,
+          service_type: rawData.service_type,
+          status: rawData.status,
+          workshop_name: rawData.workshop?.name,
+          workshop_phone: rawData.workshop?.phone,
+          vehicle_make: rawData.vehicle?.make,
+          vehicle_model: rawData.vehicle?.model,
+          vehicle_year: rawData.vehicle?.year,
         };
-
-        return result;
       } catch (error) {
-        console.error('Error in nextAppointment query:', error);
+        console.error('Error fetching next appointment:', error);
         return null;
       }
     },
     enabled: !!user,
-  }) as { data: DashboardAppointment | null | undefined };
+  });
 
-  // Completely bypass type inference with any
-  const { data: latestQuotation } = useQuery({
+  // Latest quotation with no type inference
+  const latestQuotationQuery = useQuery({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<DashboardQuotation | null> => {
       if (!user) return null;
       
       try {
-        const query = supabase
+        const { data, error } = await supabase
           .from('quotations')
           .select(`
             id,
@@ -116,44 +108,36 @@ const ClientDashboard = () => {
           `)
           .eq('client_id', user.id)
           .order('created_at', { ascending: false })
-          .limit(1);
+          .limit(1)
+          .maybeSingle();
 
-        const { data, error } = await query.maybeSingle();
+        if (error || !data) return null;
 
-        if (error) {
-          console.error('Error fetching latest quotation:', error);
-          return null;
-        }
-
-        if (!data) return null;
-
-        // Manual transformation to avoid type issues
-        const result: DashboardQuotation = {
-          id: data.id,
-          quote_number: data.quote_number,
-          total_cost: data.total_cost,
-          status: data.status,
-          created_at: data.created_at,
-          workshop_name: (data as any).workshop?.name || undefined,
+        const rawData = data as any;
+        return {
+          id: rawData.id,
+          quote_number: rawData.quote_number,
+          total_cost: rawData.total_cost,
+          status: rawData.status,
+          created_at: rawData.created_at,
+          workshop_name: rawData.workshop?.name,
         };
-
-        return result;
       } catch (error) {
-        console.error('Error in latestQuotation query:', error);
+        console.error('Error fetching latest quotation:', error);
         return null;
       }
     },
     enabled: !!user,
-  }) as { data: DashboardQuotation | null | undefined };
+  });
 
-  // Completely bypass type inference with any
-  const { data: lastService } = useQuery({
+  // Last service with no type inference
+  const lastServiceQuery = useQuery({
     queryKey: ['lastService', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<DashboardService | null> => {
       if (!user) return null;
       
       try {
-        const query = supabase
+        const { data, error } = await supabase
           .from('service_history')
           .select(`
             id,
@@ -164,36 +148,32 @@ const ClientDashboard = () => {
           `)
           .eq('user_id', user.id)
           .order('completed_at', { ascending: false })
-          .limit(1);
+          .limit(1)
+          .maybeSingle();
 
-        const { data, error } = await query.maybeSingle();
+        if (error || !data) return null;
 
-        if (error) {
-          console.error('Error fetching last service:', error);
-          return null;
-        }
-
-        if (!data) return null;
-
-        // Manual transformation to avoid type issues
-        const result: DashboardService = {
-          id: data.id,
-          service_type: data.service_type,
-          completed_at: data.completed_at,
-          workshop_name: (data as any).workshop?.name || undefined,
-          vehicle_make: (data as any).vehicle?.make || undefined,
-          vehicle_model: (data as any).vehicle?.model || undefined,
-          vehicle_year: (data as any).vehicle?.year || undefined,
+        const rawData = data as any;
+        return {
+          id: rawData.id,
+          service_type: rawData.service_type,
+          completed_at: rawData.completed_at,
+          workshop_name: rawData.workshop?.name,
+          vehicle_make: rawData.vehicle?.make,
+          vehicle_model: rawData.vehicle?.model,
+          vehicle_year: rawData.vehicle?.year,
         };
-
-        return result;
       } catch (error) {
-        console.error('Error in lastService query:', error);
+        console.error('Error fetching last service:', error);
         return null;
       }
     },
     enabled: !!user,
-  }) as { data: DashboardService | null | undefined };
+  });
+
+  const nextAppointment = nextAppointmentQuery.data;
+  const latestQuotation = latestQuotationQuery.data;
+  const lastService = lastServiceQuery.data;
 
   return (
     <div className="space-y-6">
