@@ -9,6 +9,64 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          target_tenant_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          target_tenant_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          target_tenant_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_actions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_actions_target_tenant_id_fkey"
+            columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_actions_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           client_id: string
@@ -812,8 +870,12 @@ export type Database = {
           id: string
           name: string
           settings: Json | null
+          status: string
           subdomain: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
+          suspended_at: string | null
+          suspended_by: string | null
+          trial_until: string | null
           updated_at: string
         }
         Insert: {
@@ -821,8 +883,12 @@ export type Database = {
           id?: string
           name: string
           settings?: Json | null
+          status?: string
           subdomain?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          suspended_at?: string | null
+          suspended_by?: string | null
+          trial_until?: string | null
           updated_at?: string
         }
         Update: {
@@ -830,11 +896,23 @@ export type Database = {
           id?: string
           name?: string
           settings?: Json | null
+          status?: string
           subdomain?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
+          suspended_at?: string | null
+          suspended_by?: string | null
+          trial_until?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tenants_suspended_by_fkey"
+            columns: ["suspended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicle_health_reports: {
         Row: {
@@ -1087,8 +1165,39 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_workshop_stats: {
+        Args: { workshop_tenant_id: string }
+        Returns: Json
+      }
       increment_monthly_usage: {
         Args: { p_tenant_id: string; p_user_id: string; p_type?: string }
+        Returns: undefined
+      }
+      is_superadmin: {
+        Args: { user_id?: string }
+        Returns: boolean
+      }
+      log_admin_action: {
+        Args: {
+          p_action_type: string
+          p_target_tenant_id?: string
+          p_target_user_id?: string
+          p_old_values?: Json
+          p_new_values?: Json
+          p_details?: Json
+        }
+        Returns: string
+      }
+      manage_workshop_status: {
+        Args: { p_tenant_id: string; p_new_status: string; p_reason?: string }
+        Returns: undefined
+      }
+      update_workshop_plan: {
+        Args: {
+          p_tenant_id: string
+          p_new_plan: string
+          p_trial_until?: string
+        }
         Returns: undefined
       }
       user_belongs_to_tenant: {

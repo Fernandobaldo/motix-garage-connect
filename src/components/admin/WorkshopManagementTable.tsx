@@ -67,32 +67,34 @@ const WorkshopManagementTable = () => {
 
       if (error) throw error;
 
-      // Get stats for each tenant using direct queries instead of RPC
+      // Get stats for each tenant using the new RPC function
       const workshopsWithStats = await Promise.all(
         (tenants || []).map(async (tenant) => {
-          // Count users
-          const { count: userCount } = await supabase
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('tenant_id', tenant.id);
+          const { data: stats, error: statsError } = await supabase
+            .rpc('get_workshop_stats', { workshop_tenant_id: tenant.id });
 
-          // Count appointments
-          const { count: appointmentCount } = await supabase
-            .from('appointments')
-            .select('*', { count: 'exact', head: true })
-            .eq('tenant_id', tenant.id);
+          if (statsError) {
+            console.error('Error fetching workshop stats:', statsError);
+            // Fallback to manual counting if RPC fails
+            const [userCount, appointmentCount, vehicleCount] = await Promise.all([
+              supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id),
+              supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id),
+              supabase.from('vehicles').select('*', { count: 'exact', head: true }).eq('tenant_id', tenant.id),
+            ]);
 
-          // Count vehicles
-          const { count: vehicleCount } = await supabase
-            .from('vehicles')
-            .select('*', { count: 'exact', head: true })
-            .eq('tenant_id', tenant.id);
+            return {
+              ...tenant,
+              user_count: userCount.count || 0,
+              appointment_count: appointmentCount.count || 0,
+              vehicle_count: vehicleCount.count || 0,
+            };
+          }
           
           return {
             ...tenant,
-            user_count: userCount || 0,
-            appointment_count: appointmentCount || 0,
-            vehicle_count: vehicleCount || 0,
+            user_count: stats?.user_count || 0,
+            appointment_count: stats?.appointment_count || 0,
+            vehicle_count: stats?.vehicle_count || 0,
           };
         })
       );
@@ -108,15 +110,12 @@ const WorkshopManagementTable = () => {
       newStatus: string; 
       reason?: string 
     }) => {
-      // Use direct update instead of RPC for now
       const { error } = await supabase
-        .from('tenants')
-        .update({ 
-          status: newStatus,
-          suspended_at: newStatus === 'suspended' ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', tenantId);
+        .rpc('manage_workshop_status', {
+          p_tenant_id: tenantId,
+          p_new_status: newStatus,
+          p_reason: reason
+        });
       
       if (error) throw error;
     },

@@ -49,15 +49,12 @@ const EditPlanModal = ({ workshop, open, onOpenChange }: EditPlanModalProps) => 
     mutationFn: async () => {
       const trialDate = trialUntil ? new Date(trialUntil).toISOString() : null;
       
-      // Use direct update instead of RPC for now
       const { error } = await supabase
-        .from('tenants')
-        .update({
-          subscription_plan: selectedPlan,
-          trial_until: trialDate,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', workshop.id);
+        .rpc('update_workshop_plan', {
+          p_tenant_id: workshop.id,
+          p_new_plan: selectedPlan,
+          p_trial_until: trialDate
+        });
       
       if (error) throw error;
     },
