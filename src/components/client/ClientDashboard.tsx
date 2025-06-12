@@ -9,55 +9,45 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
-// Simplified type definitions to avoid deep instantiation
-interface SimpleAppointment {
+// Very simple interfaces to avoid deep type instantiation
+interface DashboardAppointment {
   id: string;
   scheduled_at: string;
   service_type: string;
   status: string;
-  workshop: {
-    name: string;
-    phone: string;
-  } | null;
-  vehicle: {
-    make: string;
-    model: string;
-    year: number;
-  } | null;
+  workshop_name?: string;
+  workshop_phone?: string;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_year?: number;
 }
 
-interface SimpleQuotation {
+interface DashboardQuotation {
   id: string;
   quote_number: string;
   total_cost: number;
   status: string;
   created_at: string;
-  workshop: {
-    name: string;
-  } | null;
+  workshop_name?: string;
 }
 
-interface SimpleService {
+interface DashboardService {
   id: string;
   service_type: string;
   completed_at: string;
-  workshop: {
-    name: string;
-  } | null;
-  vehicle: {
-    make: string;
-    model: string;
-    year: number;
-  } | null;
+  workshop_name?: string;
+  vehicle_make?: string;
+  vehicle_model?: string;
+  vehicle_year?: number;
 }
 
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
-  // Fetch next upcoming appointment
-  const { data: nextAppointment } = useQuery<SimpleAppointment | null>({
+  // Fetch next upcoming appointment with explicit type
+  const { data: nextAppointment } = useQuery({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async (): Promise<SimpleAppointment | null> => {
+    queryFn: async (): Promise<DashboardAppointment | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
@@ -81,15 +71,28 @@ const ClientDashboard = () => {
         return null;
       }
 
-      return data as SimpleAppointment;
+      if (!data) return null;
+
+      // Transform to simple interface
+      return {
+        id: data.id,
+        scheduled_at: data.scheduled_at,
+        service_type: data.service_type,
+        status: data.status,
+        workshop_name: (data as any).workshop?.name,
+        workshop_phone: (data as any).workshop?.phone,
+        vehicle_make: (data as any).vehicle?.make,
+        vehicle_model: (data as any).vehicle?.model,
+        vehicle_year: (data as any).vehicle?.year,
+      };
     },
     enabled: !!user,
   });
 
-  // Fetch latest quotation
-  const { data: latestQuotation } = useQuery<SimpleQuotation | null>({
+  // Fetch latest quotation with explicit type
+  const { data: latestQuotation } = useQuery({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async (): Promise<SimpleQuotation | null> => {
+    queryFn: async (): Promise<DashboardQuotation | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
@@ -112,15 +115,25 @@ const ClientDashboard = () => {
         return null;
       }
 
-      return data as SimpleQuotation;
+      if (!data) return null;
+
+      // Transform to simple interface
+      return {
+        id: data.id,
+        quote_number: data.quote_number,
+        total_cost: data.total_cost,
+        status: data.status,
+        created_at: data.created_at,
+        workshop_name: (data as any).workshop?.name,
+      };
     },
     enabled: !!user,
   });
 
-  // Fetch last completed service - simplified query
-  const { data: lastService } = useQuery<SimpleService | null>({
+  // Fetch last completed service with explicit type
+  const { data: lastService } = useQuery({
     queryKey: ['lastService', user?.id],
-    queryFn: async (): Promise<SimpleService | null> => {
+    queryFn: async (): Promise<DashboardService | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
@@ -142,7 +155,18 @@ const ClientDashboard = () => {
         return null;
       }
 
-      return data as SimpleService;
+      if (!data) return null;
+
+      // Transform to simple interface
+      return {
+        id: data.id,
+        service_type: data.service_type,
+        completed_at: data.completed_at,
+        workshop_name: (data as any).workshop?.name,
+        vehicle_make: (data as any).vehicle?.make,
+        vehicle_model: (data as any).vehicle?.model,
+        vehicle_year: (data as any).vehicle?.year,
+      };
     },
     enabled: !!user,
   });
@@ -172,7 +196,7 @@ const ClientDashboard = () => {
                 <p className="text-xs text-muted-foreground">
                   {format(new Date(nextAppointment.scheduled_at), 'h:mm a')} - {nextAppointment.service_type}
                 </p>
-                <p className="text-sm">{nextAppointment.workshop?.name}</p>
+                <p className="text-sm">{nextAppointment.workshop_name}</p>
                 <Badge variant={nextAppointment.status === 'confirmed' ? 'default' : 'secondary'}>
                   {nextAppointment.status}
                 </Badge>
@@ -204,7 +228,7 @@ const ClientDashboard = () => {
                 <p className="text-xs text-muted-foreground">
                   {latestQuotation.quote_number}
                 </p>
-                <p className="text-sm">{latestQuotation.workshop?.name}</p>
+                <p className="text-sm">{latestQuotation.workshop_name}</p>
                 <Badge variant={
                   latestQuotation.status === 'approved' ? 'default' : 
                   latestQuotation.status === 'pending' ? 'secondary' : 'destructive'
@@ -239,7 +263,7 @@ const ClientDashboard = () => {
                 <p className="text-xs text-muted-foreground">
                   {lastService.service_type}
                 </p>
-                <p className="text-sm">{lastService.vehicle?.make} {lastService.vehicle?.model}</p>
+                <p className="text-sm">{lastService.vehicle_make} {lastService.vehicle_model}</p>
                 <Button asChild size="sm" variant="outline" className="w-full">
                   <Link to="/service-history">View Details</Link>
                 </Button>
