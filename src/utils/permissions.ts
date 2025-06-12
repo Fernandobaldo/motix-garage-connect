@@ -21,7 +21,7 @@ export function hasAccess(plan: PlanType | string, feature: FeatureType): boolea
   const validPlan = validPlans.includes(plan as PlanType) 
     ? (plan as PlanType) 
     : 'free';
-  return planFeatures[feature].includes(validPlan);
+  return (planFeatures[feature] as readonly PlanType[]).includes(validPlan);
 }
 
 export function getMinimumPlanForFeature(feature: FeatureType): PlanType {
