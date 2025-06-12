@@ -8,9 +8,7 @@ import {
   FileText, 
   History, 
   Car, 
-  Settings, 
-  Menu,
-  X
+  Settings
 } from 'lucide-react';
 
 const navigation = [
@@ -35,7 +33,7 @@ const ClientSidebar = () => {
           onClick={() => setIsOpen(!isOpen)}
           className="bg-white shadow-lg"
         >
-          {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          {isOpen ? '✕' : '☰'}
         </Button>
       </div>
 
