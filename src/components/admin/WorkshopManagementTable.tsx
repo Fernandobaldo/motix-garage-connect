@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -67,18 +67,32 @@ const WorkshopManagementTable = () => {
 
       if (error) throw error;
 
-      // Get stats for each tenant
+      // Get stats for each tenant using direct queries instead of RPC
       const workshopsWithStats = await Promise.all(
-        tenants.map(async (tenant) => {
-          const { data: stats } = await supabase.rpc('get_workshop_stats', {
-            workshop_tenant_id: tenant.id
-          });
+        (tenants || []).map(async (tenant) => {
+          // Count users
+          const { count: userCount } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', tenant.id);
+
+          // Count appointments
+          const { count: appointmentCount } = await supabase
+            .from('appointments')
+            .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', tenant.id);
+
+          // Count vehicles
+          const { count: vehicleCount } = await supabase
+            .from('vehicles')
+            .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', tenant.id);
           
           return {
             ...tenant,
-            user_count: stats?.user_count || 0,
-            appointment_count: stats?.appointment_count || 0,
-            vehicle_count: stats?.vehicle_count || 0,
+            user_count: userCount || 0,
+            appointment_count: appointmentCount || 0,
+            vehicle_count: vehicleCount || 0,
           };
         })
       );
@@ -94,11 +108,16 @@ const WorkshopManagementTable = () => {
       newStatus: string; 
       reason?: string 
     }) => {
-      const { error } = await supabase.rpc('manage_workshop_status', {
-        p_tenant_id: tenantId,
-        p_new_status: newStatus,
-        p_reason: reason
-      });
+      // Use direct update instead of RPC for now
+      const { error } = await supabase
+        .from('tenants')
+        .update({ 
+          status: newStatus,
+          suspended_at: newStatus === 'suspended' ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tenantId);
+      
       if (error) throw error;
     },
     onSuccess: () => {

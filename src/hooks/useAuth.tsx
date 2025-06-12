@@ -8,7 +8,7 @@ interface Profile {
   id: string;
   full_name: string;
   phone: string | null;
-  role: 'client' | 'workshop' | 'admin';
+  role: 'client' | 'workshop' | 'admin' | 'superadmin';
   tenant_id: string | null;
   created_at: string;
   updated_at: string;
