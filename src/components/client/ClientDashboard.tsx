@@ -9,54 +9,55 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
-interface AppointmentData {
+// Simplified type definitions to avoid deep instantiation
+interface SimpleAppointment {
   id: string;
   scheduled_at: string;
   service_type: string;
   status: string;
-  workshop?: {
+  workshop: {
     name: string;
     phone: string;
-  };
-  vehicle?: {
+  } | null;
+  vehicle: {
     make: string;
     model: string;
     year: number;
-  };
+  } | null;
 }
 
-interface QuotationData {
+interface SimpleQuotation {
   id: string;
   quote_number: string;
   total_cost: number;
   status: string;
   created_at: string;
-  workshop?: {
+  workshop: {
     name: string;
-  };
+  } | null;
 }
 
-interface ServiceData {
+interface SimpleService {
   id: string;
   service_type: string;
   completed_at: string;
-  workshop?: {
+  workshop: {
     name: string;
-  };
-  vehicle?: {
+  } | null;
+  vehicle: {
     make: string;
     model: string;
     year: number;
-  };
+  } | null;
 }
 
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
   // Fetch next upcoming appointment
-  const { data: nextAppointment } = useQuery<AppointmentData | null>({
+  const { data: nextAppointment } = useQuery<SimpleAppointment | null>({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async (): Promise<AppointmentData | null> => {
+    queryFn: async (): Promise<SimpleAppointment | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
@@ -80,15 +81,15 @@ const ClientDashboard = () => {
         return null;
       }
 
-      return data as AppointmentData;
+      return data as SimpleAppointment;
     },
     enabled: !!user,
   });
 
   // Fetch latest quotation
-  const { data: latestQuotation } = useQuery<QuotationData | null>({
+  const { data: latestQuotation } = useQuery<SimpleQuotation | null>({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async (): Promise<QuotationData | null> => {
+    queryFn: async (): Promise<SimpleQuotation | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
@@ -111,15 +112,15 @@ const ClientDashboard = () => {
         return null;
       }
 
-      return data as QuotationData;
+      return data as SimpleQuotation;
     },
     enabled: !!user,
   });
 
-  // Fetch last completed service
-  const { data: lastService } = useQuery<ServiceData | null>({
+  // Fetch last completed service - simplified query
+  const { data: lastService } = useQuery<SimpleService | null>({
     queryKey: ['lastService', user?.id],
-    queryFn: async (): Promise<ServiceData | null> => {
+    queryFn: async (): Promise<SimpleService | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
@@ -141,7 +142,7 @@ const ClientDashboard = () => {
         return null;
       }
 
-      return data as ServiceData;
+      return data as SimpleService;
     },
     enabled: !!user,
   });
