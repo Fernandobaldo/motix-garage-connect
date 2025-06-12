@@ -105,6 +105,11 @@ test.describe('Public Booking Workflow E2E', () => {
     
     // Should show appropriate error message
     const errorContent = await page.textContent('body');
-    expect(errorContent).toContain('not found' || 'error' || 'unavailable');
+    // Fixed: Use individual checks instead of always truthy OR expression
+    const hasNotFound = errorContent?.includes('not found');
+    const hasError = errorContent?.includes('error');
+    const hasUnavailable = errorContent?.includes('unavailable');
+    
+    expect(hasNotFound || hasError || hasUnavailable).toBe(true);
   });
 });
