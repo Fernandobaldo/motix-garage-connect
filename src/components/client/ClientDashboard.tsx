@@ -44,111 +44,167 @@ interface DashboardService {
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
-  // Next appointment - simplified query
+  // Next appointment - completely simplified
   const nextAppointmentQuery = useQuery({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<DashboardAppointment | null> => {
       if (!user) return null;
       
-      const { data } = await supabase
-        .from('appointments')
-        .select(`
-          id,
-          scheduled_at,
-          service_type,
-          status,
-          workshop:workshops!appointments_workshop_id_fkey(name, phone),
-          vehicle:vehicles!appointments_vehicle_id_fkey(make, model, year)
-        `)
-        .eq('client_id', user.id)
-        .gte('scheduled_at', new Date().toISOString())
-        .order('scheduled_at', { ascending: true })
-        .limit(1);
+      try {
+        // Get appointment data first
+        const { data: appointments } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('client_id', user.id)
+          .gte('scheduled_at', new Date().toISOString())
+          .order('scheduled_at', { ascending: true })
+          .limit(1);
 
-      if (!data || data.length === 0) return null;
+        if (!appointments || appointments.length === 0) return null;
 
-      const item = data[0] as any;
-      return {
-        id: item.id,
-        scheduled_at: item.scheduled_at,
-        service_type: item.service_type,
-        status: item.status,
-        workshop_name: item.workshop?.name,
-        workshop_phone: item.workshop?.phone,
-        vehicle_make: item.vehicle?.make,
-        vehicle_model: item.vehicle?.model,
-        vehicle_year: item.vehicle?.year,
-      } as DashboardAppointment;
+        const appointment = appointments[0];
+        
+        // Get workshop data separately if needed
+        let workshopData = null;
+        if (appointment.workshop_id) {
+          const { data: workshop } = await supabase
+            .from('workshops')
+            .select('name, phone')
+            .eq('id', appointment.workshop_id)
+            .single();
+          workshopData = workshop;
+        }
+
+        // Get vehicle data separately if needed
+        let vehicleData = null;
+        if (appointment.vehicle_id) {
+          const { data: vehicle } = await supabase
+            .from('vehicles')
+            .select('make, model, year')
+            .eq('id', appointment.vehicle_id)
+            .single();
+          vehicleData = vehicle;
+        }
+
+        return {
+          id: appointment.id,
+          scheduled_at: appointment.scheduled_at,
+          service_type: appointment.service_type,
+          status: appointment.status,
+          workshop_name: workshopData?.name,
+          workshop_phone: workshopData?.phone,
+          vehicle_make: vehicleData?.make,
+          vehicle_model: vehicleData?.model,
+          vehicle_year: vehicleData?.year,
+        };
+      } catch (error) {
+        console.error('Error fetching next appointment:', error);
+        return null;
+      }
     },
     enabled: !!user,
   });
 
-  // Latest quotation - simplified query
+  // Latest quotation - completely simplified
   const latestQuotationQuery = useQuery({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<DashboardQuotation | null> => {
       if (!user) return null;
       
-      const { data } = await supabase
-        .from('quotations')
-        .select(`
-          id,
-          quote_number,
-          total_cost,
-          status,
-          created_at,
-          workshop:workshops!quotations_workshop_id_fkey(name)
-        `)
-        .eq('client_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
+      try {
+        // Get quotation data first
+        const { data: quotations } = await supabase
+          .from('quotations')
+          .select('*')
+          .eq('client_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
 
-      if (!data || data.length === 0) return null;
+        if (!quotations || quotations.length === 0) return null;
 
-      const item = data[0] as any;
-      return {
-        id: item.id,
-        quote_number: item.quote_number,
-        total_cost: item.total_cost,
-        status: item.status,
-        created_at: item.created_at,
-        workshop_name: item.workshop?.name,
-      } as DashboardQuotation;
+        const quotation = quotations[0];
+        
+        // Get workshop data separately if needed
+        let workshopData = null;
+        if (quotation.workshop_id) {
+          const { data: workshop } = await supabase
+            .from('workshops')
+            .select('name')
+            .eq('id', quotation.workshop_id)
+            .single();
+          workshopData = workshop;
+        }
+
+        return {
+          id: quotation.id,
+          quote_number: quotation.quote_number,
+          total_cost: quotation.total_cost,
+          status: quotation.status,
+          created_at: quotation.created_at,
+          workshop_name: workshopData?.name,
+        };
+      } catch (error) {
+        console.error('Error fetching latest quotation:', error);
+        return null;
+      }
     },
     enabled: !!user,
   });
 
-  // Last service - simplified query
+  // Last service - completely simplified
   const lastServiceQuery = useQuery({
     queryKey: ['lastService', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<DashboardService | null> => {
       if (!user) return null;
       
-      const { data } = await supabase
-        .from('service_history')
-        .select(`
-          id,
-          service_type,
-          completed_at,
-          workshop:workshops!service_history_workshop_id_fkey(name),
-          vehicle:vehicles!service_history_vehicle_id_fkey(make, model, year)
-        `)
-        .eq('user_id', user.id)
-        .order('completed_at', { ascending: false })
-        .limit(1);
+      try {
+        // Get service history data first
+        const { data: services } = await supabase
+          .from('service_history')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('completed_at', { ascending: false })
+          .limit(1);
 
-      if (!data || data.length === 0) return null;
+        if (!services || services.length === 0) return null;
 
-      const item = data[0] as any;
-      return {
-        id: item.id,
-        service_type: item.service_type,
-        completed_at: item.completed_at,
-        workshop_name: item.workshop?.name,
-        vehicle_make: item.vehicle?.make,  
-        vehicle_model: item.vehicle?.model,
-        vehicle_year: item.vehicle?.year,
-      } as DashboardService;
+        const service = services[0];
+        
+        // Get workshop data separately if needed
+        let workshopData = null;
+        if (service.workshop_id) {
+          const { data: workshop } = await supabase
+            .from('workshops')
+            .select('name')
+            .eq('id', service.workshop_id)
+            .single();
+          workshopData = workshop;
+        }
+
+        // Get vehicle data separately if needed
+        let vehicleData = null;
+        if (service.vehicle_id) {
+          const { data: vehicle } = await supabase
+            .from('vehicles')
+            .select('make, model, year')
+            .eq('id', service.vehicle_id)
+            .single();
+          vehicleData = vehicle;
+        }
+
+        return {
+          id: service.id,
+          service_type: service.service_type,
+          completed_at: service.completed_at,
+          workshop_name: workshopData?.name,
+          vehicle_make: vehicleData?.make,
+          vehicle_model: vehicleData?.model,
+          vehicle_year: vehicleData?.year,
+        };
+      } catch (error) {
+        console.error('Error fetching last service:', error);
+        return null;
+      }
     },
     enabled: !!user,
   });
