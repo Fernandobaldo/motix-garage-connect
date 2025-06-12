@@ -22,12 +22,15 @@ describe('Permission System', () => {
       expect(hasAccess('starter', 'chat')).toBe(true);
       expect(hasAccess('starter', 'sms')).toBe(true);
       expect(hasAccess('starter', 'quotations')).toBe(true);
+      expect(hasAccess('starter', 'file_upload_chat')).toBe(true);
+      expect(hasAccess('starter', 'custom_branding_basic')).toBe(true);
     });
 
     it('should deny starter users access to pro/enterprise features', () => {
-      expect(hasAccess('starter', 'file_upload_chat')).toBe(false);
       expect(hasAccess('starter', 'inventory')).toBe(false);
       expect(hasAccess('starter', 'api_access')).toBe(false);
+      expect(hasAccess('starter', 'multiple_workshops')).toBe(false);
+      expect(hasAccess('starter', 'custom_branding_full')).toBe(false);
     });
 
     it('should allow pro users access to pro features', () => {
@@ -37,7 +40,8 @@ describe('Permission System', () => {
       expect(hasAccess('pro', 'file_upload_chat')).toBe(true);
       expect(hasAccess('pro', 'inventory')).toBe(true);
       expect(hasAccess('pro', 'multiple_workshops')).toBe(true);
-      expect(hasAccess('pro', 'custom_branding')).toBe(true);
+      expect(hasAccess('pro', 'custom_branding_basic')).toBe(true);
+      expect(hasAccess('pro', 'custom_branding_full')).toBe(true);
     });
 
     it('should deny pro users access to enterprise features', () => {
@@ -64,24 +68,25 @@ describe('Permission System', () => {
     it('should return correct minimum plans', () => {
       expect(getMinimumPlanForFeature('appointment')).toBe('free');
       expect(getMinimumPlanForFeature('chat')).toBe('starter');
-      expect(getMinimumPlanForFeature('file_upload_chat')).toBe('pro');
+      expect(getMinimumPlanForFeature('file_upload_chat')).toBe('starter');
+      expect(getMinimumPlanForFeature('inventory')).toBe('pro');
       expect(getMinimumPlanForFeature('api_access')).toBe('enterprise');
     });
   });
 
   describe('getUpgradeMessage', () => {
     it('should return correct upgrade messages', () => {
-      expect(getUpgradeMessage('chat')).toBe('This feature is available starting from the starter plan.');
-      expect(getUpgradeMessage('file_upload_chat')).toBe('This feature is available starting from the pro plan.');
-      expect(getUpgradeMessage('api_access')).toBe('This feature is available starting from the enterprise plan.');
+      expect(getUpgradeMessage('chat')).toBe('This feature is available starting from the Starter plan.');
+      expect(getUpgradeMessage('inventory')).toBe('This feature is available starting from the Pro plan.');
+      expect(getUpgradeMessage('api_access')).toBe('This feature is available starting from the Enterprise plan.');
     });
   });
 
   describe('getPlanLimits', () => {
     it('should return correct limits for each plan', () => {
       const freeLimits = getPlanLimits('free');
-      expect(freeLimits.appointments).toBe(10);
-      expect(freeLimits.vehicles).toBe(3);
+      expect(freeLimits.appointments).toBe(20);
+      expect(freeLimits.vehicles).toBe(5);
       expect(freeLimits.storage).toBe('100MB');
 
       const enterpriseLimits = getPlanLimits('enterprise');
