@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
-// Very simple interfaces to avoid deep type instantiation
+// Simple interfaces without complex relations
 interface DashboardAppointment {
   id: string;
   scheduled_at: string;
@@ -44,10 +44,10 @@ interface DashboardService {
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
-  // Fetch next upcoming appointment with explicit type
-  const { data: nextAppointment } = useQuery({
+  // Fetch next upcoming appointment with aggressive type assertion
+  const { data: nextAppointment } = useQuery<DashboardAppointment | null>({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async (): Promise<DashboardAppointment | null> => {
+    queryFn: async () => {
       if (!user) return null;
       
       const { data, error } = await supabase
@@ -64,7 +64,7 @@ const ClientDashboard = () => {
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle() as { data: any; error: any };
 
       if (error) {
         console.error('Error fetching next appointment:', error);
@@ -73,26 +73,28 @@ const ClientDashboard = () => {
 
       if (!data) return null;
 
-      // Transform to simple interface
-      return {
+      // Simple transformation with type assertion
+      const result: DashboardAppointment = {
         id: data.id,
         scheduled_at: data.scheduled_at,
         service_type: data.service_type,
         status: data.status,
-        workshop_name: (data as any).workshop?.name,
-        workshop_phone: (data as any).workshop?.phone,
-        vehicle_make: (data as any).vehicle?.make,
-        vehicle_model: (data as any).vehicle?.model,
-        vehicle_year: (data as any).vehicle?.year,
+        workshop_name: data.workshop?.name,
+        workshop_phone: data.workshop?.phone,
+        vehicle_make: data.vehicle?.make,
+        vehicle_model: data.vehicle?.model,
+        vehicle_year: data.vehicle?.year,
       };
+
+      return result;
     },
     enabled: !!user,
   });
 
-  // Fetch latest quotation with explicit type
-  const { data: latestQuotation } = useQuery({
+  // Fetch latest quotation with aggressive type assertion
+  const { data: latestQuotation } = useQuery<DashboardQuotation | null>({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async (): Promise<DashboardQuotation | null> => {
+    queryFn: async () => {
       if (!user) return null;
       
       const { data, error } = await supabase
@@ -108,7 +110,7 @@ const ClientDashboard = () => {
         .eq('client_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle() as { data: any; error: any };
 
       if (error) {
         console.error('Error fetching latest quotation:', error);
@@ -117,23 +119,25 @@ const ClientDashboard = () => {
 
       if (!data) return null;
 
-      // Transform to simple interface
-      return {
+      // Simple transformation with type assertion
+      const result: DashboardQuotation = {
         id: data.id,
         quote_number: data.quote_number,
         total_cost: data.total_cost,
         status: data.status,
         created_at: data.created_at,
-        workshop_name: (data as any).workshop?.name,
+        workshop_name: data.workshop?.name,
       };
+
+      return result;
     },
     enabled: !!user,
   });
 
-  // Fetch last completed service with explicit type
-  const { data: lastService } = useQuery({
+  // Fetch last completed service with aggressive type assertion
+  const { data: lastService } = useQuery<DashboardService | null>({
     queryKey: ['lastService', user?.id],
-    queryFn: async (): Promise<DashboardService | null> => {
+    queryFn: async () => {
       if (!user) return null;
       
       const { data, error } = await supabase
@@ -148,7 +152,7 @@ const ClientDashboard = () => {
         .eq('user_id', user.id)
         .order('completed_at', { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle() as { data: any; error: any };
 
       if (error) {
         console.error('Error fetching last service:', error);
@@ -157,16 +161,18 @@ const ClientDashboard = () => {
 
       if (!data) return null;
 
-      // Transform to simple interface
-      return {
+      // Simple transformation with type assertion
+      const result: DashboardService = {
         id: data.id,
         service_type: data.service_type,
         completed_at: data.completed_at,
-        workshop_name: (data as any).workshop?.name,
-        vehicle_make: (data as any).vehicle?.make,
-        vehicle_model: (data as any).vehicle?.model,
-        vehicle_year: (data as any).vehicle?.year,
+        workshop_name: data.workshop?.name,
+        vehicle_make: data.vehicle?.make,
+        vehicle_model: data.vehicle?.model,
+        vehicle_year: data.vehicle?.year,
       };
+
+      return result;
     },
     enabled: !!user,
   });
