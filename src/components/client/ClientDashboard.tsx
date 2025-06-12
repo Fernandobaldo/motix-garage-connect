@@ -73,9 +73,9 @@ const ClientDashboard = () => {
         .gte('scheduled_at', new Date().toISOString())
         .order('scheduled_at', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching next appointment:', error);
         return null;
       }
@@ -104,9 +104,9 @@ const ClientDashboard = () => {
         .eq('client_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching latest quotation:', error);
         return null;
       }
@@ -134,9 +134,9 @@ const ClientDashboard = () => {
         .eq('user_id', user.id)
         .order('completed_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching last service:', error);
         return null;
       }
