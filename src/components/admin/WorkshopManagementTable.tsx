@@ -97,8 +97,8 @@ const WorkshopManagementTable = () => {
             };
           }
           
-          // Type cast the JSON response to our expected structure
-          const workshopStats = stats as WorkshopStats;
+          // Type cast the JSON response to our expected structure through unknown
+          const workshopStats = stats as unknown as WorkshopStats;
           
           return {
             ...tenant,
