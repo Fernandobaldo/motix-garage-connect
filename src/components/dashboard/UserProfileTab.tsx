@@ -2,6 +2,7 @@
 import UserProfile from "@/components/profile/UserProfile";
 import RoleGuard from "@/components/auth/RoleGuard";
 import WorkshopManager from "@/components/workshop/WorkshopManager";
+import PublicLinkManager from "@/components/workshop/PublicLinkManager";
 import { Separator } from "@/components/ui/separator";
 
 const UserProfileTab = () => {
@@ -12,6 +13,9 @@ const UserProfileTab = () => {
       <RoleGuard allowedRoles={['workshop']}>
         <Separator />
         <WorkshopManager />
+        
+        <Separator />
+        <PublicLinkManager />
       </RoleGuard>
     </div>
   );
