@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,10 +20,7 @@ interface VehicleServiceDashboardProps {
   onVehicleChange?: (vehicleId: string) => void;
 }
 
-const VehicleServiceDashboard = ({ selectedVehicleI
-
-
-onVehicleChange }: VehicleServiceDashboardProps) => {
+const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: VehicleServiceDashboardProps) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showServiceRecordModal, setShowServiceRecordModal] = useState(false);
   const [showServiceDetailModal, setShowServiceDetailModal] = useState(false);
@@ -85,22 +81,18 @@ onVehicleChange }: VehicleServiceDashboardProps) => {
 
   const handleMarkScheduleCompleted = (schedule: MaintenanceSchedule) => {
     console.log('Mark schedule completed:', schedule);
-    // TODO: Implement mark as completed functionality
   };
 
   const handleEditSchedule = (schedule: MaintenanceSchedule) => {
     console.log('Edit schedule:', schedule);
-    // TODO: Implement edit schedule modal/form
   };
 
   const handleViewHealthReport = (report: VehicleHealthReport) => {
     console.log('View health report:', report);
-    // TODO: Implement health report details modal/page
   };
 
   const handleCreateHealthReport = () => {
     console.log('Create health report');
-    // TODO: Implement create health report modal/form
   };
 
   const handleAddServiceRecord = () => {
@@ -109,8 +101,7 @@ onVehicleChange }: VehicleServiceDashboardProps) => {
 
   const handleServiceRecordSuccess = () => {
     setShowServiceRecordModal(false);
-    // Refresh service history data
-    window.location.reload(); // Simple refresh for now
+    window.location.reload();
   };
 
   const getOverallVehicleStats = () => {
