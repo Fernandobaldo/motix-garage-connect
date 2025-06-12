@@ -1,9 +1,11 @@
 
 import { useAuth } from "@/hooks/useAuth";
-import { Tabs } from "@/components/ui/tabs";
-import TenantStats from "@/components/dashboard/TenantStats";
 import LandingPage from "@/components/landing/LandingPage";
-import AppHeader from "@/components/layout/AppHeader";
+import ClientLayout from "@/components/layout/ClientLayout";
+import WorkshopLayout from "@/components/layout/WorkshopLayout";
+import ClientDashboard from "@/components/client/ClientDashboard";
+import TenantStats from "@/components/dashboard/TenantStats";
+import { Tabs } from "@/components/ui/tabs";
 import DashboardTabs from "@/components/layout/DashboardTabs";
 import DashboardContent from "@/components/layout/DashboardContent";
 import { useDashboardNavigation } from "@/hooks/useDashboardNavigation";
@@ -29,24 +31,30 @@ const Index = () => {
 
   const userRole = profile.role as 'client' | 'workshop';
 
+  // Client Experience - Simple dashboard
+  if (userRole === 'client') {
+    return (
+      <ClientLayout>
+        <ClientDashboard />
+      </ClientLayout>
+    );
+  }
+
+  // Workshop Experience - Full admin dashboard
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader />
+    <WorkshopLayout>
+      <div className="mb-6">
+        <TenantStats onCardClick={handleCardClick} />
+      </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <TenantStats onCardClick={handleCardClick} />
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <DashboardTabs userRole={userRole} />
-          <DashboardContent 
-            userRole={userRole} 
-            selectedAppointmentId={selectedAppointmentId} 
-          />
-        </Tabs>
-      </main>
-    </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <DashboardTabs userRole={userRole} />
+        <DashboardContent 
+          userRole={userRole} 
+          selectedAppointmentId={selectedAppointmentId} 
+        />
+      </Tabs>
+    </WorkshopLayout>
   );
 };
 
