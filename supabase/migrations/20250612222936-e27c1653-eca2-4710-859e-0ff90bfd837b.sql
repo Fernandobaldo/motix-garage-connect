@@ -68,7 +68,7 @@ BEGIN
     generated_slug,
     true
   )
-  RETURNING id, slug INTO new_link_id, new_link_slug;
+  RETURNING workshop_public_links.id, workshop_public_links.slug INTO new_link_id, new_link_slug;
   
   -- Return new link (removed ambiguous aliases)
   RETURN QUERY SELECT 
