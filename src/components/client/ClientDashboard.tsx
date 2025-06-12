@@ -9,19 +9,63 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
+interface AppointmentData {
+  id: string;
+  scheduled_at: string;
+  service_type: string;
+  status: string;
+  workshop?: {
+    name: string;
+    phone: string;
+  };
+  vehicle?: {
+    make: string;
+    model: string;
+    year: number;
+  };
+}
+
+interface QuotationData {
+  id: string;
+  quote_number: string;
+  total_cost: number;
+  status: string;
+  created_at: string;
+  workshop?: {
+    name: string;
+  };
+}
+
+interface ServiceData {
+  id: string;
+  service_type: string;
+  completed_at: string;
+  workshop?: {
+    name: string;
+  };
+  vehicle?: {
+    make: string;
+    model: string;
+    year: number;
+  };
+}
+
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
   // Fetch next upcoming appointment
-  const { data: nextAppointment } = useQuery({
+  const { data: nextAppointment } = useQuery<AppointmentData | null>({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<AppointmentData | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
         .from('appointments')
         .select(`
-          *,
+          id,
+          scheduled_at,
+          service_type,
+          status,
           workshop:workshops!appointments_workshop_id_fkey(name, phone),
           vehicle:vehicles!appointments_vehicle_id_fkey(make, model, year)
         `)
@@ -36,21 +80,25 @@ const ClientDashboard = () => {
         return null;
       }
 
-      return data;
+      return data as AppointmentData;
     },
     enabled: !!user,
   });
 
   // Fetch latest quotation
-  const { data: latestQuotation } = useQuery({
+  const { data: latestQuotation } = useQuery<QuotationData | null>({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<QuotationData | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
         .from('quotations')
         .select(`
-          *,
+          id,
+          quote_number,
+          total_cost,
+          status,
+          created_at,
           workshop:workshops!quotations_workshop_id_fkey(name)
         `)
         .eq('client_id', user.id)
@@ -63,25 +111,27 @@ const ClientDashboard = () => {
         return null;
       }
 
-      return data;
+      return data as QuotationData;
     },
     enabled: !!user,
   });
 
   // Fetch last completed service
-  const { data: lastService } = useQuery({
+  const { data: lastService } = useQuery<ServiceData | null>({
     queryKey: ['lastService', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<ServiceData | null> => {
       if (!user) return null;
       
       const { data, error } = await supabase
         .from('service_history')
         .select(`
-          *,
+          id,
+          service_type,
+          completed_at,
           workshop:workshops!service_history_workshop_id_fkey(name),
           vehicle:vehicles!service_history_vehicle_id_fkey(make, model, year)
         `)
-        .eq('client_id', user.id)
+        .eq('user_id', user.id)
         .order('completed_at', { ascending: false })
         .limit(1)
         .single();
@@ -91,7 +141,7 @@ const ClientDashboard = () => {
         return null;
       }
 
-      return data;
+      return data as ServiceData;
     },
     enabled: !!user,
   });
