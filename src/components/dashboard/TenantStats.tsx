@@ -2,6 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
+import PlanBadge from '@/components/permissions/PlanBadge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Building, Users, Calendar, MessageSquare } from 'lucide-react';
@@ -13,6 +15,7 @@ interface TenantStatsProps {
 const TenantStats = ({ onCardClick }: TenantStatsProps) => {
   const { tenant, loading } = useTenant();
   const { profile } = useAuth();
+  const { plan, limits } = usePermissions();
 
   // Fetch real appointment stats
   const { data: appointmentStats } = useQuery({
@@ -158,7 +161,10 @@ const TenantStats = ({ onCardClick }: TenantStatsProps) => {
       {tenant && (
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{tenant.name}</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-gray-900">{tenant.name}</h2>
+              <PlanBadge plan={plan} />
+            </div>
             <p className="text-gray-600">
               {profile?.role === 'workshop' ? 'Garage Dashboard' : 'Customer Dashboard'}
             </p>
@@ -182,7 +188,8 @@ const TenantStats = ({ onCardClick }: TenantStatsProps) => {
           <CardContent>
             <div className="text-2xl font-bold">{appointmentStats?.active || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {appointmentStats?.total || 0} total appointments
+              {appointmentStats?.total || 0} total
+              {limits.appointments !== -1 && ` / ${limits.appointments} limit`}
             </p>
           </CardContent>
         </Card>
@@ -221,7 +228,9 @@ const TenantStats = ({ onCardClick }: TenantStatsProps) => {
               }
             </div>
             <p className="text-xs text-muted-foreground">
-              {profile?.role === 'workshop' ? 'registered clients' : 'registered vehicles'}
+              {profile?.role === 'workshop' ? 'registered clients' : 
+                `registered vehicles${limits.vehicles !== -1 ? ` / ${limits.vehicles} limit` : ''}`
+              }
             </p>
           </CardContent>
         </Card>

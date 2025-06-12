@@ -3,6 +3,7 @@ import ConversationsList from './ConversationsList';
 import ChatWindow from './ChatWindow';
 import ChatAccessRestriction from './ChatAccessRestriction';
 import ChatHeader from './ChatHeader';
+import FeatureAccess from '@/components/permissions/FeatureAccess';
 import { useChatInterface } from '@/hooks/useChatInterface';
 import type { ChatInterfaceProps } from '@/types/database';
 
@@ -33,30 +34,32 @@ const ChatInterface = ({ appointmentId }: ChatInterfaceProps) => {
   }
 
   return (
-    <div className="space-y-4">
-      <ChatHeader 
-        appointment={appointment}
-        onCreateNewChat={handleCreateNewChat}
-      />
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ConversationsList 
-          conversations={conversations}
-          selectedConversation={selectedConversation}
-          onSelectConversation={setSelectedConversation}
-          currentUserId={user?.id}
+    <FeatureAccess feature="chat">
+      <div className="space-y-4">
+        <ChatHeader 
+          appointment={appointment}
+          onCreateNewChat={handleCreateNewChat}
         />
-        <ChatWindow
-          selectedConversation={selectedConversation}
-          conversations={conversations}
-          messages={messages}
-          currentUserId={user?.id}
-          onSendMessage={handleSendMessage}
-          onFileUploaded={handleFileUploaded}
-          onTranslationComplete={handleTranslationComplete}
-        />
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <ConversationsList 
+            conversations={conversations}
+            selectedConversation={selectedConversation}
+            onSelectConversation={setSelectedConversation}
+            currentUserId={user?.id}
+          />
+          <ChatWindow
+            selectedConversation={selectedConversation}
+            conversations={conversations}
+            messages={messages}
+            currentUserId={user?.id}
+            onSendMessage={handleSendMessage}
+            onFileUploaded={handleFileUploaded}
+            onTranslationComplete={handleTranslationComplete}
+          />
+        </div>
       </div>
-    </div>
+    </FeatureAccess>
   );
 };
 

@@ -747,6 +747,7 @@ export type Database = {
           name: string
           settings: Json | null
           subdomain: string | null
+          subscription_plan: Database["public"]["Enums"]["subscription_plan"]
           updated_at: string
         }
         Insert: {
@@ -755,6 +756,7 @@ export type Database = {
           name: string
           settings?: Json | null
           subdomain?: string | null
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           updated_at?: string
         }
         Update: {
@@ -763,6 +765,7 @@ export type Database = {
           name?: string
           settings?: Json | null
           subdomain?: string | null
+          subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           updated_at?: string
         }
         Relationships: []
@@ -1013,6 +1016,7 @@ export type Database = {
       }
     }
     Enums: {
+      subscription_plan: "free" | "starter" | "pro" | "enterprise"
       user_role: "client" | "workshop" | "admin"
     }
     CompositeTypes: {
@@ -1129,6 +1133,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      subscription_plan: ["free", "starter", "pro", "enterprise"],
       user_role: ["client", "workshop", "admin"],
     },
   },
