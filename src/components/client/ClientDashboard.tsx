@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
-// Simple interfaces without complex relations
+// Simple interfaces for dashboard data
 interface DashboardAppointment {
   id: string;
   scheduled_at: string;
@@ -44,129 +44,111 @@ interface DashboardService {
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
-  // Next appointment with no type inference
+  // Next appointment - simplified query
   const nextAppointmentQuery = useQuery({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async (): Promise<DashboardAppointment | null> => {
+    queryFn: async () => {
       if (!user) return null;
       
-      try {
-        const { data, error } = await supabase
-          .from('appointments')
-          .select(`
-            id,
-            scheduled_at,
-            service_type,
-            status,
-            workshop:workshops!appointments_workshop_id_fkey(name, phone),
-            vehicle:vehicles!appointments_vehicle_id_fkey(make, model, year)
-          `)
-          .eq('client_id', user.id)
-          .gte('scheduled_at', new Date().toISOString())
-          .order('scheduled_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
+      const { data } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          scheduled_at,
+          service_type,
+          status,
+          workshop:workshops!appointments_workshop_id_fkey(name, phone),
+          vehicle:vehicles!appointments_vehicle_id_fkey(make, model, year)
+        `)
+        .eq('client_id', user.id)
+        .gte('scheduled_at', new Date().toISOString())
+        .order('scheduled_at', { ascending: true })
+        .limit(1);
 
-        if (error || !data) return null;
+      if (!data || data.length === 0) return null;
 
-        const rawData = data as any;
-        return {
-          id: rawData.id,
-          scheduled_at: rawData.scheduled_at,
-          service_type: rawData.service_type,
-          status: rawData.status,
-          workshop_name: rawData.workshop?.name,
-          workshop_phone: rawData.workshop?.phone,
-          vehicle_make: rawData.vehicle?.make,
-          vehicle_model: rawData.vehicle?.model,
-          vehicle_year: rawData.vehicle?.year,
-        };
-      } catch (error) {
-        console.error('Error fetching next appointment:', error);
-        return null;
-      }
+      const item = data[0] as any;
+      return {
+        id: item.id,
+        scheduled_at: item.scheduled_at,
+        service_type: item.service_type,
+        status: item.status,
+        workshop_name: item.workshop?.name,
+        workshop_phone: item.workshop?.phone,
+        vehicle_make: item.vehicle?.make,
+        vehicle_model: item.vehicle?.model,
+        vehicle_year: item.vehicle?.year,
+      } as DashboardAppointment;
     },
     enabled: !!user,
   });
 
-  // Latest quotation with no type inference
+  // Latest quotation - simplified query
   const latestQuotationQuery = useQuery({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async (): Promise<DashboardQuotation | null> => {
+    queryFn: async () => {
       if (!user) return null;
       
-      try {
-        const { data, error } = await supabase
-          .from('quotations')
-          .select(`
-            id,
-            quote_number,
-            total_cost,
-            status,
-            created_at,
-            workshop:workshops!quotations_workshop_id_fkey(name)
-          `)
-          .eq('client_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      const { data } = await supabase
+        .from('quotations')
+        .select(`
+          id,
+          quote_number,
+          total_cost,
+          status,
+          created_at,
+          workshop:workshops!quotations_workshop_id_fkey(name)
+        `)
+        .eq('client_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-        if (error || !data) return null;
+      if (!data || data.length === 0) return null;
 
-        const rawData = data as any;
-        return {
-          id: rawData.id,
-          quote_number: rawData.quote_number,
-          total_cost: rawData.total_cost,
-          status: rawData.status,
-          created_at: rawData.created_at,
-          workshop_name: rawData.workshop?.name,
-        };
-      } catch (error) {
-        console.error('Error fetching latest quotation:', error);
-        return null;
-      }
+      const item = data[0] as any;
+      return {
+        id: item.id,
+        quote_number: item.quote_number,
+        total_cost: item.total_cost,
+        status: item.status,
+        created_at: item.created_at,
+        workshop_name: item.workshop?.name,
+      } as DashboardQuotation;
     },
     enabled: !!user,
   });
 
-  // Last service with no type inference
+  // Last service - simplified query
   const lastServiceQuery = useQuery({
     queryKey: ['lastService', user?.id],
-    queryFn: async (): Promise<DashboardService | null> => {
+    queryFn: async () => {
       if (!user) return null;
       
-      try {
-        const { data, error } = await supabase
-          .from('service_history')
-          .select(`
-            id,
-            service_type,
-            completed_at,
-            workshop:workshops!service_history_workshop_id_fkey(name),
-            vehicle:vehicles!service_history_vehicle_id_fkey(make, model, year)
-          `)
-          .eq('user_id', user.id)
-          .order('completed_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      const { data } = await supabase
+        .from('service_history')
+        .select(`
+          id,
+          service_type,
+          completed_at,
+          workshop:workshops!service_history_workshop_id_fkey(name),
+          vehicle:vehicles!service_history_vehicle_id_fkey(make, model, year)
+        `)
+        .eq('user_id', user.id)
+        .order('completed_at', { ascending: false })
+        .limit(1);
 
-        if (error || !data) return null;
+      if (!data || data.length === 0) return null;
 
-        const rawData = data as any;
-        return {
-          id: rawData.id,
-          service_type: rawData.service_type,
-          completed_at: rawData.completed_at,
-          workshop_name: rawData.workshop?.name,
-          vehicle_make: rawData.vehicle?.make,
-          vehicle_model: rawData.vehicle?.model,
-          vehicle_year: rawData.vehicle?.year,
-        };
-      } catch (error) {
-        console.error('Error fetching last service:', error);
-        return null;
-      }
+      const item = data[0] as any;
+      return {
+        id: item.id,
+        service_type: item.service_type,
+        completed_at: item.completed_at,
+        workshop_name: item.workshop?.name,
+        vehicle_make: item.vehicle?.make,  
+        vehicle_model: item.vehicle?.model,
+        vehicle_year: item.vehicle?.year,
+      } as DashboardService;
     },
     enabled: !!user,
   });
