@@ -10,7 +10,6 @@ import AppointmentFilters, { type AppointmentFilterState } from "./AppointmentFi
 import { useAppointmentActions } from "./useAppointmentActions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { isWithinInterval, parseISO } from "date-fns";
 import type { AppointmentWithRelations } from "@/types/database";
 
 interface EnhancedAppointmentListProps {
@@ -32,13 +31,11 @@ const EnhancedAppointmentList = ({ filter = 'upcoming' }: EnhancedAppointmentLis
 
     // Apply main filter (upcoming/history/all)
     if (filter === 'upcoming') {
-      // Show only active appointments (pending, confirmed, in_progress)
       const isActiveStatus = appointment.status === 'pending' || 
                             appointment.status === 'confirmed' || 
                             appointment.status === 'in_progress';
       if (!isActiveStatus) return false;
     } else if (filter === 'history') {
-      // Show completed, cancelled, or past appointments
       const isFinishedStatus = appointment.status === 'completed' || appointment.status === 'cancelled';
       const isPastAndNotActive = appointmentDate < now && 
                                 appointment.status !== 'pending' && 
@@ -50,22 +47,54 @@ const EnhancedAppointmentList = ({ filter = 'upcoming' }: EnhancedAppointmentLis
     // Apply status filter
     if (filters.status && appointment.status !== filters.status) return false;
 
-    // Apply workshop filter
-    if (filters.workshop && appointment.workshop_id !== filters.workshop) return false;
-
     // Apply service type filter
     if (filters.serviceType && appointment.service_type !== filters.serviceType) return false;
 
+    // Apply client name filter
+    if (filters.clientName) {
+      const clientName = appointment.client?.full_name?.toLowerCase() || '';
+      if (!clientName.includes(filters.clientName.toLowerCase())) return false;
+    }
+
+    // Apply license plate filter
+    if (filters.licensePlate) {
+      const licensePlate = appointment.vehicle?.license_plate?.toLowerCase() || '';
+      if (!licensePlate.includes(filters.licensePlate.toLowerCase())) return false;
+    }
+
     // Apply date range filter
-    if (filters.dateRange?.from) {
-      const appointmentDate = parseISO(appointment.scheduled_at);
-      const rangeEnd = filters.dateRange.to || filters.dateRange.from;
+    if (filters.dateRange && filters.dateRange !== 'all') {
+      const appointmentDate = new Date(appointment.scheduled_at);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
-      if (!isWithinInterval(appointmentDate, {
-        start: filters.dateRange.from,
-        end: rangeEnd
-      })) {
-        return false;
+      switch (filters.dateRange) {
+        case 'today':
+          const appointmentToday = new Date(
+            appointmentDate.getFullYear(),
+            appointmentDate.getMonth(),
+            appointmentDate.getDate()
+          );
+          if (appointmentToday.getTime() !== today.getTime()) return false;
+          break;
+          
+        case 'week':
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay());
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          weekEnd.setHours(23, 59, 59, 999);
+          
+          if (appointmentDate < weekStart || appointmentDate > weekEnd) return false;
+          break;
+          
+        case 'month':
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+          const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          monthEnd.setHours(23, 59, 59, 999);
+          
+          if (appointmentDate < monthStart || appointmentDate > monthEnd) return false;
+          break;
       }
     }
 
@@ -135,7 +164,7 @@ const EnhancedAppointmentList = ({ filter = 'upcoming' }: EnhancedAppointmentLis
         </CardHeader>
         <CardContent>
           <AppointmentFilters
-            onFilterChange={setFilters}
+            onFiltersChange={setFilters}
             workshops={workshops}
             showWorkshopFilter={workshops.length > 1}
           />
