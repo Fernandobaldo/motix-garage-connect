@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,7 +30,7 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdClientId, setCreatedClientId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('client');
-  const [toast] = useToast();
+  const { toast } = useToast();
   const { profile } = useAuth();
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<ClientFormData>({
