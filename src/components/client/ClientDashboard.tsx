@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,51 +8,52 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
-// Simplified interfaces for dashboard data
-interface DashboardAppointment {
+// Simple, explicit interfaces to avoid deep type inference
+interface AppointmentData {
   id: string;
   scheduled_at: string;
   service_type: string;
   status: string;
-  workshop_name?: string;
-  workshop_phone?: string;
-  vehicle_make?: string;
-  vehicle_model?: string;
-  vehicle_year?: number;
+  workshop_name: string;
+  workshop_phone: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: number;
 }
 
-interface DashboardQuotation {
+interface QuotationData {
   id: string;
   quote_number: string;
   total_cost: number;
   status: string;
   created_at: string;
-  workshop_name?: string;
+  workshop_name: string;
 }
 
-interface DashboardService {
+interface ServiceData {
   id: string;
   service_type: string;
   completed_at: string;
-  workshop_name?: string;
-  vehicle_make?: string;
-  vehicle_model?: string;
-  vehicle_year?: number;
+  workshop_name: string;
+  vehicle_make: string;
+  vehicle_model: string;
+  vehicle_year: number;
 }
 
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
-  // Fetch next appointment with explicit typing
-  const nextAppointmentQuery = useQuery<DashboardAppointment | null>({
+  // Simple query with explicit return type
+  const nextAppointmentQuery = useQuery({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<AppointmentData | null> => {
       if (!user?.id) return null;
       
       try {
+        // Simple query without joins
         const { data: appointments, error } = await supabase
           .from('appointments')
-          .select('*')
+          .select('id, scheduled_at, service_type, status, workshop_id, vehicle_id')
           .eq('client_id', user.id)
           .gte('scheduled_at', new Date().toISOString())
           .order('scheduled_at', { ascending: true })
@@ -63,52 +63,31 @@ const ClientDashboard = () => {
         if (!appointments || appointments.length === 0) return null;
 
         const appointment = appointments[0];
-        let workshopName = '';
-        let workshopPhone = '';
-        let vehicleMake = '';
-        let vehicleModel = '';
-        let vehicleYear = 0;
+        
+        // Fetch related data separately
+        const [workshopResult, vehicleResult] = await Promise.all([
+          appointment.workshop_id ? 
+            supabase.from('workshops').select('name, phone').eq('id', appointment.workshop_id).single() :
+            Promise.resolve({ data: null }),
+          appointment.vehicle_id ?
+            supabase.from('vehicles').select('make, model, year').eq('id', appointment.vehicle_id).single() :
+            Promise.resolve({ data: null })
+        ]);
 
-        // Fetch workshop details if available
-        if (appointment.workshop_id) {
-          const { data: workshop } = await supabase
-            .from('workshops')
-            .select('name, phone')
-            .eq('id', appointment.workshop_id)
-            .single();
-          
-          if (workshop) {
-            workshopName = workshop.name || '';
-            workshopPhone = workshop.phone || '';
-          }
-        }
-
-        // Fetch vehicle details if available
-        if (appointment.vehicle_id) {
-          const { data: vehicle } = await supabase
-            .from('vehicles')
-            .select('make, model, year')
-            .eq('id', appointment.vehicle_id)
-            .single();
-          
-          if (vehicle) {
-            vehicleMake = vehicle.make || '';
-            vehicleModel = vehicle.model || '';
-            vehicleYear = vehicle.year || 0;
-          }
-        }
-
-        return {
+        // Manually construct the result
+        const result: AppointmentData = {
           id: appointment.id,
           scheduled_at: appointment.scheduled_at,
           service_type: appointment.service_type,
           status: appointment.status || 'pending',
-          workshop_name: workshopName,
-          workshop_phone: workshopPhone,
-          vehicle_make: vehicleMake,
-          vehicle_model: vehicleModel,
-          vehicle_year: vehicleYear,
+          workshop_name: workshopResult.data?.name || '',
+          workshop_phone: workshopResult.data?.phone || '',
+          vehicle_make: vehicleResult.data?.make || '',
+          vehicle_model: vehicleResult.data?.model || '',
+          vehicle_year: vehicleResult.data?.year || 0,
         };
+
+        return result;
       } catch (error) {
         console.error('Error fetching next appointment:', error);
         return null;
@@ -117,16 +96,16 @@ const ClientDashboard = () => {
     enabled: !!user?.id,
   });
 
-  // Fetch latest quotation with explicit typing
-  const latestQuotationQuery = useQuery<DashboardQuotation | null>({
+  // Simple quotation query
+  const latestQuotationQuery = useQuery({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<QuotationData | null> => {
       if (!user?.id) return null;
       
       try {
         const { data: quotations, error } = await supabase
           .from('quotations')
-          .select('*')
+          .select('id, quote_number, total_cost, status, created_at, workshop_id')
           .eq('client_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1);
@@ -135,29 +114,22 @@ const ClientDashboard = () => {
         if (!quotations || quotations.length === 0) return null;
 
         const quotation = quotations[0];
-        let workshopName = '';
+        
+        // Fetch workshop separately
+        const workshopData = quotation.workshop_id ? 
+          await supabase.from('workshops').select('name').eq('id', quotation.workshop_id).single() :
+          { data: null };
 
-        // Fetch workshop details if available
-        if (quotation.workshop_id) {
-          const { data: workshop } = await supabase
-            .from('workshops')
-            .select('name')
-            .eq('id', quotation.workshop_id)
-            .single();
-          
-          if (workshop) {
-            workshopName = workshop.name || '';
-          }
-        }
-
-        return {
+        const result: QuotationData = {
           id: quotation.id,
           quote_number: quotation.quote_number,
           total_cost: quotation.total_cost,
           status: quotation.status || 'draft',
           created_at: quotation.created_at,
-          workshop_name: workshopName,
+          workshop_name: workshopData.data?.name || '',
         };
+
+        return result;
       } catch (error) {
         console.error('Error fetching latest quotation:', error);
         return null;
@@ -166,16 +138,16 @@ const ClientDashboard = () => {
     enabled: !!user?.id,
   });
 
-  // Fetch last service with explicit typing
-  const lastServiceQuery = useQuery<DashboardService | null>({
+  // Simple service history query
+  const lastServiceQuery = useQuery({
     queryKey: ['lastService', user?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<ServiceData | null> => {
       if (!user?.id) return null;
       
       try {
         const { data: services, error } = await supabase
           .from('service_history')
-          .select('*')
+          .select('id, service_type, completed_at, workshop_id, vehicle_id')
           .eq('user_id', user.id)
           .order('completed_at', { ascending: false })
           .limit(1);
@@ -184,48 +156,28 @@ const ClientDashboard = () => {
         if (!services || services.length === 0) return null;
 
         const service = services[0];
-        let workshopName = '';
-        let vehicleMake = '';
-        let vehicleModel = '';
-        let vehicleYear = 0;
+        
+        // Fetch related data separately
+        const [workshopResult, vehicleResult] = await Promise.all([
+          service.workshop_id ?
+            supabase.from('workshops').select('name').eq('id', service.workshop_id).single() :
+            Promise.resolve({ data: null }),
+          service.vehicle_id ?
+            supabase.from('vehicles').select('make, model, year').eq('id', service.vehicle_id).single() :
+            Promise.resolve({ data: null })
+        ]);
 
-        // Fetch workshop details if available
-        if (service.workshop_id) {
-          const { data: workshop } = await supabase
-            .from('workshops')
-            .select('name')
-            .eq('id', service.workshop_id)
-            .single();
-          
-          if (workshop) {
-            workshopName = workshop.name || '';
-          }
-        }
-
-        // Fetch vehicle details if available
-        if (service.vehicle_id) {
-          const { data: vehicle } = await supabase
-            .from('vehicles')
-            .select('make, model, year')
-            .eq('id', service.vehicle_id)
-            .single();
-          
-          if (vehicle) {
-            vehicleMake = vehicle.make || '';
-            vehicleModel = vehicle.model || '';
-            vehicleYear = vehicle.year || 0;
-          }
-        }
-
-        return {
+        const result: ServiceData = {
           id: service.id,
           service_type: service.service_type,
           completed_at: service.completed_at,
-          workshop_name: workshopName,
-          vehicle_make: vehicleMake,
-          vehicle_model: vehicleModel,
-          vehicle_year: vehicleYear,
+          workshop_name: workshopResult.data?.name || '',
+          vehicle_make: vehicleResult.data?.make || '',
+          vehicle_model: vehicleResult.data?.model || '',
+          vehicle_year: vehicleResult.data?.year || 0,
         };
+
+        return result;
       } catch (error) {
         console.error('Error fetching last service:', error);
         return null;
