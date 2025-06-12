@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
-// Simple interfaces for dashboard data
+// Simplified interfaces for dashboard data
 interface DashboardAppointment {
   id: string;
   scheduled_at: string;
@@ -44,15 +44,14 @@ interface DashboardService {
 const ClientDashboard = () => {
   const { user, profile } = useAuth();
 
-  // Next appointment - completely simplified
-  const nextAppointmentQuery = useQuery({
+  // Fetch next appointment with explicit typing
+  const nextAppointmentQuery = useQuery<DashboardAppointment | null>({
     queryKey: ['nextAppointment', user?.id],
-    queryFn: async (): Promise<DashboardAppointment | null> => {
-      if (!user) return null;
+    queryFn: async () => {
+      if (!user?.id) return null;
       
       try {
-        // Get appointment data first
-        const { data: appointments } = await supabase
+        const { data: appointments, error } = await supabase
           .from('appointments')
           .select('*')
           .eq('client_id', user.id)
@@ -60,153 +59,179 @@ const ClientDashboard = () => {
           .order('scheduled_at', { ascending: true })
           .limit(1);
 
+        if (error) throw error;
         if (!appointments || appointments.length === 0) return null;
 
         const appointment = appointments[0];
-        
-        // Get workshop data separately if needed
-        let workshopData = null;
+        let workshopName = '';
+        let workshopPhone = '';
+        let vehicleMake = '';
+        let vehicleModel = '';
+        let vehicleYear = 0;
+
+        // Fetch workshop details if available
         if (appointment.workshop_id) {
           const { data: workshop } = await supabase
             .from('workshops')
             .select('name, phone')
             .eq('id', appointment.workshop_id)
             .single();
-          workshopData = workshop;
+          
+          if (workshop) {
+            workshopName = workshop.name || '';
+            workshopPhone = workshop.phone || '';
+          }
         }
 
-        // Get vehicle data separately if needed
-        let vehicleData = null;
+        // Fetch vehicle details if available
         if (appointment.vehicle_id) {
           const { data: vehicle } = await supabase
             .from('vehicles')
             .select('make, model, year')
             .eq('id', appointment.vehicle_id)
             .single();
-          vehicleData = vehicle;
+          
+          if (vehicle) {
+            vehicleMake = vehicle.make || '';
+            vehicleModel = vehicle.model || '';
+            vehicleYear = vehicle.year || 0;
+          }
         }
 
         return {
           id: appointment.id,
           scheduled_at: appointment.scheduled_at,
           service_type: appointment.service_type,
-          status: appointment.status,
-          workshop_name: workshopData?.name,
-          workshop_phone: workshopData?.phone,
-          vehicle_make: vehicleData?.make,
-          vehicle_model: vehicleData?.model,
-          vehicle_year: vehicleData?.year,
+          status: appointment.status || 'pending',
+          workshop_name: workshopName,
+          workshop_phone: workshopPhone,
+          vehicle_make: vehicleMake,
+          vehicle_model: vehicleModel,
+          vehicle_year: vehicleYear,
         };
       } catch (error) {
         console.error('Error fetching next appointment:', error);
         return null;
       }
     },
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
-  // Latest quotation - completely simplified
-  const latestQuotationQuery = useQuery({
+  // Fetch latest quotation with explicit typing
+  const latestQuotationQuery = useQuery<DashboardQuotation | null>({
     queryKey: ['latestQuotation', user?.id],
-    queryFn: async (): Promise<DashboardQuotation | null> => {
-      if (!user) return null;
+    queryFn: async () => {
+      if (!user?.id) return null;
       
       try {
-        // Get quotation data first
-        const { data: quotations } = await supabase
+        const { data: quotations, error } = await supabase
           .from('quotations')
           .select('*')
           .eq('client_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1);
 
+        if (error) throw error;
         if (!quotations || quotations.length === 0) return null;
 
         const quotation = quotations[0];
-        
-        // Get workshop data separately if needed
-        let workshopData = null;
+        let workshopName = '';
+
+        // Fetch workshop details if available
         if (quotation.workshop_id) {
           const { data: workshop } = await supabase
             .from('workshops')
             .select('name')
             .eq('id', quotation.workshop_id)
             .single();
-          workshopData = workshop;
+          
+          if (workshop) {
+            workshopName = workshop.name || '';
+          }
         }
 
         return {
           id: quotation.id,
           quote_number: quotation.quote_number,
           total_cost: quotation.total_cost,
-          status: quotation.status,
+          status: quotation.status || 'draft',
           created_at: quotation.created_at,
-          workshop_name: workshopData?.name,
+          workshop_name: workshopName,
         };
       } catch (error) {
         console.error('Error fetching latest quotation:', error);
         return null;
       }
     },
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
-  // Last service - completely simplified
-  const lastServiceQuery = useQuery({
+  // Fetch last service with explicit typing
+  const lastServiceQuery = useQuery<DashboardService | null>({
     queryKey: ['lastService', user?.id],
-    queryFn: async (): Promise<DashboardService | null> => {
-      if (!user) return null;
+    queryFn: async () => {
+      if (!user?.id) return null;
       
       try {
-        // Get service history data first
-        const { data: services } = await supabase
+        const { data: services, error } = await supabase
           .from('service_history')
           .select('*')
           .eq('user_id', user.id)
           .order('completed_at', { ascending: false })
           .limit(1);
 
+        if (error) throw error;
         if (!services || services.length === 0) return null;
 
         const service = services[0];
-        
-        // Get workshop data separately if needed
-        let workshopData = null;
+        let workshopName = '';
+        let vehicleMake = '';
+        let vehicleModel = '';
+        let vehicleYear = 0;
+
+        // Fetch workshop details if available
         if (service.workshop_id) {
           const { data: workshop } = await supabase
             .from('workshops')
             .select('name')
             .eq('id', service.workshop_id)
             .single();
-          workshopData = workshop;
+          
+          if (workshop) {
+            workshopName = workshop.name || '';
+          }
         }
 
-        // Get vehicle data separately if needed
-        let vehicleData = null;
+        // Fetch vehicle details if available
         if (service.vehicle_id) {
           const { data: vehicle } = await supabase
             .from('vehicles')
             .select('make, model, year')
             .eq('id', service.vehicle_id)
             .single();
-          vehicleData = vehicle;
+          
+          if (vehicle) {
+            vehicleMake = vehicle.make || '';
+            vehicleModel = vehicle.model || '';
+            vehicleYear = vehicle.year || 0;
+          }
         }
 
         return {
           id: service.id,
           service_type: service.service_type,
           completed_at: service.completed_at,
-          workshop_name: workshopData?.name,
-          vehicle_make: vehicleData?.make,
-          vehicle_model: vehicleData?.model,
-          vehicle_year: vehicleData?.year,
+          workshop_name: workshopName,
+          vehicle_make: vehicleMake,
+          vehicle_model: vehicleModel,
+          vehicle_year: vehicleYear,
         };
       } catch (error) {
         console.error('Error fetching last service:', error);
         return null;
       }
     },
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
   const nextAppointment = nextAppointmentQuery.data;
