@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -91,7 +90,7 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
         }
 
         console.log('Created guest client:', createdClient);
-        clientId = createdClient.i;
+        clientId = createdClient.id;
         isGuestClient = true;
         
         // Create vehicle for guest client
