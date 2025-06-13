@@ -4,6 +4,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useClientAssociation } from '@/hooks/useClientAssociation';
 import { useAuth } from '@/hooks/useAuth';
+import React from 'react';
 
 vi.mock('@/hooks/useAuth');
 vi.mock('@/integrations/supabase/client', () => ({
@@ -28,9 +29,7 @@ describe('useClientAssociation Hook', () => {
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    React.createElement(QueryClientProvider, { client: queryClient }, children)
   );
 
   it('should fetch association stats for workshop users', async () => {
