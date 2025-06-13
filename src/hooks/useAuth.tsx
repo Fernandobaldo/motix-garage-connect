@@ -255,85 +255,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     profile,
     session,
     loading,
-    signIn: async (email: string, password: string) => {
-      try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          toast({
-            title: "Sign In Failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
-
-        return { error };
-      } catch (error) {
-        toast({
-          title: "Sign In Failed",
-          description: "An unexpected error occurred",
-          variant: "destructive",
-        });
-        return { error };
-      }
-    },
-    signUp: async (
-      email: string, 
-      password: string, 
-      userData: { full_name: string; phone: string; role: 'client' | 'workshop' }
-    ) => {
-      try {
-        const redirectUrl = `${window.location.origin}/`;
-        
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: userData
-          }
-        });
-
-        if (error) {
-          toast({
-            title: "Sign Up Failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Registration Successful!",
-            description: "Please check your email to verify your account.",
-          });
-        }
-
-        return { error };
-      } catch (error) {
-        toast({
-          title: "Sign Up Failed",
-          description: "An unexpected error occurred",
-          variant: "destructive",
-        });
-        return { error };
-      }
-    },
-    signOut: async () => {
-      try {
-        await supabase.auth.signOut();
-        setUser(null);
-        setProfile(null);
-        setSession(null);
-        toast({
-          title: "Signed Out",
-          description: "You have been successfully signed out.",
-        });
-      } catch (error) {
-        console.error('Error signing out:', error);
-      }
-    },
+    signIn,
+    signUp,
+    signOut,
     updateProfile,
   };
 
