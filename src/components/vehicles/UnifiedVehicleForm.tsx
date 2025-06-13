@@ -15,9 +15,10 @@ interface UnifiedVehicleFormProps {
   onClose: () => void;
   onSuccess: () => void;
   ownerId?: string;
+  clientId?: string;
 }
 
-const UnifiedVehicleForm = ({ isOpen, onClose, onSuccess, ownerId }: UnifiedVehicleFormProps) => {
+const UnifiedVehicleForm = ({ isOpen, onClose, onSuccess, ownerId, clientId }: UnifiedVehicleFormProps) => {
   const { toast } = useToast();
   const { profile } = useAuth();
   const { tenant } = useTenant();
@@ -58,7 +59,8 @@ const UnifiedVehicleForm = ({ isOpen, onClose, onSuccess, ownerId }: UnifiedVehi
 
     try {
       const vehicleData = {
-        owner_id: ownerId || profile.id,
+        owner_id: ownerId || null,
+        client_id: clientId || null,
         tenant_id: tenant.id,
         license_plate: formData.license_plate,
         make: formData.make,

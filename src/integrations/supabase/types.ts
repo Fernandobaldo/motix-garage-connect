@@ -69,10 +69,11 @@ export type Database = {
       }
       appointments: {
         Row: {
-          client_id: string
+          client_id: string | null
           created_at: string
           description: string | null
           duration_minutes: number | null
+          guest_client_id: string | null
           id: string
           reservation_expires_at: string | null
           reservation_token: string | null
@@ -85,10 +86,11 @@ export type Database = {
           workshop_id: string
         }
         Insert: {
-          client_id: string
+          client_id?: string | null
           created_at?: string
           description?: string | null
           duration_minutes?: number | null
+          guest_client_id?: string | null
           id?: string
           reservation_expires_at?: string | null
           reservation_token?: string | null
@@ -101,10 +103,11 @@ export type Database = {
           workshop_id: string
         }
         Update: {
-          client_id?: string
+          client_id?: string | null
           created_at?: string
           description?: string | null
           duration_minutes?: number | null
+          guest_client_id?: string | null
           id?: string
           reservation_expires_at?: string | null
           reservation_token?: string | null
@@ -122,6 +125,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_guest_client_id_fkey"
+            columns: ["guest_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
@@ -296,6 +306,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      clients: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          phone?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       maintenance_schedules: {
         Row: {
@@ -1059,39 +1099,42 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          client_id: string | null
           created_at: string
           fuel_type: string | null
           id: string
           license_plate: string
           make: string
           model: string
-          owner_id: string
+          owner_id: string | null
           tenant_id: string | null
           transmission: string | null
           updated_at: string
           year: number
         }
         Insert: {
+          client_id?: string | null
           created_at?: string
           fuel_type?: string | null
           id?: string
           license_plate: string
           make: string
           model: string
-          owner_id: string
+          owner_id?: string | null
           tenant_id?: string | null
           transmission?: string | null
           updated_at?: string
           year: number
         }
         Update: {
+          client_id?: string | null
           created_at?: string
           fuel_type?: string | null
           id?: string
           license_plate?: string
           make?: string
           model?: string
-          owner_id?: string
+          owner_id?: string | null
           tenant_id?: string | null
           transmission?: string | null
           updated_at?: string
@@ -1103,6 +1146,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {

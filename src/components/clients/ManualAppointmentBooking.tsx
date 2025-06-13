@@ -68,16 +68,36 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
     try {
       let clientId = selectedClient;
       let vehicleId = selectedVehicle;
+      let isGuestClient = false;
 
       if (appointmentType === 'new') {
-        console.log('Creating guest client appointment (no auth user)');
+        console.log('Creating guest client and vehicle');
         
-        // For new clients without auth accounts, we'll create a temporary client record
-        // and associate the vehicle directly with the appointment
+        // Create guest client in the clients table
+        const { data: createdClient, error: clientError } = await supabase
+          .from('clients')
+          .insert({
+            tenant_id: profile?.tenant_id,
+            full_name: newClient.full_name,
+            phone: newClient.phone,
+            email: newClient.email || null,
+          })
+          .select()
+          .single();
+
+        if (clientError) {
+          console.error('Client creation error:', clientError);
+          throw new Error(`Failed to create client: ${clientError.message}`);
+        }
+
+        console.log('Created guest client:', createdClient);
+        clientId = createdClient.i;
+        isGuestClient = true;
         
-        // Create vehicle for guest client (without owner_id since no auth user exists)
+        // Create vehicle for guest client
         const vehicleData = {
           ...newVehicle,
+          client_id: createdClient.id, // Use client_id for guest clients
           owner_id: null, // No authenticated user
           tenant_id: profile?.tenant_id,
         };
@@ -97,9 +117,6 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
 
         console.log('Created guest vehicle:', createdVehicle);
         vehicleId = createdVehicle.id;
-        
-        // For guest appointments, we'll use null as client_id and store client info in description
-        clientId = null;
       }
 
       // Create appointment
@@ -108,14 +125,13 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
       scheduledAt.setHours(parseInt(hours), parseInt(minutes));
 
       const appointmentData = {
-        client_id: clientId, // null for guest appointments
+        client_id: isGuestClient ? null : clientId, // null for guest appointments
+        guest_client_id: isGuestClient ? clientId : null, // use guest_client_id for guest clients
         workshop_id: profile?.tenant_id,
         vehicle_id: vehicleId,
         service_type: serviceType,
         scheduled_at: scheduledAt.toISOString(),
-        description: appointmentType === 'new' 
-          ? `Guest appointment for: ${newClient.full_name} (${newClient.phone})\n\n${description}`
-          : description,
+        description: description,
         status: 'confirmed',
         tenant_id: profile?.tenant_id,
       };

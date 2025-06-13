@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ interface Client {
   last_service_date: string;
   appointment_count: number;
   last_appointment_date: string;
+  client_type: 'auth' | 'guest';
 }
 
 const ClientsManager = () => {
@@ -41,39 +43,55 @@ const ClientsManager = () => {
       console.log('Fetching clients for tenant:', profile.tenant_id);
 
       try {
-        // Get all clients in this tenant - now includes both auth users and direct profile entries
-        const { data: clientProfiles, error: profilesError } = await supabase
+        // Get authenticated clients from profiles table
+        const { data: authClients, error: authError } = await supabase
           .from('profiles')
           .select('id, full_name, phone')
           .eq('tenant_id', profile.tenant_id)
           .eq('role', 'client')
           .order('created_at', { ascending: false });
 
-        if (profilesError) {
-          console.error('Error fetching client profiles:', profilesError);
-          throw profilesError;
+        if (authError) {
+          console.error('Error fetching auth clients:', authError);
         }
 
-        console.log('Found client profiles:', clientProfiles);
+        // Get non-authenticated clients from clients table
+        const { data: guestClients, error: guestError } = await supabase
+          .from('clients')
+          .select('id, full_name, phone, email')
+          .eq('tenant_id', profile.tenant_id)
+          .order('created_at', { ascending: false });
 
-        if (!clientProfiles || clientProfiles.length === 0) {
+        if (guestError) {
+          console.error('Error fetching guest clients:', guestError);
+        }
+
+        console.log('Found auth clients:', authClients);
+        console.log('Found guest clients:', guestClients);
+
+        const allClients = [
+          ...(authClients || []).map(client => ({ ...client, email: '', client_type: 'auth' as const })),
+          ...(guestClients || []).map(client => ({ ...client, client_type: 'guest' as const }))
+        ];
+
+        if (allClients.length === 0) {
           return [];
         }
 
         // For each client, get their details, vehicles, and service history
         const clientsWithDetails = await Promise.all(
-          clientProfiles.map(async (clientProfile) => {
-            // Get client's vehicles
+          allClients.map(async (client) => {
+            // Get client's vehicles - check both owner_id and client_id
             const { data: vehicles } = await supabase
               .from('vehicles')
               .select('id, make, model, year, license_plate')
-              .eq('owner_id', clientProfile.id);
+              .or(`owner_id.eq.${client.id},client_id.eq.${client.id}`);
 
-            // Get appointment count and last appointment
+            // Get appointment count and last appointment - check both client_id and guest_client_id
             const { data: appointments } = await supabase
               .from('appointments')
               .select('scheduled_at')
-              .eq('client_id', clientProfile.id)
+              .or(`client_id.eq.${client.id},guest_client_id.eq.${client.id}`)
               .eq('tenant_id', profile.tenant_id)
               .order('scheduled_at', { ascending: false });
 
@@ -98,8 +116,7 @@ const ClientsManager = () => {
             }
 
             return {
-              ...clientProfile,
-              email: '', // We don't store email for direct profile clients
+              ...client,
               vehicles: vehicles || [],
               service_count: serviceCount,
               last_service_date: lastServiceDate,
@@ -194,7 +211,12 @@ const ClientsManager = () => {
           {filteredClients.map((client) => (
             <Card key={client.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
-                <CardTitle className="text-lg">{client.full_name}</CardTitle>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  {client.full_name}
+                  <Badge variant={client.client_type === 'auth' ? 'default' : 'secondary'} className="text-xs">
+                    {client.client_type === 'auth' ? 'Account' : 'Guest'}
+                  </Badge>
+                </CardTitle>
                 <CardDescription className="space-y-2">
                   <div className="flex items-center space-x-2">
                     <Phone className="h-4 w-4" />

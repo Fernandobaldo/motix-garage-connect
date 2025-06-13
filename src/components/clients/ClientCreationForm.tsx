@@ -55,28 +55,26 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
     try {
       console.log('Creating client with data:', data);
       
-      // Generate a UUID for the client
-      const clientId = crypto.randomUUID();
-      
-      // Insert client directly into profiles table
-      const { error: profileError } = await supabase
-        .from('profiles')
+      // Insert client directly into clients table
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
         .insert({
-          id: clientId,
           tenant_id: profile.tenant_id,
           full_name: data.full_name,
           phone: data.phone,
-          role: 'client'
-        });
+          email: data.email || null
+        })
+        .select()
+        .single();
 
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        throw profileError;
+      if (clientError) {
+        console.error('Client error:', clientError);
+        throw clientError;
       }
 
-      console.log('Client profile created successfully with ID:', clientId);
+      console.log('Client created successfully with ID:', clientData.id);
       
-      setCreatedClientId(clientId);
+      setCreatedClientId(clientData.id);
       setActiveTab('vehicle');
 
       toast({
@@ -202,7 +200,7 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
                 isOpen={true}
                 onClose={() => {}}
                 onSuccess={handleVehicleSuccess}
-                ownerId={createdClientId}
+                clientId={createdClientId}
               />
               
               <div className="flex justify-center">
