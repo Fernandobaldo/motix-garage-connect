@@ -2,12 +2,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useTenant } from '@/hooks/useTenant';
-import { getPlanLimits } from '@/utils/permissions';
 
 export const useClientLimits = () => {
   const { profile } = useAuth();
-  const { tenant } = useTenant();
 
   const { data: canAddClient, isLoading } = useQuery({
     queryKey: ['client-limits', profile?.tenant_id],
@@ -54,13 +51,29 @@ export const useClientLimits = () => {
     enabled: !!profile?.tenant_id,
   });
 
-  const planLimits = tenant ? getPlanLimits(tenant.subscription_plan) : null;
-  const maxClients = planLimits?.vehicles || 10; // Using vehicles limit as client limit base
+  const { data: maxClients } = useQuery({
+    queryKey: ['client-limit', profile?.tenant_id],
+    queryFn: async () => {
+      if (!profile?.tenant_id) return 10;
+
+      const { data, error } = await supabase.rpc('get_client_limit', {
+        p_tenant_id: profile.tenant_id
+      });
+
+      if (error) {
+        console.error('Error getting client limit:', error);
+        return 10;
+      }
+
+      return data;
+    },
+    enabled: !!profile?.tenant_id,
+  });
 
   return {
     canAddClient: canAddClient ?? false,
     currentCount: currentCount ?? 0,
-    maxClients: maxClients === -1 ? 'Unlimited' : maxClients,
+    maxClients: maxClients === -1 ? 'Unlimited' : maxClients ?? 10,
     isLoading,
     isAtLimit: !canAddClient && !isLoading,
   };

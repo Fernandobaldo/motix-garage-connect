@@ -1,225 +1,184 @@
 
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useTenant } from '@/hooks/useTenant';
-import { useWorkshopPreferences } from '@/hooks/useWorkshopPreferences';
-import { formatCurrency, formatDistance } from '@/utils/currency';
-import type { ServiceStatus } from '@/types/database';
-
-interface Vehicle {
-  id: string;
-  license_plate: string;
-  make: string;
-  model: string;
-  year: number;
-  owner_id: string;
-}
+import { toast } from 'sonner';
+import LicensePlateSearchField from '@/components/common/LicensePlateSearchField';
 
 interface ServiceRecordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
-  vehicles: Vehicle[];
-  preselectedVehicleId?: string;
+  onSuccess?: () => void;
+  initialVehicleId?: string;
 }
 
-const ServiceRecordModal = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  vehicles, 
-  preselectedVehicleId 
-}: ServiceRecordModalProps) => {
-  const { toast } = useToast();
+const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: ServiceRecordModalProps) => {
   const { profile } = useAuth();
-  const { tenant } = useTenant();
-  const { preferences } = useWorkshopPreferences();
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+  const [selectedClient, setSelectedClient] = useState<{ id: string; name: string; type: 'auth' | 'guest' } | null>(null);
+
   const [formData, setFormData] = useState({
-    vehicle_id: preselectedVehicleId || '',
-    service_type: '',
+    serviceType: '',
     description: '',
     cost: '',
-    labor_hours: '',
     mileage: '',
-    technician_notes: '',
-    status: 'pending' as ServiceStatus,
-    estimated_completion_date: '',
+    laborHours: '',
+    technicianNotes: '',
+    partsUsed: '',
   });
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({
+        serviceType: '',
+        description: '',
+        cost: '',
+        mileage: '',
+        laborHours: '',
+        technicianNotes: '',
+        partsUsed: '',
+      });
+      setSelectedVehicle(null);
+      setSelectedClient(null);
+    }
+  }, [isOpen]);
+
+  const handleVehicleSelect = (vehicle: any) => {
+    setSelectedVehicle(vehicle);
+  };
+
+  const handleClientSelect = (clientId: string, clientName: string, clientType: 'auth' | 'guest') => {
+    setSelectedClient({ id: clientId, name: clientName, type: clientType });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!profile?.id || !tenant?.id) {
-      toast({
-        title: "Error",
-        description: "Authentication required",
-        variant: "destructive",
-      });
+
+    if (!selectedVehicle || !selectedClient) {
+      toast.error('Please select a vehicle using the license plate search');
       return;
     }
 
-    if (!formData.vehicle_id || !formData.service_type) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
+    if (!profile?.tenant_id) {
+      toast.error('Unable to create service record - no workshop selected');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Get client_id from vehicle owner
-      const selectedVehicle = vehicles.find(v => v.id === formData.vehicle_id);
-      
-      const serviceRecord = {
-        tenant_id: tenant.id,
-        vehicle_id: formData.vehicle_id,
-        workshop_id: profile.id,
-        client_id: selectedVehicle?.owner_id || null,
-        service_type: formData.service_type,
-        description: formData.description || null,
-        cost: formData.cost ? parseFloat(formData.cost) : null,
-        labor_hours: formData.labor_hours ? parseFloat(formData.labor_hours) : null,
-        mileage: formData.mileage ? parseInt(formData.mileage) : null,
-        technician_notes: formData.technician_notes || null,
-        status: formData.status,
-        estimated_completion_date: formData.estimated_completion_date || null,
-      };
+      const partsArray = formData.partsUsed 
+        ? formData.partsUsed.split(',').map(part => ({ name: part.trim() }))
+        : [];
 
       const { error } = await supabase
         .from('service_records')
-        .insert(serviceRecord);
+        .insert({
+          tenant_id: profile.tenant_id,
+          vehicle_id: selectedVehicle.vehicle_id,
+          workshop_id: profile.id,
+          client_id: selectedClient.id,
+          service_type: formData.serviceType,
+          description: formData.description,
+          cost: formData.cost ? parseFloat(formData.cost) : null,
+          mileage: formData.mileage ? parseInt(formData.mileage) : null,
+          labor_hours: formData.laborHours ? parseFloat(formData.laborHours) : null,
+          technician_notes: formData.technicianNotes || null,
+          parts_used: partsArray,
+          status: 'pending',
+        });
 
-      if (error) {
-        console.error('Error creating service record:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Service record created successfully",
-      });
-
-      onSuccess();
+      toast.success('Service record created successfully');
+      onSuccess?.();
       onClose();
-      
-      // Reset form
-      setFormData({
-        vehicle_id: preselectedVehicleId || '',
-        service_type: '',
-        description: '',
-        cost: '',
-        labor_hours: '',
-        mileage: '',
-        technician_notes: '',
-        status: 'pending',
-        estimated_completion_date: '',
-      });
     } catch (error) {
       console.error('Error creating service record:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create service record",
-        variant: "destructive",
-      });
+      toast.error('Failed to create service record');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const distanceLabel = preferences?.distance_unit === 'km' ? 'Kilometers' : 'Mileage';
-  const currencySymbol = preferences?.currency_code || 'USD';
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Service Record</DialogTitle>
+          <DialogTitle>Create New Service Record</DialogTitle>
+          <DialogDescription>
+            Add a new service record for a vehicle
+          </DialogDescription>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="vehicle">Vehicle *</Label>
-              <Select 
-                value={formData.vehicle_id} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_id: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select vehicle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vehicles.map((vehicle) => (
-                    <SelectItem key={vehicle.id} value={vehicle.id}>
-                      {vehicle.year} {vehicle.make} {vehicle.model} ({vehicle.license_plate})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="service_type">Service Type *</Label>
-              <Select 
-                value={formData.service_type} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, service_type: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select service type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="oil_change">Oil Change</SelectItem>
-                  <SelectItem value="brake_service">Brake Service</SelectItem>
-                  <SelectItem value="tire_rotation">Tire Rotation</SelectItem>
-                  <SelectItem value="general_maintenance">General Maintenance</SelectItem>
-                  <SelectItem value="repair">Repair</SelectItem>
-                  <SelectItem value="inspection">Inspection</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <LicensePlateSearchField
+              label="Search Vehicle by License Plate"
+              placeholder="Enter license plate to find vehicle and client..."
+              onVehicleSelect={handleVehicleSelect}
+              onClientSelect={handleClientSelect}
+              required
+            />
+
+            {selectedVehicle && selectedClient && (
+              <Card>
+                <CardContent className="pt-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Vehicle:</span>
+                      <span>{selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">License Plate:</span>
+                      <Badge variant="outline">{selectedVehicle.license_plate}</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Client:</span>
+                      <div className="flex items-center space-x-2">
+                        <span>{selectedClient.name}</span>
+                        <Badge variant={selectedClient.type === 'auth' ? 'default' : 'secondary'} className="text-xs">
+                          {selectedClient.type === 'auth' ? 'Account' : 'Guest'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="status">Status</Label>
-              <Select 
-                value={formData.status} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as ServiceStatus }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="awaiting_approval">Awaiting Approval</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="serviceType">Service Type *</Label>
+              <Input
+                id="serviceType"
+                placeholder="e.g., Oil Change, Brake Repair"
+                value={formData.serviceType}
+                onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
+                required
+              />
             </div>
 
             <div>
-              <Label htmlFor="estimated_completion_date">Estimated Completion</Label>
+              <Label htmlFor="cost">Cost</Label>
               <Input
-                id="estimated_completion_date"
-                type="datetime-local"
-                value={formData.estimated_completion_date}
-                onChange={(e) => setFormData(prev => ({ ...prev, estimated_completion_date: e.target.value }))}
+                id="cost"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={formData.cost}
+                onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
               />
             </div>
           </div>
@@ -228,66 +187,69 @@ const ServiceRecordModal = ({
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
+              placeholder="Describe the service performed..."
               value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Service description..."
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="cost">Cost ({currencySymbol})</Label>
-              <Input
-                id="cost"
-                type="number"
-                step="0.01"
-                value={formData.cost}
-                onChange={(e) => setFormData(prev => ({ ...prev, cost: e.target.value }))}
-                placeholder="0.00"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="labor_hours">Labor Hours</Label>
-              <Input
-                id="labor_hours"
-                type="number"
-                step="0.5"
-                value={formData.labor_hours}
-                onChange={(e) => setFormData(prev => ({ ...prev, labor_hours: e.target.value }))}
-                placeholder="0.0"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="mileage">{distanceLabel}</Label>
+              <Label htmlFor="mileage">Current Mileage</Label>
               <Input
                 id="mileage"
                 type="number"
+                min="0"
+                placeholder="e.g., 50000"
                 value={formData.mileage}
-                onChange={(e) => setFormData(prev => ({ ...prev, mileage: e.target.value }))}
-                placeholder="0"
+                onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="laborHours">Labor Hours</Label>
+              <Input
+                id="laborHours"
+                type="number"
+                step="0.5"
+                min="0"
+                placeholder="e.g., 2.5"
+                value={formData.laborHours}
+                onChange={(e) => setFormData({ ...formData, laborHours: e.target.value })}
               />
             </div>
           </div>
 
           <div>
-            <Label htmlFor="technician_notes">Technician Notes</Label>
+            <Label htmlFor="partsUsed">Parts Used</Label>
+            <Input
+              id="partsUsed"
+              placeholder="Comma-separated list: Oil Filter, Brake Pads, etc."
+              value={formData.partsUsed}
+              onChange={(e) => setFormData({ ...formData, partsUsed: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="technicianNotes">Technician Notes</Label>
             <Textarea
-              id="technician_notes"
-              value={formData.technician_notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, technician_notes: e.target.value }))}
-              placeholder="Additional notes..."
+              id="technicianNotes"
+              placeholder="Internal notes, observations, recommendations..."
+              value={formData.technicianNotes}
+              onChange={(e) => setFormData({ ...formData, technicianNotes: e.target.value })}
               rows={3}
             />
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-4 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || !selectedVehicle || !selectedClient}
+            >
               {isSubmitting ? 'Creating...' : 'Create Service Record'}
             </Button>
           </div>

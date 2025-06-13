@@ -1,20 +1,19 @@
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, Clock, User, Car, FileText } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { LoadingButton } from '@/components/ui/loading-button';
-import { FormField } from '@/components/ui/form-field';
-import { FormError } from '@/components/ui/form-error';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { useAppointmentBooking } from '@/hooks/useAppointmentBooking';
-import DateTimeSelector from './DateTimeSelector';
-import ServiceVehicleSelector from './ServiceVehicleSelector';
-import { AlertCircle, Calendar, Clock, Car, Wrench, CheckCircle2 } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { appointmentBookingSchema, type AppointmentBookingFormData } from '@/lib/validations/appointment';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import ServiceDurationSelector from './ServiceDurationSelector';
+import AvailableTimeSlots from './AvailableTimeSlots';
+import ExistingClientSelector from '@/components/clients/ExistingClientSelector';
+import LicensePlateSearchField from '@/components/common/LicensePlateSearchField';
 
 interface EnhancedAppointmentBookingProps {
   onSuccess?: () => void;
@@ -22,132 +21,125 @@ interface EnhancedAppointmentBookingProps {
 
 const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingProps) => {
   const { profile } = useAuth();
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [currentStep, setCurrentStep] = useState(1);
-  
-  const {
-    selectedDate,
-    setSelectedDate,
-    selectedTime,
-    setSelectedTime,
-    serviceType,
-    setServiceType,
-    vehicleId,
-    setVehicleId,
-    description,
-    setDescription,
-    vehicles,
-    workshops: garages,
-    selectedWorkshop: selectedGarage,
-    setSelectedWorkshop: setSelectedGarage,
-    loading,
-    handleSubmit,
-  } = useAppointmentBooking();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [useExistingClient, setUseExistingClient] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+  const [selectedClient, setSelectedClient] = useState<{ id: string; name: string; type: 'auth' | 'guest' } | null>(null);
 
-  const validateStep = (step: number): boolean => {
-    const newErrors: Record<string, string> = {};
+  const [appointmentData, setAppointmentData] = useState({
+    serviceType: '',
+    description: '',
+    selectedDate: '',
+    selectedTime: '',
+    duration: 60,
+    clientId: '',
+    guestClientId: '',
+    vehicleId: '',
+  });
 
-    if (step === 1) {
-      if (!selectedGarage) newErrors.workshopId = 'Please select a workshop';
-      if (!serviceType) newErrors.serviceType = 'Please select a service type';
-      if (!vehicleId) newErrors.vehicleId = 'Please select a vehicle';
-    } else if (step === 2) {
-      if (!selectedDate) newErrors.selectedDate = 'Please select a date';
-      if (!selectedTime) newErrors.selectedTime = 'Please select a time';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleVehicleSelect = (vehicle: any) => {
+    setSelectedVehicle(vehicle);
+    setAppointmentData(prev => ({ ...prev, vehicleId: vehicle.vehicle_id }));
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate all fields
-    const formData: AppointmentBookingFormData = {
-      workshopId: selectedGarage || '',
-      serviceType: serviceType || '',
-      vehicleId: vehicleId || '',
-      selectedDate: selectedDate || new Date(),
-      selectedTime: selectedTime || '',
-      description: description || undefined,
-    };
+  const handleClientSelect = (clientId: string, clientName: string, clientType: 'auth' | 'guest') => {
+    setSelectedClient({ id: clientId, name: clientName, type: clientType });
+    if (clientType ===') {
+    setAppointmentData(prev => ({ 
+      ...prev, 
+      clientId: clientId,
+      guestClientId: '' 
+    }));
+  } else {
+    setAppointmentData(prev => ({ 
+      ...prev, 
+      clientId: '',
+      guestClientId: clientId 
+    }));
+  }
+  };
 
-    const validation = appointmentBookingSchema.safeParse(formData);
-    
-    if (!validation.success) {
-      const fieldErrors: Record<string, string> = {};
-      validation.error.errors.forEach((error) => {
-        if (error.path.length > 0) {
-          fieldErrors[error.path[0] as string] = error.message;
-        }
-      });
-      setErrors(fieldErrors);
+  const handleExistingClientSelect = (clientId: string, clientType: 'auth' | 'guest') => {
+    if (clientType === 'auth') {
+      setAppointmentData(prev => ({ ...prev, clientId, guestClientId: '' }));
+    } else {
+      setAppointmentData(prev => ({ ...prev, guestClientId: clientId, clientId: '' }));
+    }
+  };
+
+  const handleDateTimeSelect = (date: string, time: string) => {
+    setAppointmentData(prev => ({ ...prev, selectedDate: date, selectedTime: time }));
+  };
+
+  const handleSubmit = async () => {
+    if (!profile?.tenant_id) {
+      toast.error('Unable to create appointment - no workshop selected');
       return;
     }
 
-    setErrors({});
-    const success = await handleSubmit(e);
-    if (success && onSuccess) {
-      onSuccess();
+    if (!appointmentData.serviceType || !appointmentData.selectedDate || !appointmentData.selectedTime) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (!appointmentData.clientId && !appointmentData.guestClientId) {
+      toast.error('Please select a client');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const scheduledAt = new Date(`${appointmentData.selectedDate}T${appointmentData.selectedTime}`);
+
+      const { error } = await supabase
+        .from('appointments')
+        .insert({
+          tenant_id: profile.tenant_id,
+          workshop_id: profile.id,
+          client_id: appointmentData.clientId || null,
+          guest_client_id: appointmentData.guestClientId || null,
+          vehicle_id: appointmentData.vehicleId || null,
+          service_type: appointmentData.serviceType,
+          description: appointmentData.description,
+          scheduled_at: scheduledAt.toISOString(),
+          duration_minutes: appointmentData.duration,
+          status: 'confirmed',
+        });
+
+      if (error) throw error;
+
+      toast.success('Appointment booked successfully');
+      onSuccess?.();
+      
+      // Reset form
+      setCurrentStep(1);
+      setAppointmentData({
+        serviceType: '',
+        description: '',
+        selectedDate: '',
+        selectedTime: '',
+        duration: 60,
+        clientId: '',
+        guestClientId: '',
+        vehicleId: '',
+      });
+      setSelectedVehicle(null);
+      setSelectedClient(null);
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      toast.error('Failed to create appointment');
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-  const nextStep = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const prevStep = () => {
-    setCurrentStep(currentStep - 1);
-  };
-
-  if (profile?.role !== 'client') {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center space-x-2 text-amber-600">
-            <AlertCircle className="h-5 w-5" />
-            <p>Appointment booking is only available for clients.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Show helpful message if no vehicles exist
-  if (vehicles.length === 0) {
-    return (
-      <div className="space-y-6">
-        <Alert>
-          <Car className="h-4 w-4" />
-          <AlertDescription>
-            You need to add a vehicle before you can book an appointment. Please add your vehicle information first.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  // Show helpful message if no garages available
-  if (garages.length === 0) {
-    return (
-      <div className="space-y-6">
-        <Alert>
-          <Wrench className="h-4 w-4" />
-          <AlertDescription>
-            No garages are currently available for booking. Please check back later.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
 
   const steps = [
-    { number: 1, title: 'Service & Vehicle', icon: Car },
-    { number: 2, title: 'Date & Time', icon: Calendar },
-    { number: 3, title: 'Review & Book', icon: CheckCircle2 },
+    { number: 1, title: 'Service Details', icon: FileText },
+    { number: 2, title: 'Client & Vehicle', icon: User },
+    { number: 3, title: 'Date & Time', icon: Calendar },
+    { number: 4, title: 'Review', icon: Clock },
   ];
 
   return (
@@ -156,184 +148,270 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
       <div className="flex items-center justify-between">
         {steps.map((step, index) => (
           <div key={step.number} className="flex items-center">
-            <div
-              className={cn(
-                "flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors",
-                currentStep >= step.number
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-400 border-gray-300"
-              )}
-            >
-              <step.icon className="h-5 w-5" />
-            </div>
-            <div className="ml-3">
-              <p className={cn(
-                "text-sm font-medium",
-                currentStep >= step.number ? "text-blue-600" : "text-gray-500"
-              )}>
-                {step.title}
-              </p>
+            <div className={`flex items-center space-x-2 ${
+              currentStep >= step.number ? 'text-blue-600' : 'text-gray-400'
+            }`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                currentStep >= step.number 
+                  ? 'border-blue-600 bg-blue-600 text-white' 
+                  : 'border-gray-300'
+              }`}>
+                {currentStep > step.number ? '✓' : step.number}
+              </div>
+              <span className="font-medium">{step.title}</span>
             </div>
             {index < steps.length - 1 && (
-              <div className={cn(
-                "flex-1 h-0.5 mx-6 transition-colors",
-                currentStep > step.number ? "bg-blue-600" : "bg-gray-300"
-              )} />
+              <div className={`w-16 h-0.5 mx-4 ${
+                currentStep > step.number ? 'bg-blue-600' : 'bg-gray-300'
+              }`} />
             )}
           </div>
         ))}
       </div>
 
-      <form onSubmit={handleFormSubmit} className="space-y-6">
-        {/* Step 1: Service & Vehicle Selection */}
-        {currentStep === 1 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Car className="h-5 w-5" />
-                Select Service & Vehicle
-              </CardTitle>
-              <CardDescription>
-                Choose the workshop, service type, and vehicle for your appointment
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <ServiceVehicleSelector
-                workshops={garages}
-                selectedWorkshop={selectedGarage}
-                onWorkshopChange={setSelectedGarage}
-                serviceType={serviceType}
-                onServiceTypeChange={setServiceType}
-                vehicles={vehicles}
-                vehicleId={vehicleId}
-                onVehicleChange={setVehicleId}
+      {/* Step Content */}
+      <Card>
+        <CardContent className="p-6">
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="serviceType">Service Type *</Label>
+                <Input
+                  id="serviceType"
+                  placeholder="e.g., Oil Change, Brake Inspection"
+                  value={appointmentData.serviceType}
+                  onChange={(e) => setAppointmentData(prev => ({ ...prev, serviceType: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <ServiceDurationSelector
+                value={appointmentData.duration}
+                onChange={(duration) => setAppointmentData(prev => ({ ...prev, duration }))}
               />
-              
-              <FormError message={errors.workshopId || errors.serviceType || errors.vehicleId} />
-              
-              <div className="flex justify-end">
-                <Button 
-                  type="button" 
-                  onClick={nextStep}
-                  disabled={!selectedGarage || !serviceType || !vehicleId}
-                >
-                  Next: Select Date & Time
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
-        {/* Step 2: Date & Time Selection */}
-        {currentStep === 2 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Select Date & Time
-              </CardTitle>
-              <CardDescription>
-                Choose when you'd like to schedule your appointment
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <DateTimeSelector
-                selectedDate={selectedDate}
-                onDateChange={setSelectedDate}
-                selectedTime={selectedTime}
-                onTimeChange={setSelectedTime}
-                garageId={selectedGarage}
-                serviceType={serviceType}
-              />
-              
-              <FormError message={errors.selectedDate || errors.selectedTime} />
-              
-              <div className="flex justify-between">
-                <Button type="button" variant="outline" onClick={prevStep}>
-                  Back
-                </Button>
-                <Button 
-                  type="button" 
-                  onClick={nextStep}
-                  disabled={!selectedDate || !selectedTime}
-                >
-                  Next: Review & Book
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 3: Review & Additional Details */}
-        {currentStep === 3 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5" />
-                Review & Book Appointment
-              </CardTitle>
-              <CardDescription>
-                Review your appointment details and add any additional information
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Appointment Summary */}
-              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                <h4 className="font-medium text-gray-900">Appointment Summary</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Workshop:</span>
-                    <p className="font-medium">{garages.find(g => g.id === selectedGarage)?.name}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Service:</span>
-                    <p className="font-medium">{serviceType}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Vehicle:</span>
-                    <p className="font-medium">
-                      {(() => {
-                        const vehicle = vehicles.find(v => v.id === vehicleId);
-                        return vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : 'Unknown';
-                      })()}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Date & Time:</span>
-                    <p className="font-medium">
-                      {selectedDate?.toLocaleDateString()} at {selectedTime}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <FormField label="Additional Notes" error={errors.description}>
+              <div>
+                <Label htmlFor="description">Description (Optional)</Label>
                 <Textarea
-                  placeholder="Describe the issue or service needed..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  id="description"
+                  placeholder="Additional details about the service needed..."
+                  value={appointmentData.description}
+                  onChange={(e) => setAppointmentData(prev => ({ ...prev, description: e.target.value }))}
                   rows={3}
                 />
-              </FormField>
-
-              <div className="flex justify-between">
-                <Button type="button" variant="outline" onClick={prevStep}>
-                  Back
-                </Button>
-                <LoadingButton 
-                  type="submit" 
-                  loading={loading}
-                  loadingText="Booking..."
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Book Appointment
-                </LoadingButton>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          )}
+
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4 mb-4">
+                <Button
+                  type="button"
+                  variant={!useExistingClient ? "default" : "outline"}
+                  onClick={() => setUseExistingClient(false)}
+                  className="flex-1"
+                >
+                  <Car className="h-4 w-4 mr-2" />
+                  Search by License Plate
+                </Button>
+                <Button
+                  type="button"
+                  variant={useExistingClient ? "default" : "outline"}
+                  onClick={() => setUseExistingClient(true)}
+                  className="flex-1"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Select Existing Client
+                </Button>
+              </div>
+
+              {!useExistingClient ? (
+                <div className="space-y-4">
+                  <LicensePlateSearchField
+                    label="Search Vehicle by License Plate"
+                    placeholder="Enter license plate to find vehicle and client..."
+                    onVehicleSelect={handleVehicleSelect}
+                    onClientSelect={handleClientSelect}
+                    required
+                  />
+
+                  {selectedVehicle && selectedClient && (
+                    <Card>
+                      <CardContent className="pt-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">Vehicle:</span>
+                            <span>{selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">License Plate:</span>
+                            <Badge variant="outline">{selectedVehicle.license_plate}</Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">Client:</span>
+                            <div className="flex items-center space-x-2">
+                              <span>{selectedClient.name}</span>
+                              <Badge variant={selectedClient.type === 'auth' ? 'default' : 'secondary'} className="text-xs">
+                                {selectedClient.type === 'auth' ? 'Account' : 'Guest'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              ) : (
+                <ExistingClientSelector
+                  onClientSelect={handleExistingClientSelect}
+                />
+              )}
+            </div>
+          )}
+
+          {currentStep === 3 && (
+            <AvailableTimeSlots
+              serviceType={appointmentData.serviceType}
+              duration={appointmentData.duration}
+              onDateTimeSelect={handleDateTimeSelect}
+              selectedDate={appointmentData.selectedDate}
+              selectedTime={appointmentData.selectedTime}
+            />
+          )}
+
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold">Review Appointment Details</h3>
+              
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Service Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Service Type:</span>
+                      <span className="font-medium">{appointmentData.serviceType}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Duration:</span>
+                      <span className="font-medium">{appointmentData.duration} minutes</span>
+                    </div>
+                    {appointmentData.description && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Description:</span>
+                        <span className="font-medium">{appointmentData.description}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {(selectedClient || appointmentData.clientId || appointmentData.guestClientId) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Client Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {selectedClient && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Client:</span>
+                            <span className="font-medium">{selectedClient.name}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Type:</span>
+                            <Badge variant={selectedClient.type === 'auth' ? 'default' : 'secondary'}>
+                              {selectedClient.type === 'auth' ? 'Account' : 'Guest'}
+                            </Badge>
+                          </div>
+                        </>
+                      )}
+                      {selectedVehicle && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Vehicle:</span>
+                            <span className="font-medium">{selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">License Plate:</span>
+                            <Badge variant="outline">{selectedVehicle.license_plate}</Badge>
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Schedule</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Date:</span>
+                      <span className="font-medium">{new Date(appointmentData.selectedDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Time:</span>
+                      <span className="font-medium">{appointmentData.selectedTime}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Navigation Buttons */}
+      <div className="flex justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+          disabled={currentStep === 1}
+        >
+          Previous
+        </Button>
+
+        {currentStep < 4 ? (
+          <Button
+            type="button"
+            onClick={() => {
+              if (currentStep === 1 && !appointmentData.serviceType) {
+                toast.error('Please enter a service type');
+                return;
+              }
+              if (currentStep === 2 && !appointmentData.clientId && !appointmentData.guestClientId) {
+                toast.error('Please select a client');
+                return;
+              }
+              if (currentStep === 3 && (!appointmentData.selectedDate || !appointmentData.selectedTime)) {
+                toast.error('Please select a date and time');
+                return;
+              }
+              setCurrentStep(currentStep + 1);
+            }}
+            disabled={
+              (currentStep === 1 && !appointmentData.serviceType) ||
+              (currentStep === 2 && !appointmentData.clientId && !appointmentData.guestClientId) ||
+              (currentStep === 3 && (!appointmentData.selectedDate || !appointmentData.selectedTime))
+            }
+          >
+            Next
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {isSubmitting ? 'Booking...' : 'Book Appointment'}
+          </Button>
         )}
-      </form>
+      </div>
     </div>
   );
 };
