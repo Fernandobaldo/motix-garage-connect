@@ -2,6 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Profile, SignUpData } from '@/types/auth';
+import { isValidUUID, logInvalidUUID, isUUIDError } from '@/utils/uuid';
 
 export const useAuthActions = (
   user: any,
@@ -12,6 +13,30 @@ export const useAuthActions = (
 ) => {
   const { toast } = useToast();
 
+  const handleAuthError = (error: any, context: string) => {
+    console.error(`Auth error in ${context}:`, error);
+    
+    if (isUUIDError(error)) {
+      toast({
+        title: "Session Error",
+        description: "Your session is corrupted. Please sign in again.",
+        variant: "destructive",
+      });
+      
+      // Force logout and redirect
+      supabase.auth.signOut().then(() => {
+        window.location.href = '/auth';
+      });
+      return;
+    }
+    
+    toast({
+      title: `${context} Failed`,
+      description: error.message || "An unexpected error occurred",
+      variant: "destructive",
+    });
+  };
+
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -20,20 +45,12 @@ export const useAuthActions = (
       });
 
       if (error) {
-        toast({
-          title: "Sign In Failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        handleAuthError(error, "Sign In");
       }
 
       return { error };
-    } catch (error) {
-      toast({
-        title: "Sign In Failed",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      handleAuthError(error, "Sign In");
       return { error };
     }
   };
@@ -56,11 +73,7 @@ export const useAuthActions = (
       });
 
       if (error) {
-        toast({
-          title: "Sign Up Failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        handleAuthError(error, "Sign Up");
       } else {
         toast({
           title: "Registration Successful!",
@@ -69,12 +82,8 @@ export const useAuthActions = (
       }
 
       return { error };
-    } catch (error) {
-      toast({
-        title: "Sign Up Failed",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      handleAuthError(error, "Sign Up");
       return { error };
     }
   };
@@ -89,8 +98,12 @@ export const useAuthActions = (
         title: "Signed Out",
         description: "You have been successfully signed out.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error signing out:', error);
+      // Force clear state even if signOut fails
+      setUser(null);
+      setProfile(null);
+      setSession(null);
     }
   };
 
@@ -105,6 +118,20 @@ export const useAuthActions = (
       return { error };
     }
 
+    // Validate user ID before database operation
+    if (!isValidUUID(user.id)) {
+      logInvalidUUID('updateProfile', user.id);
+      toast({
+        title: "Session Error",
+        description: "Your session is corrupted. Please sign in again.",
+        variant: "destructive",
+      });
+      
+      await signOut();
+      window.location.href = '/auth';
+      return { error: 'Invalid user session' };
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -112,6 +139,19 @@ export const useAuthActions = (
         .eq('id', user.id);
 
       if (error) {
+        if (isUUIDError(error)) {
+          logInvalidUUID('updateProfile - database error', user.id);
+          toast({
+            title: "Session Error",
+            description: "Your session is corrupted. Please sign in again.",
+            variant: "destructive",
+          });
+          
+          await signOut();
+          window.location.href = '/auth';
+          return { error: 'Invalid user session' };
+        }
+        
         toast({
           title: "Update Failed",
           description: error.message,
@@ -128,7 +168,20 @@ export const useAuthActions = (
       });
 
       return { error: null };
-    } catch (error) {
+    } catch (error: any) {
+      if (isUUIDError(error)) {
+        logInvalidUUID('updateProfile - catch block', user.id);
+        toast({
+          title: "Session Error",
+          description: "Your session is corrupted. Please sign in again.",
+          variant: "destructive",
+        });
+        
+        await signOut();
+        window.location.href = '/auth';
+        return { error: 'Invalid user session' };
+      }
+      
       toast({
         title: "Update Failed",
         description: "An unexpected error occurred",

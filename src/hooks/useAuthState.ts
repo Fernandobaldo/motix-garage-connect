@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/types/auth';
+import { isValidUUID, logInvalidUUID, isUUIDError } from '@/utils/uuid';
 
 export const useAuthState = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -11,6 +12,23 @@ export const useAuthState = () => {
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  const handleInvalidUser = async (userId: string, context: string) => {
+    logInvalidUUID(context, userId);
+    setProfileError('Invalid user session detected. Please sign in again.');
+    setLoading(false);
+    
+    try {
+      await supabase.auth.signOut();
+      // Force redirect to auth page
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 1000);
+    } catch (error) {
+      console.error('Error during forced logout:', error);
+      window.location.href = '/auth';
+    }
+  };
+
   const fetchUserProfile = async (userId: string, retryCount = 0) => {
     if (!userId) {
       console.error('Cannot fetch profile: no user ID provided');
@@ -18,20 +36,31 @@ export const useAuthState = () => {
       return;
     }
 
+    // Validate UUID before making any database queries
+    if (!isValidUUID(userId)) {
+      await handleInvalidUser(userId, 'fetchUserProfile');
+      return;
+    }
+
     console.log('Fetching profile for user:', userId, 'retry:', retryCount);
     
     try {
-      // Use the userId directly since profiles.id is now TEXT
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId) // Direct comparison, no casting needed
+        .eq('id', userId)
         .single();
 
       if (error) {
         console.error('Error fetching profile:', error);
-        setProfileError(error.message);
         
+        // Check if it's a UUID error specifically
+        if (isUUIDError(error)) {
+          await handleInvalidUser(userId, 'fetchUserProfile - UUID error');
+          return;
+        }
+        
+        setProfileError(error.message);
         setLoading(false);
         
         // Schedule retry for network/temporary errors only
@@ -49,8 +78,15 @@ export const useAuthState = () => {
       setProfile(data as Profile);
       setProfileError(null);
       setLoading(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Unexpected error fetching profile:', error);
+      
+      // Check if it's a UUID error
+      if (isUUIDError(error)) {
+        await handleInvalidUser(userId, 'fetchUserProfile - catch block');
+        return;
+      }
+      
       setProfileError('Failed to load profile');
       setLoading(false);
     }
@@ -62,20 +98,37 @@ export const useAuthState = () => {
       return;
     }
 
+    // Validate UUID before making database query
+    if (!isValidUUID(userId)) {
+      logInvalidUUID('updateLastLogin', userId);
+      return;
+    }
+
     try {
-      // Use the userId directly since profiles.id is now TEXT
       const { error } = await supabase
         .from('profiles')
         .update({ last_login_at: new Date().toISOString() })
-        .eq('id', userId); // Direct comparison, no casting needed
+        .eq('id', userId);
       
       if (error) {
         console.error('Error updating last login:', error);
+        
+        // Check if it's a UUID error
+        if (isUUIDError(error)) {
+          await handleInvalidUser(userId, 'updateLastLogin');
+          return;
+        }
       } else {
         console.log('Last login updated successfully');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating last login:', error);
+      
+      // Check if it's a UUID error
+      if (isUUIDError(error)) {
+        await handleInvalidUser(userId, 'updateLastLogin - catch block');
+        return;
+      }
     }
   };
 
@@ -88,8 +141,13 @@ export const useAuthState = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          // Validate user ID immediately on auth state change
+          if (!isValidUUID(session.user.id)) {
+            await handleInvalidUser(session.user.id, 'onAuthStateChange');
+            return;
+          }
+          
           console.log('User authenticated, fetching profile for:', session.user.id);
-          // Fetch user profile when authenticated - user.id is already TEXT from Supabase
           await fetchUserProfile(session.user.id);
           
           // Update last login timestamp only for sign in events
@@ -112,6 +170,12 @@ export const useAuthState = () => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        // Validate user ID immediately on initial session check
+        if (!isValidUUID(session.user.id)) {
+          handleInvalidUser(session.user.id, 'getSession');
+          return;
+        }
+        
         console.log('Found existing session, fetching profile');
         fetchUserProfile(session.user.id);
       } else {
