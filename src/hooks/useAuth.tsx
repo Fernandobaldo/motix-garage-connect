@@ -1,10 +1,11 @@
+
 import { ReactNode } from 'react';
 import AuthContext from '@/contexts/AuthContext';
 import { useAuthState } from './useAuthState';
 import { useAuthActions } from './useAuthActions';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { user, profile, session, loading, setProfile, fetchUserProfile } = useAuthState();
+  const { user, profile, session, loading, profileError, setProfile, fetchUserProfile } = useAuthState();
   
   // Create setters for auth actions
   const setUser = (newUser: any) => {
@@ -30,6 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     profile,
     session,
     loading,
+    profileError,
     signIn,
     signUp,
     signOut,

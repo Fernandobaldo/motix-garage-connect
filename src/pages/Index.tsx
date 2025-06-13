@@ -9,12 +9,13 @@ import { Tabs } from "@/components/ui/tabs";
 import DashboardTabs from "@/components/layout/DashboardTabs";
 import DashboardContent from "@/components/layout/DashboardContent";
 import { useDashboardNavigation } from "@/hooks/useDashboardNavigation";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileError } = useAuth();
   const { activeTab, setActiveTab, selectedAppointmentId, handleCardClick } = useDashboardNavigation();
 
-  console.log('Index page render - User:', user?.id, 'Profile:', profile?.id, 'Loading:', loading);
+  console.log('Index page render - User:', user?.id, 'Profile:', profile?.id, 'Loading:', loading, 'Error:', profileError);
 
   if (loading) {
     console.log('Still loading, showing loading screen');
@@ -33,14 +34,36 @@ const Index = () => {
     return <LandingPage />;
   }
 
+  if (profileError) {
+    console.log('Profile error:', profileError);
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center p-6 text-red-600">
+          <h2 className="text-xl font-semibold mb-4">Failed to load your profile</h2>
+          <p className="text-muted-foreground mb-4">
+            There was an issue loading your account information: {profileError}
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Reload Page
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (!profile) {
     console.log('User exists but no profile, showing profile loading');
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Loading Dashboard...</h2>
-          <p className="text-muted-foreground">Please wait while we load your information.</p>
-          <p className="text-xs text-gray-400 mt-2">User ID: {user.id}</p>
+        <div className="text-center p-6 text-orange-600">
+          <h2 className="text-xl font-semibold mb-4">Profile Not Found</h2>
+          <p className="text-muted-foreground mb-4">
+            Your user account exists but no profile was found. This might be a setup issue.
+          </p>
+          <p className="text-xs text-gray-400 mb-4">User ID: {user.id}</p>
+          <Button onClick={() => window.location.reload()}>
+            Retry Loading
+          </Button>
         </div>
       </div>
     );

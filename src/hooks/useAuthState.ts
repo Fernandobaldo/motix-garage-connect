@@ -9,14 +9,16 @@ export const useAuthState = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string, retryCount = 0) => {
     if (!userId) {
       console.error('Cannot fetch profile: no user ID provided');
+      setLoading(false);
       return;
     }
 
-    console.log('Fetching profile for user:', userId);
+    console.log('Fetching profile for user:', userId, 'retry:', retryCount);
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -26,14 +28,31 @@ export const useAuthState = () => {
 
       if (error) {
         console.error('Error fetching profile:', error);
-        console.error('Error details:', error.message, error.code, error.details);
+        setProfileError(error.message);
+        
+        // Retry up to 2 times for network/temporary errors
+        if (retryCount < 2 && (error.code === 'PGRST000' || !error.code)) {
+          console.log('Retrying profile fetch in 1 second...');
+          setTimeout(() => {
+            fetchUserProfile(userId, retryCount + 1);
+          }, 1000);
+          return;
+        }
+        
+        // Always set loading to false even on error
+        setLoading(false);
         return;
       }
 
       console.log('Profile fetched successfully:', data);
       setProfile(data as Profile);
+      setProfileError(null);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Unexpected error fetching profile:', error);
+      setProfileError('Failed to load profile');
+    } finally {
+      // Ensure loading is always set to false
+      setLoading(false);
     }
   };
 
@@ -63,7 +82,7 @@ export const useAuthState = () => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session);
+        console.log('Auth state changed:', event, session?.user?.id || 'no user');
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -72,28 +91,31 @@ export const useAuthState = () => {
           // Fetch user profile when authenticated
           await fetchUserProfile(session.user.id);
           
-          // Update last login timestamp only after profile is loaded and for sign in events
+          // Update last login timestamp only for sign in events
           if (event === 'SIGNED_IN') {
             await updateLastLogin(session.user.id);
           }
         } else {
           console.log('No user session, clearing profile');
           setProfile(null);
+          setProfileError(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session);
+      console.log('Initial session check:', session?.user?.id || 'no session');
       setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
         console.log('Found existing session, fetching profile');
         fetchUserProfile(session.user.id);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -104,7 +126,8 @@ export const useAuthState = () => {
     profile,
     session,
     loading,
+    profileError,
     setProfile,
-    fetchUserProfile
+    fetchUserProfile: (userId: string) => fetchUserProfile(userId, 0)
   };
 };

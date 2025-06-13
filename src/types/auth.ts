@@ -17,6 +17,7 @@ export interface AuthContextType {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
+  profileError: string | null;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, userData: { full_name: string; phone: string; role: 'client' | 'workshop' }) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
