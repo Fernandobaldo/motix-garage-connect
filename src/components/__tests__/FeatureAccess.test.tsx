@@ -1,202 +1,303 @@
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import FeatureAccess from '../permissions/FeatureAccess';
-import { useTenant } from '@/hooks/useTenant';
-import { useToast } from '@/hooks/use-toast';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import FeatureAccess from '@/components/permissions/FeatureAccess';
+import { TenantProvider } from '@/hooks/useTenant';
+import { useAuth } from '@/hooks/useAuth';
 
-// Mock the hooks
-vi.mock('@/hooks/useTenant');
-vi.mock('@/hooks/use-toast');
+// Mock the auth hook
+vi.mock('@/hooks/useAuth');
 
-const mockUseTenant = vi.mocked(useTenant);
-const mockUseToast = vi.mocked(useToast);
+const mockUseAuth = vi.mocked(useAuth);
 
 describe('FeatureAccess Component', () => {
-  const mockToast = vi.fn();
+  let queryClient: QueryClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUseToast.mockReturnValue({ 
-      toast: mockToast,
-      dismiss: vi.fn(),
-      toasts: []
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
     });
   });
 
-  it('should render children when user has access', () => {
-    mockUseTenant.mockReturnValue({
-      tenant: { 
-        id: 'test-id',
-        name: 'Test Tenant',
-        subscription_plan: 'pro',
-        settings: {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        subdomain: null,
-        status: 'active',
-        suspended_at: null,
-        suspended_by: null,
-        trial_until: null,
-      },
-      loading: false,
-      updateTenant: vi.fn(),
-      refreshTenant: vi.fn(),
-    });
-
-    render(
-      <FeatureAccess feature="file_upload_chat">
-        <div>Premium Feature Content</div>
-      </FeatureAccess>
+  const renderWithProviders = (ui: React.ReactElement) => {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <TenantProvider>
+          {ui}
+        </TenantProvider>
+      </QueryClientProvider>
     );
+  };
 
-    expect(screen.getByText('Premium Feature Content')).toBeInTheDocument();
-    expect(screen.queryByText('Premium Feature')).not.toBeInTheDocument();
-  });
-
-  it('should show upgrade prompt when user lacks access', () => {
-    mockUseTenant.mockReturnValue({
-      tenant: { 
-        id: 'test-id',
-        name: 'Test Tenant',
-        subscription_plan: 'free',
-        settings: {},
+  it('should allow pro plan users to access chat feature', async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      profile: {
+        id: 'test-user',
+        role: 'workshop',
+        tenant_id: 'test-tenant',
+        full_name: 'Test User',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        subdomain: null,
-        status: 'active',
-        suspended_at: null,
-        suspended_by: null,
-        trial_until: null,
+        phone: null,
+        last_login_at: null,
       },
+      session: null,
       loading: false,
-      updateTenant: vi.fn(),
-      refreshTenant: vi.fn(),
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn(),
+      updateProfile: vi.fn(),
     });
 
-    render(
+    // Mock tenant with pro plan
+    vi.doMock('@/hooks/useTenant', () => ({
+      useTenant: () => ({
+        tenant: {
+          id: 'test-tenant',
+          name: 'Test Garage',
+          subscription_plan: 'pro',
+          settings: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          subdomain: null,
+          status: 'active',
+          suspended_at: null,
+          suspended_by: null,
+          trial_until: null,
+          is_blocked: false,
+        },
+        loading: false,
+        updateTenant: vi.fn(),
+        refreshTenant: vi.fn(),
+      }),
+    }));
+
+    renderWithProviders(
       <FeatureAccess feature="chat">
-        <div>Chat Feature Content</div>
+        <div>Chat Feature Available</div>
       </FeatureAccess>
     );
 
-    expect(screen.queryByText('Chat Feature Content')).not.toBeInTheDocument();
-    expect(screen.getByText('Premium Feature')).toBeInTheDocument();
-    expect(screen.getByText(/This feature is available starting from the starter plan/)).toBeInTheDocument();
-    expect(screen.getByText('Upgrade Now')).toBeInTheDocument();
+    expect(screen.getByText('Chat Feature Available')).toBeInTheDocument();
   });
 
-  it('should show custom fallback when provided', () => {
-    mockUseTenant.mockReturnValue({
-      tenant: { 
-        id: 'test-id',
-        name: 'Test Tenant',
-        subscription_plan: 'free',
-        settings: {},
+  it('should block free plan users from accessing chat feature', async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      profile: {
+        id: 'test-user',
+        role: 'workshop',
+        tenant_id: 'test-tenant',
+        full_name: 'Test User',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        subdomain: null,
-        status: 'active',
-        suspended_at: null,
-        suspended_by: null,
-        trial_until: null,
+        phone: null,
+        last_login_at: null,
       },
+      session: null,
       loading: false,
-      updateTenant: vi.fn(),
-      refreshTenant: vi.fn(),
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn(),
+      updateProfile: vi.fn(),
     });
 
-    const customFallback = <div>Custom Locked Message</div>;
+    // Mock tenant with free plan
+    vi.doMock('@/hooks/useTenant', () => ({
+      useTenant: () => ({
+        tenant: {
+          id: 'test-tenant',
+          name: 'Test Garage',
+          subscription_plan: 'free',
+          settings: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          subdomain: null,
+          status: 'active',
+          suspended_at: null,
+          suspended_by: null,
+          trial_until: null,
+          is_blocked: false,
+        },
+        loading: false,
+        updateTenant: vi.fn(),
+        refreshTenant: vi.fn(),
+      }),
+    }));
 
-    render(
-      <FeatureAccess feature="chat" fallback={customFallback}>
-        <div>Chat Feature Content</div>
+    renderWithProviders(
+      <FeatureAccess feature="chat">
+        <div>Chat Feature Available</div>
       </FeatureAccess>
     );
 
-    expect(screen.getByText('Custom Locked Message')).toBeInTheDocument();
-    expect(screen.queryByText('Premium Feature')).not.toBeInTheDocument();
+    expect(screen.queryByText('Chat Feature Available')).not.toBeInTheDocument();
+    expect(screen.getByText(/upgrade/i)).toBeInTheDocument();
   });
 
-  it('should handle upgrade click and show toast', () => {
-    mockUseTenant.mockReturnValue({
-      tenant: { 
-        id: 'test-id',
-        name: 'Test Tenant',
-        subscription_plan: 'free',
-        settings: {},
+  it('should show upgrade message for blocked features', async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      profile: {
+        id: 'test-user',
+        role: 'workshop',
+        tenant_id: 'test-tenant',
+        full_name: 'Test User',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        subdomain: null,
-        status: 'active',
-        suspended_at: null,
-        suspended_by: null,
-        trial_until: null,
+        phone: null,
+        last_login_at: null,
       },
+      session: null,
       loading: false,
-      updateTenant: vi.fn(),
-      refreshTenant: vi.fn(),
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn(),
+      updateProfile: vi.fn(),
     });
 
-    render(
-      <FeatureAccess feature="inventory">
-        <div>Inventory Content</div>
+    // Mock tenant with free plan
+    vi.doMock('@/hooks/useTenant', () => ({
+      useTenant: () => ({
+        tenant: {
+          id: 'test-tenant',
+          name: 'Test Garage',
+          subscription_plan: 'free',
+          settings: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          subdomain: null,
+          status: 'active',
+          suspended_at: null,
+          suspended_by: null,
+          trial_until: null,
+          is_blocked: false,
+        },
+        loading: false,
+        updateTenant: vi.fn(),
+        refreshTenant: vi.fn(),
+      }),
+    }));
+
+    renderWithProviders(
+      <FeatureAccess feature="inventory" fallbackMessage="Inventory requires Pro plan">
+        <div>Inventory Feature</div>
       </FeatureAccess>
     );
 
-    const upgradeButton = screen.getByText('Upgrade Now');
-    fireEvent.click(upgradeButton);
-
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Upgrade Required",
-      description: "This feature is available starting from the pro plan.",
-      variant: "default",
-    });
+    expect(screen.getByText('Inventory requires Pro plan')).toBeInTheDocument();
   });
 
-  it('should use userPlan prop when provided', () => {
-    mockUseTenant.mockReturnValue({
-      tenant: { 
-        id: 'test-id',
-        name: 'Test Tenant',
-        subscription_plan: 'free',
-        settings: {},
+  it('should allow unlimited features for enterprise plan', async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      profile: {
+        id: 'test-user',
+        role: 'workshop',
+        tenant_id: 'test-tenant',
+        full_name: 'Test User',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        subdomain: null,
-        status: 'active',
-        suspended_at: null,
-        suspended_by: null,
-        trial_until: null,
+        phone: null,
+        last_login_at: null,
       },
+      session: null,
       loading: false,
-      updateTenant: vi.fn(),
-      refreshTenant: vi.fn(),
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn(),
+      updateProfile: vi.fn(),
     });
 
-    render(
-      <FeatureAccess feature="chat" userPlan="starter">
-        <div>Chat Content</div>
+    // Mock tenant with enterprise plan
+    vi.doMock('@/hooks/useTenant', () => ({
+      useTenant: () => ({
+        tenant: {
+          id: 'test-tenant',
+          name: 'Test Enterprise',
+          subscription_plan: 'enterprise',
+          settings: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          subdomain: null,
+          status: 'active',
+          suspended_at: null,
+          suspended_by: null,
+          trial_until: null,
+          is_blocked: false,
+        },
+        loading: false,
+        updateTenant: vi.fn(),
+        refreshTenant: vi.fn(),
+      }),
+    }));
+
+    renderWithProviders(
+      <FeatureAccess feature="api_access">
+        <div>API Access Available</div>
       </FeatureAccess>
     );
 
-    expect(screen.getByText('Chat Content')).toBeInTheDocument();
+    expect(screen.getByText('API Access Available')).toBeInTheDocument();
   });
 
-  it('should fallback to free plan when no tenant', () => {
-    mockUseTenant.mockReturnValue({
-      tenant: null,
+  it('should handle loading state', async () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      profile: {
+        id: 'test-user',
+        role: 'workshop',
+        tenant_id: 'test-tenant',
+        full_name: 'Test User',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        phone: null,
+        last_login_at: null,
+      },
+      session: null,
       loading: false,
-      updateTenant: vi.fn(),
-      refreshTenant: vi.fn(),
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn(),
+      updateProfile: vi.fn(),
     });
 
-    render(
-      <FeatureAccess feature="appointment">
-        <div>Appointment Content</div>
+    // Mock tenant loading state
+    vi.doMock('@/hooks/useTenant', () => ({
+      useTenant: () => ({
+        tenant: {
+          id: 'test-tenant',
+          name: 'Test Garage',
+          subscription_plan: 'free',
+          settings: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          subdomain: null,
+          status: 'active',
+          suspended_at: null,
+          suspended_by: null,
+          trial_until: null,
+          is_blocked: false,
+        },
+        loading: true,
+        updateTenant: vi.fn(),
+        refreshTenant: vi.fn(),
+      }),
+    }));
+
+    renderWithProviders(
+      <FeatureAccess feature="chat">
+        <div>Chat Feature</div>
       </FeatureAccess>
     );
 
-    expect(screen.getByText('Appointment Content')).toBeInTheDocument();
+    // Should show loading state
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 });

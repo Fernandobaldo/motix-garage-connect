@@ -2,95 +2,91 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import type { AppointmentWithRelations } from '@/types/database';
+import { AppointmentWithRelations } from '@/types/database';
 
 export const useAppointmentData = () => {
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
 
-  const { data: appointments = [], isLoading, refetch } = useQuery({
-    queryKey: ['appointments', user?.id, profile?.tenant_id, profile?.role],
+  const { data: appointments = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['appointments', profile?.tenant_id],
     queryFn: async (): Promise<AppointmentWithRelations[]> => {
-      if (!user || !profile) {
-        console.log('No user or profile, returning empty appointments');
-        return [];
-      }
+      if (!profile?.tenant_id) return [];
 
-      console.log('Fetching appointments for user:', user.id, 'role:', profile.role, 'tenant:', profile.tenant_id);
-
-      let query = supabase
+      const { data, error } = await supabase
         .from('appointments')
         .select(`
           *,
-          client:profiles!appointments_client_id_fkey(*),
-          workshop:workshops!appointments_workshop_id_fkey(*),
-          vehicle:vehicles!appointments_vehicle_id_fkey(*)
+          client:profiles!appointments_client_id_fkey (
+            id,
+            full_name,
+            phone,
+            created_at,
+            updated_at,
+            tenant_id,
+            role,
+            last_login_at
+          ),
+          workshop:workshops!appointments_workshop_id_fkey (
+            id,
+            name,
+            email,
+            phone,
+            address
+          ),
+          vehicle:vehicles!appointments_vehicle_id_fkey (
+            id,
+            make,
+            model,
+            year,
+            license_plate
+          )
         `)
-        .order('scheduled_at', { ascending: false });
+        .eq('tenant_id', profile.tenant_id)
+        .order('scheduled_at', { ascending: true });
 
-      // Always filter by tenant_id for security
-      if (profile.tenant_id) {
-        query = query.eq('tenant_id', profile.tenant_id);
-      }
+      if (error) throw error;
 
-      // Filter based on user role
-      if (profile.role === 'client') {
-        console.log('Filtering appointments for client:', user.id);
-        query = query.eq('client_id', user.id);
-      } else if (profile.role === 'workshop') {
-        console.log('Filtering appointments for workshop tenant:', profile.tenant_id);
-        // Workshop users see all appointments in their tenant (already filtered above)
-      }
-
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching appointments:', error);
-        throw error;
-      }
-
-      console.log('Fetched appointments:', data?.length || 0, 'appointments');
-      console.log('Raw appointment data:', data);
-
-      // Process appointments to handle guest appointments and ensure client info is available
-      const processedAppointments: AppointmentWithRelations[] = (data || []).map(appointment => {
-        console.log('Processing appointment:', appointment.id, 'client_id:', appointment.client_id, 'client data:', appointment.client);
-        
-        // If no client_id but description contains guest info, extract it
-        if (!appointment.client_id && appointment.description) {
-          const guestMatch = appointment.description.match(/Guest appointment for: (.+?) \((.+?)\)/);
-          if (guestMatch) {
-            return {
-              ...appointment,
-              client: {
-                id: null as any, // Guest clients don't have real IDs
-                full_name: guestMatch[1],
-                phone: guestMatch[2],
-                created_at: '',
-                updated_at: '',
-                tenant_id: null,
-                role: 'client' as const
-              }
-            };
+      // Process appointments to handle guest clients
+      const processedAppointments = await Promise.all(
+        (data || []).map(async (appointment) => {
+          // If no client but has guest_client_id, fetch guest client data
+          if (!appointment.client && appointment.guest_client_id) {
+            const { data: guestClient } = await supabase
+              .from('clients')
+              .select('*')
+              .eq('id', appointment.guest_client_id)
+              .single();
+            
+            if (guestClient) {
+              return {
+                ...appointment,
+                client: {
+                  id: guestClient.id,
+                  full_name: guestClient.full_name,
+                  phone: guestClient.phone || '',
+                  created_at: guestClient.created_at,
+                  updated_at: guestClient.updated_at,
+                  tenant_id: guestClient.tenant_id,
+                  role: 'client' as const,
+                  last_login_at: null,
+                },
+                client_id: guestClient.id,
+              };
+            }
           }
-        }
-        
-        // If client_id exists but no client data was fetched, try to get it
-        if (appointment.client_id && !appointment.client) {
-          console.warn('Appointment has client_id but no client data:', appointment.id);
-        }
-        
-        return appointment as AppointmentWithRelations;
-      });
+          return appointment;
+        })
+      );
 
-      console.log('Processed appointments:', processedAppointments);
-      return processedAppointments;
+      return processedAppointments as AppointmentWithRelations[];
     },
-    enabled: !!user && !!profile,
+    enabled: !!profile?.tenant_id,
   });
 
   return {
     appointments,
     isLoading,
+    error,
     refetch,
   };
 };
