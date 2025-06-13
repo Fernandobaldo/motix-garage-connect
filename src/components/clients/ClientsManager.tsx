@@ -1,15 +1,18 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, Search, Phone, Mail, Car, Calendar, UserPlus } from "lucide-react";
+import { Users, Search, Phone, Mail, Car, Calendar, UserPlus, Eye, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import ClientCreationForm from "./ClientCreationForm";
+import { useClientLimits } from "@/hooks/useClientLimits";
+import { UpgradeModal } from "@/components/permissions/UpgradeModal";
 
 interface Client {
   id: string;
@@ -32,8 +35,12 @@ interface Client {
 
 const ClientsManager = () => {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [showClientCreation, setShowClientCreation] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const { canAddClient, currentCount, maxClients, isAtLimit } = useClientLimits();
 
   const { data: clients, isLoading, refetch } = useQuery({
     queryKey: ['clients', profile?.tenant_id],
@@ -151,6 +158,18 @@ const ClientsManager = () => {
     refetch();
   };
 
+  const handleCreateClientClick = () => {
+    if (isAtLimit) {
+      setShowUpgradeModal(true);
+    } else {
+      setShowClientCreation(true);
+    }
+  };
+
+  const handleViewClientDetails = (clientId: string) => {
+    navigate(`/client-details/${clientId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -173,11 +192,29 @@ const ClientsManager = () => {
           <Users className="h-6 w-6 text-blue-600" />
           <h2 className="text-2xl font-bold text-gray-900">Clients Database</h2>
         </div>
-        <Button onClick={() => setShowClientCreation(true)} className="flex items-center space-x-2">
-          <UserPlus className="h-4 w-4" />
-          <span>Create Client</span>
-        </Button>
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-600">
+            {currentCount} / {maxClients} clients
+          </div>
+          <Button 
+            onClick={handleCreateClientClick} 
+            className="flex items-center space-x-2"
+            disabled={isAtLimit}
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>Create Client</span>
+          </Button>
+        </div>
       </div>
+
+      {isAtLimit && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            You've reached your client limit of {maxClients}. Upgrade your plan to add more clients.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex items-center space-x-4">
         <div className="relative flex-1 max-w-md">
@@ -275,6 +312,18 @@ const ClientsManager = () => {
                       )}
                     </div>
                   </div>
+
+                  <div className="pt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewClientDetails(client.id)}
+                      className="w-full flex items-center space-x-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span>View Details</span>
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -293,6 +342,14 @@ const ClientsManager = () => {
           <ClientCreationForm onSuccess={handleClientCreated} />
         </DialogContent>
       </Dialog>
+
+      <UpgradeModal 
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        feature="multiple clients"
+        currentPlan="free"
+        requiredPlan="starter"
+      />
     </div>
   );
 };

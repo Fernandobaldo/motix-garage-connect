@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { User, Car, Loader2 } from 'lucide-react';
+import { User, Car, Loader2, AlertTriangle } from 'lucide-react';
 import UnifiedVehicleForm from '../vehicles/UnifiedVehicleForm';
+import { useClientLimits } from '@/hooks/useClientLimits';
 
 const clientSchema = z.object({
   full_name: z.string().min(1, 'Full name is required'),
@@ -35,6 +37,7 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
   const [activeTab, setActiveTab] = useState('client');
   const { toast } = useToast();
   const { profile } = useAuth();
+  const { canAddClient, isAtLimit, currentCount, maxClients } = useClientLimits();
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
@@ -50,11 +53,34 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
       return;
     }
 
+    if (isAtLimit) {
+      toast({
+        title: 'Client Limit Reached',
+        description: `You've reached your client limit of ${maxClients}. Please upgrade your plan.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
       console.log('Creating client with data:', data);
       
+      // Check client limit before creating
+      const { data: canCreate, error: limitError } = await supabase.rpc('can_add_client', {
+        p_tenant_id: profile.tenant_id
+      });
+
+      if (limitError) {
+        console.error('Error checking client limit:', limitError);
+        throw new Error('Failed to verify client limit');
+      }
+
+      if (!canCreate) {
+        throw new Error(`Client limit of ${maxClients} reached. Please upgrade your plan.`);
+      }
+
       // Insert client directly into clients table
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
@@ -118,6 +144,19 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
 
   return (
     <div className="space-y-6">
+      {isAtLimit && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            You've reached your client limit of {maxClients}. Upgrade your plan to add more clients.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="text-sm text-gray-600 text-center">
+        Current clients: {currentCount} / {maxClients}
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="client" disabled={!!createdClientId}>
@@ -148,6 +187,7 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
                       {...register('full_name')}
                       placeholder="John Doe"
                       className={errors.full_name ? 'border-red-500' : ''}
+                      disabled={isAtLimit}
                     />
                     {errors.full_name && (
                       <p className="text-sm text-red-500">{errors.full_name.message}</p>
@@ -161,6 +201,7 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
                       {...register('phone')}
                       placeholder="(555) 123-4567"
                       className={errors.phone ? 'border-red-500' : ''}
+                      disabled={isAtLimit}
                     />
                     {errors.phone && (
                       <p className="text-sm text-red-500">{errors.phone.message}</p>
@@ -175,6 +216,7 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
                       {...register('email')}
                       placeholder="john@example.com"
                       className={errors.email ? 'border-red-500' : ''}
+                      disabled={isAtLimit}
                     />
                     {errors.email && (
                       <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -183,7 +225,10 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
                 </div>
 
                 <div className="flex justify-end pt-4">
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting || isAtLimit}
+                  >
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Client
                   </Button>

@@ -1333,6 +1333,10 @@ export type Database = {
         Args: { quotation_uuid: string }
         Returns: undefined
       }
+      can_add_client: {
+        Args: { p_tenant_id: string }
+        Returns: boolean
+      }
       can_create_appointment: {
         Args: { p_tenant_id: string }
         Returns: boolean
@@ -1381,6 +1385,10 @@ export type Database = {
           slug: string
           public_url: string
         }[]
+      }
+      get_client_limit: {
+        Args: { p_tenant_id: string }
+        Returns: number
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
@@ -1444,6 +1452,19 @@ export type Database = {
       manage_workshop_status: {
         Args: { p_tenant_id: string; p_new_status: string; p_reason?: string }
         Returns: undefined
+      }
+      search_vehicles_by_plate: {
+        Args: { p_tenant_id: string; p_search_term: string }
+        Returns: {
+          vehicle_id: string
+          license_plate: string
+          make: string
+          model: string
+          year: number
+          client_id: string
+          client_name: string
+          client_type: string
+        }[]
       }
       update_workshop_plan: {
         Args: {

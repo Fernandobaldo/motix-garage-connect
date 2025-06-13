@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +10,8 @@ import ExistingClientSelector from "./ExistingClientSelector";
 import GuestClientForm from "./GuestClientForm";
 import VehicleForm from "./VehicleForm";
 import AppointmentDetailsForm from "./AppointmentDetailsForm";
+import LicensePlateSearchField from "../common/LicensePlateSearchField";
+import { useClientLimits } from "@/hooks/useClientLimits";
 
 interface Client {
   id: string;
@@ -32,6 +35,7 @@ interface ManualAppointmentBookingProps {
 const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointmentBookingProps) => {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const { canAddClient, isAtLimit } = useClientLimits();
   const [loading, setLoading] = useState(false);
   const [appointmentType, setAppointmentType] = useState<'existing' | 'new'>('existing');
 
@@ -42,6 +46,10 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [serviceType, setServiceType] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+
+  // License plate search states
+  const [selectedPlateVehicle, setSelectedPlateVehicle] = useState<any>(null);
+  const [plateSearchClient, setPlateSearchClient] = useState<{id: string, name: string, type: 'auth' | 'guest'} | null>(null);
 
   // New client form - simplified for guest booking
   const [newClient, setNewClient] = useState({
@@ -60,6 +68,18 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
     transmission: '',
   });
 
+  const handleVehicleSelect = (vehicle: any) => {
+    console.log('Selected vehicle from plate search:', vehicle);
+    setSelectedPlateVehicle(vehicle);
+    setSelectedVehicle(vehicle.vehicle_id);
+  };
+
+  const handleClientSelect = (clientId: string, clientName: string, clientType: 'auth' | 'guest') => {
+    console.log('Selected client from plate search:', { clientId, clientName, clientType });
+    setPlateSearchClient({ id: clientId, name: clientName, type: clientType });
+    setSelectedClient(clientId);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,6 +90,16 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
       let isGuestClient = false;
 
       if (appointmentType === 'new') {
+        // Check client limits before creating new guest client
+        if (isAtLimit) {
+          toast({
+            title: "Client Limit Reached",
+            description: "You've reached your client limit. Please upgrade your plan to add more clients.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         console.log('Creating guest client and vehicle');
         
         // Create guest client in the clients table
@@ -116,6 +146,11 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
 
         console.log('Created guest vehicle:', createdVehicle);
         vehicleId = createdVehicle.id;
+      } else if (selectedPlateVehicle) {
+        // Use the vehicle and client from plate search
+        vehicleId = selectedPlateVehicle.vehicle_id;
+        clientId = plateSearchClient?.id || selectedClient;
+        isGuestClient = plateSearchClient?.type === 'guest';
       }
 
       // Create appointment
@@ -170,7 +205,7 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
     const basicValidation = serviceType && selectedDate && selectedTime;
     
     if (appointmentType === 'existing') {
-      return basicValidation && selectedClient && selectedVehicle;
+      return basicValidation && ((selectedClient && selectedVehicle) || selectedPlateVehicle);
     } else {
       return basicValidation && 
         newClient.full_name && 
@@ -189,23 +224,68 @@ const ManualAppointmentBooking = ({ onSuccess, existingClients }: ManualAppointm
             <User className="h-4 w-4" />
             <span>Existing Client</span>
           </TabsTrigger>
-          <TabsTrigger value="new" className="flex items-center space-x-2">
+          <TabsTrigger value="new" className="flex items-center space-x-2" disabled={isAtLimit}>
             <UserPlus className="h-4 w-4" />
             <span>Guest Appointment</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="existing" className="space-y-4">
-          <ExistingClientSelector
-            clients={existingClients}
-            selectedClient={selectedClient}
-            selectedVehicle={selectedVehicle}
-            onClientChange={setSelectedClient}
-            onVehicleChange={setSelectedVehicle}
-          />
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Search by License Plate</h3>
+              <LicensePlateSearchField
+                label="License Plate"
+                placeholder="Enter license plate to find vehicle and client..."
+                onVehicleSelect={handleVehicleSelect}
+                onClientSelect={handleClientSelect}
+                required
+              />
+            </div>
+            
+            {selectedPlateVehicle && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-800 mb-2">Selected for Appointment:</h4>
+                <p className="text-blue-700">
+                  <strong>Vehicle:</strong> {selectedPlateVehicle.year} {selectedPlateVehicle.make} {selectedPlateVehicle.model} 
+                  ({selectedPlateVehicle.license_plate})
+                </p>
+                <p className="text-blue-700">
+                  <strong>Client:</strong> {plateSearchClient?.name}
+                </p>
+              </div>
+            )}
+
+            <div className="text-center text-gray-500">
+              <span>- OR -</span>
+            </div>
+
+            <ExistingClientSelector
+              clients={existingClients}
+              selectedClient={selectedClient}
+              selectedVehicle={selectedVehicle}
+              onClientChange={(clientId) => {
+                setSelectedClient(clientId);
+                setSelectedPlateVehicle(null);
+                setPlateSearchClient(null);
+              }}
+              onVehicleChange={(vehicleId) => {
+                setSelectedVehicle(vehicleId);
+                setSelectedPlateVehicle(null);
+                setPlateSearchClient(null);
+              }}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="new" className="space-y-4">
+          {isAtLimit && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800">
+                You've reached your client limit. Please upgrade your plan to create guest appointments.
+              </p>
+            </div>
+          )}
           <GuestClientForm
             clientData={newClient}
             onClientDataChange={setNewClient}
