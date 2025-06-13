@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
+import { WorkshopProvider } from "@/hooks/useWorkshop";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -28,26 +29,28 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <TenantProvider>
-            <LanguageProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/book/:slug" element={<PublicBooking />} />
-                  <Route path="/client" element={<ClientAccount />} />
-                  <Route path="/client/appointments" element={<ClientAppointments />} />
-                  <Route path="/client/details" element={<ClientDetails />} />
-                  <Route path="/client/quotations" element={<ClientQuotations />} />
-                  <Route path="/client/service-history" element={<ClientServiceHistory />} />
-                  <Route path="/client/vehicles" element={<ClientVehicles />} />
-                  <Route path="/client-details/:clientId" element={<ClientDetailPage />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </LanguageProvider>
+            <WorkshopProvider>
+              <LanguageProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/book/:slug" element={<PublicBooking />} />
+                    <Route path="/client" element={<ClientAccount />} />
+                    <Route path="/client/appointments" element={<ClientAppointments />} />
+                    <Route path="/client/details" element={<ClientDetails />} />
+                    <Route path="/client/quotations" element={<ClientQuotations />} />
+                    <Route path="/client/service-history" element={<ClientServiceHistory />} />
+                    <Route path="/client/vehicles" element={<ClientVehicles />} />
+                    <Route path="/client-details/:clientId" element={<ClientDetailPage />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </LanguageProvider>
+            </WorkshopProvider>
           </TenantProvider>
         </AuthProvider>
       </TooltipProvider>
