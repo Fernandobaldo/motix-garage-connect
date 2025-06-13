@@ -19,9 +19,9 @@ export const useServiceRecords = () => {
         .from('service_records')
         .select(`
           *,
-          client:profiles!service_records_client_id_fkey(*),
-          workshop:workshops!service_records_workshop_id_fkey(*),
-          vehicle:vehicles!service_records_vehicle_id_fkey(*)
+          client:client_id(full_name),
+          workshop:workshop_id(name),
+          vehicle:vehicle_id(make, model, year, license_plate)
         `)
         .eq('tenant_id', profile.tenant_id)
         .order('created_at', { ascending: false });
