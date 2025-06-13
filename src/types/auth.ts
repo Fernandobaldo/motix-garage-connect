@@ -5,7 +5,7 @@ export interface Profile {
   id: string; // Changed from UUID to string
   full_name: string;
   phone: string | null;
-  role: 'client' | 'workshop' | 'admin' | 'superladmin';
+  role: 'client' | 'workshop' | 'admin' | 'superadmin'; // Fixed typo: was 'superladmin'
   tenant_id: string | null; // UUID type for tenant_id remains unchanged
   created_at: string;
   updated_at: string;
