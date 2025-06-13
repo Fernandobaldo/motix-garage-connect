@@ -27,12 +27,12 @@ export const useServiceRecords = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as ServiceRecordWithRelations[];
+      return (data || []) as ServiceRecordWithRelations[];
     },
     enabled: !!user && !!profile?.tenant_id,
   });
 
-  const updateServiceStatus = useMutation({
+  const updateServiceStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: ServiceStatus }) => {
       const { data, error } = await supabase
         .from('service_records')
@@ -62,7 +62,20 @@ export const useServiceRecords = () => {
   });
 
   const createServiceRecord = useMutation({
-    mutationFn: async (serviceData: Partial<ServiceRecordWithRelations>) => {
+    mutationFn: async (serviceData: {
+      tenant_id: string;
+      vehicle_id: string;
+      workshop_id: string;
+      client_id?: string;
+      service_type: string;
+      description?: string;
+      cost?: number;
+      labor_hours?: number;
+      mileage?: number;
+      technician_notes?: string;
+      status?: ServiceStatus;
+      estimated_completion_date?: string;
+    }) => {
       const { data, error } = await supabase
         .from('service_records')
         .insert(serviceData)
@@ -88,12 +101,16 @@ export const useServiceRecords = () => {
     },
   });
 
+  const updateServiceStatus = (id: string, status: ServiceStatus) => {
+    updateServiceStatusMutation.mutate({ id, status });
+  };
+
   return {
     serviceRecords,
     isLoading,
     refetch,
-    updateServiceStatus: updateServiceStatus.mutate,
+    updateServiceStatus,
     createServiceRecord: createServiceRecord.mutate,
-    isUpdating: updateServiceStatus.isPending,
+    isUpdating: updateServiceStatusMutation.isPending,
   };
 };

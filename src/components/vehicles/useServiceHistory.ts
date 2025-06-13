@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,8 +35,8 @@ export const useServiceHistory = (vehicleId?: string) => {
       
       return (data || []).map(record => ({
         ...record,
-        parts_used: Array.isArray(record.parts_used) ? record.parts_used : [],
-        images: Array.isArray(record.images) ? record.images : [],
+        parts_used: Array.isArray(record.parts_used) ? record.parts_used as any[] : [],
+        images: Array.isArray(record.images) ? record.images as string[] : [],
       })) as ServiceHistoryRecord[];
     },
     enabled: !!user && !!tenant,
@@ -91,8 +90,8 @@ export const useServiceHistory = (vehicleId?: string) => {
       
       return (data || []).map(report => ({
         ...report,
-        issues_found: Array.isArray(report.issues_found) ? report.issues_found : [],
-        recommendations: Array.isArray(report.recommendations) ? report.recommendations : [],
+        issues_found: Array.isArray(report.issues_found) ? report.issues_found as any[] : [],
+        recommendations: Array.isArray(report.recommendations) ? report.recommendations as any[] : [],
       })) as VehicleHealthReport[];
     },
     enabled: !!user && !!tenant,
