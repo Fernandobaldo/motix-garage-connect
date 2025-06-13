@@ -69,6 +69,10 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
     setAppointmentData(prev => ({ ...prev, vehicleId }));
   };
 
+  const handleTimeChange = (time: string) => {
+    setAppointmentData(prev => ({ ...prev, selectedTime: time }));
+  };
+
   const handleDateTimeSelect = (date: string, time: string) => {
     setAppointmentData(prev => ({ ...prev, selectedDate: date, selectedTime: time }));
   };
@@ -278,11 +282,11 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
 
           {currentStep === 3 && (
             <AvailableTimeSlots
-              serviceType={appointmentData.serviceType}
-              duration={parseInt(appointmentData.duration)}
-              onDateTimeSelect={handleDateTimeSelect}
               selectedDate={appointmentData.selectedDate ? new Date(appointmentData.selectedDate) : undefined}
               selectedTime={appointmentData.selectedTime}
+              onTimeChange={handleTimeChange}
+              garageId={profile?.tenant_id || ''}
+              serviceType={appointmentData.serviceType}
             />
           )}
 
@@ -335,11 +339,11 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
                       )}
                       {selectedVehicle && (
                         <>
-                          <div className="flex justify-between">
+                          <div className="flex items-center justify-between">
                             <span className="text-gray-600">Vehicle:</span>
                             <span className="font-medium">{selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}</span>
                           </div>
-                          <div className="flex justify-between">
+                          <div className="flex items-center justify-between">
                             <span className="text-gray-600">License Plate:</span>
                             <Badge variant="outline">{selectedVehicle.license_plate}</Badge>
                           </div>
