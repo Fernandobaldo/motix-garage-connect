@@ -137,8 +137,8 @@ describe('useClientAssociation Hook', () => {
 
     const { supabase } = await import('@/integrations/supabase/client');
     vi.mocked(supabase.rpc)
-      .mockResolvedValueOnce({ data: null, error: null }) // stats call
-      .mockResolvedValueOnce({ data: mockIssues, error: null }); // issues call
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: mockIssues, error: null });
 
     const { result } = renderHook(() => useClientAssociation(), { wrapper });
 
