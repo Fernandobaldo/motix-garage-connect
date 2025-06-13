@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,17 +44,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Update last login timestamp
-          if (event === 'SIGNED_IN') {
-            setTimeout(async () => {
-              await updateLastLogin();
-            }, 0);
-          }
-          
           // Fetch user profile when authenticated
-          setTimeout(async () => {
-            await fetchUserProfile(session.user.id);
-          }, 0);
+          await fetchUserProfile(session.user.id);
+          
+          // Update last login timestamp only after profile is loaded and for sign in events
+          if (event === 'SIGNED_IN') {
+            await updateLastLogin(session.user.id);
+          }
         } else {
           setProfile(null);
         }
@@ -74,12 +71,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const updateLastLogin = async () => {
+  const updateLastLogin = async (userId: string) => {
+    if (!userId) {
+      console.error('Cannot update last login: no user ID provided');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
         .update({ last_login_at: new Date().toISOString() })
-        .eq('id', user?.id);
+        .eq('id', userId);
       
       if (error) {
         console.error('Error updating last login:', error);
@@ -90,6 +92,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const fetchUserProfile = async (userId: string) => {
+    if (!userId) {
+      console.error('Cannot fetch profile: no user ID provided');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -191,7 +198,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
-    if (!user) return { error: 'No user logged in' };
+    if (!user?.id) {
+      const error = 'No user logged in';
+      toast({
+        title: "Update Failed",
+        description: error,
+        variant: "destructive",
+      });
+      return { error };
+    }
 
     try {
       const { error } = await supabase
@@ -231,9 +246,85 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     profile,
     session,
     loading,
-    signIn,
-    signUp,
-    signOut,
+    signIn: async (email: string, password: string) => {
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          toast({
+            title: "Sign In Failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+
+        return { error };
+      } catch (error) {
+        toast({
+          title: "Sign In Failed",
+          description: "An unexpected error occurred",
+          variant: "destructive",
+        });
+        return { error };
+      }
+    },
+    signUp: async (
+      email: string, 
+      password: string, 
+      userData: { full_name: string; phone: string; role: 'client' | 'workshop' }
+    ) => {
+      try {
+        const redirectUrl = `${window.location.origin}/`;
+        
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: userData
+          }
+        });
+
+        if (error) {
+          toast({
+            title: "Sign Up Failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Registration Successful!",
+            description: "Please check your email to verify your account.",
+          });
+        }
+
+        return { error };
+      } catch (error) {
+        toast({
+          title: "Sign Up Failed",
+          description: "An unexpected error occurred",
+          variant: "destructive",
+        });
+        return { error };
+      }
+    },
+    signOut: async () => {
+      try {
+        await supabase.auth.signOut();
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        toast({
+          title: "Signed Out",
+          description: "You have been successfully signed out.",
+        });
+      } catch (error) {
+        console.error('Error signing out:', error);
+      }
+    },
     updateProfile,
   };
 
