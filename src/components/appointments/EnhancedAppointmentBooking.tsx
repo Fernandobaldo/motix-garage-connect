@@ -45,19 +45,19 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
 
   const handleClientSelect = (clientId: string, clientName: string, clientType: 'auth' | 'guest') => {
     setSelectedClient({ id: clientId, name: clientName, type: clientType });
-    if (clientType ===') {
-    setAppointmentData(prev => ({ 
-      ...prev, 
-      clientId: clientId,
-      guestClientId: '' 
-    }));
-  } else {
-    setAppointmentData(prev => ({ 
-      ...prev, 
-      clientId: '',
-      guestClientId: clientId 
-    }));
-  }
+    if (clientType === 'auth') {
+      setAppointmentData(prev => ({ 
+        ...prev, 
+        clientId: clientId,
+        guestClientId: '' 
+      }));
+    } else {
+      setAppointmentData(prev => ({ 
+        ...prev, 
+        clientId: '',
+        guestClientId: clientId 
+      }));
+    }
   };
 
   const handleExistingClientSelect = (clientId: string, clientType: 'auth' | 'guest') => {
