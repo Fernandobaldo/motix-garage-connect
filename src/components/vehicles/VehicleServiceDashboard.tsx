@@ -343,8 +343,7 @@ const VehicleServiceDashboard = ({ selectedVehicleId, onVehicleChange }: Vehicle
         isOpen={showServiceRecordModal}
         onClose={() => setShowServiceRecordModal(false)}
         onSuccess={handleServiceRecordSuccess}
-        vehicles={filteredVehicles.map(({ vehicle }) => vehicle)}
-        preselectedVehicleId={selectedVehicleId}
+        initialVehicleId={selectedVehicleId}
       />
 
       {/* Service Detail Modal */}

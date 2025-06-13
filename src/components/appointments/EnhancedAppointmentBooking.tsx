@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,13 +59,14 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
     }
   };
 
-  const handleExistingClientSelect = (client: { id: string; name: string; type: 'auth' | 'guest' }) => {
-    setSelectedClient(client);
-    if (client.type === 'auth') {
-      setAppointmentData(prev => ({ ...prev, clientId: client.id, guestClientId: '' }));
-    } else {
-      setAppointmentData(prev => ({ ...prev, guestClientId: client.id, clientId: '' }));
-    }
+  const handleExistingClientSelect = (clientId: string) => {
+    // For now, we'll treat existing clients as auth type
+    setSelectedClient({ id: clientId, name: 'Selected Client', type: 'auth' });
+    setAppointmentData(prev => ({ ...prev, clientId: clientId, guestClientId: '' }));
+  };
+
+  const handleVehicleChange = (vehicleId: string) => {
+    setAppointmentData(prev => ({ ...prev, vehicleId }));
   };
 
   const handleDateTimeSelect = (date: string, time: string) => {
@@ -266,7 +266,11 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
                 </div>
               ) : (
                 <ExistingClientSelector
-                  onClientSelect={handleExistingClientSelect}
+                  clients={[]}
+                  selectedClient={appointmentData.clientId}
+                  selectedVehicle={appointmentData.vehicleId}
+                  onClientChange={handleExistingClientSelect}
+                  onVehicleChange={handleVehicleChange}
                 />
               )}
             </div>
@@ -277,7 +281,7 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
               serviceType={appointmentData.serviceType}
               duration={parseInt(appointmentData.duration)}
               onDateTimeSelect={handleDateTimeSelect}
-              selectedDate={appointmentData.selectedDate}
+              selectedDate={appointmentData.selectedDate ? new Date(appointmentData.selectedDate) : undefined}
               selectedTime={appointmentData.selectedTime}
             />
           )}
