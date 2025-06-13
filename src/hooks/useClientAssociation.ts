@@ -35,7 +35,9 @@ export const useClientAssociation = () => {
         .rpc('get_workshop_association_stats', { p_tenant_id: profile.tenant_id });
 
       if (error) throw error;
-      return data;
+      
+      // Type assertion since we know the structure from the database function
+      return data as AssociationStats;
     },
     enabled: !!profile?.tenant_id && profile?.role === 'workshop',
   });

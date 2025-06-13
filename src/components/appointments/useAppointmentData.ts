@@ -27,11 +27,7 @@ export const useAppointmentData = () => {
             last_login_at
           ),
           workshop:workshops!appointments_workshop_id_fkey (
-            id,
-            name,
-            email,
-            phone,
-            address
+            *
           ),
           vehicle:vehicles!appointments_vehicle_id_fkey (
             id,
