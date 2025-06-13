@@ -93,7 +93,19 @@ const LicensePlateSearchField = ({
         console.error('Error searching vehicles:', error);
         setVehicles([]);
       } else {
-        setVehicles(data || []);
+        // Transform the data to match our Vehicle interface and ensure proper typing
+        const typedVehicles: Vehicle[] = (data || []).map(item => ({
+          vehicle_id: item.vehicle_id,
+          license_plate: item.license_plate,
+          make: item.make,
+          model: item.model,
+          year: item.year,
+          client_id: item.client_id,
+          client_name: item.client_name,
+          client_type: (item.client_type === 'guest' ? 'guest' : 'auth') as 'auth' | 'guest'
+        }));
+        
+        setVehicles(typedVehicles);
         setShowResults(true);
       }
     } catch (error) {

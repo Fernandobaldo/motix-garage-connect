@@ -346,9 +346,7 @@ const ClientsManager = () => {
       <UpgradeModal 
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        feature="multiple clients"
         currentPlan="free"
-        requiredPlan="starter"
       />
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +13,7 @@ interface ClientDetails {
   id: string;
   full_name: string;
   phone: string;
-  email: string;
+  email?: string; // Make email optional since auth clients might not have it
   client_type: 'auth' | 'guest';
   vehicles: Array<{
     id: string;
@@ -120,7 +119,7 @@ const ClientDetailPage = () => {
       return {
         ...clientData!,
         client_type: clientType,
-        email: clientData?.email || '',
+        email: guestClient?.email, // Only guest clients have email in our data structure
         vehicles: vehicles || [],
         appointments: appointments || [],
         service_history: serviceHistory || [],
