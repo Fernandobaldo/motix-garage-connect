@@ -92,7 +92,7 @@ const ServiceRecordsList = ({
   });
 
   // Sort services by date (newest first)
-  const sortedServices = [...filt services].sort((a, b) => {
+  const sortedServices = [...filteredServices].sort((a, b) => {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
