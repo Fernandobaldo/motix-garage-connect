@@ -599,6 +599,7 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
+          last_login_at: string | null
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           tenant_id: string | null
@@ -608,6 +609,7 @@ export type Database = {
           created_at?: string
           full_name: string
           id: string
+          last_login_at?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           tenant_id?: string | null
@@ -617,6 +619,7 @@ export type Database = {
           created_at?: string
           full_name?: string
           id?: string
+          last_login_at?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           tenant_id?: string | null
@@ -983,6 +986,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_blocked: boolean
           name: string
           settings: Json | null
           status: string
@@ -996,6 +1000,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_blocked?: boolean
           name: string
           settings?: Json | null
           status?: string
@@ -1009,6 +1014,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_blocked?: boolean
           name?: string
           settings?: Json | null
           status?: string
@@ -1386,6 +1392,26 @@ export type Database = {
           public_url: string
         }[]
       }
+      get_all_workshops_for_superadmin: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          tenant_id: string
+          tenant_name: string
+          tenant_status: string
+          tenant_plan: string
+          tenant_created_at: string
+          tenant_is_blocked: boolean
+          workshop_id: string
+          workshop_name: string
+          workshop_email: string
+          workshop_phone: string
+          workshop_owner_id: string
+          owner_last_login_at: string
+          user_count: number
+          appointment_count: number
+          vehicle_count: number
+        }[]
+      }
       get_client_limit: {
         Args: { p_tenant_id: string }
         Returns: number
@@ -1465,6 +1491,10 @@ export type Database = {
           client_name: string
           client_type: string
         }[]
+      }
+      toggle_workshop_block: {
+        Args: { p_tenant_id: string; p_is_blocked: boolean; p_reason?: string }
+        Returns: undefined
       }
       update_workshop_plan: {
         Args: {

@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Shield, AlertTriangle } from 'lucide-react';
 
 interface RoleGuardProps {
-  allowedRoles: ('client' | 'workshop' | 'admin')[];
+  allowedRoles: ('client' | 'workshop' | 'admin' | 'superadmin')[];
   children: ReactNode;
   fallback?: ReactNode;
 }
@@ -32,7 +32,7 @@ const RoleGuard = ({ allowedRoles, children, fallback }: RoleGuardProps) => {
     );
   }
 
-  if (!allowedRoles.includes(profile.role as 'client' | 'workshop' | 'admin')) {
+  if (!allowedRoles.includes(profile.role as 'client' | 'workshop' | 'admin' | 'superadmin')) {
     return (
       fallback || (
         <Card>

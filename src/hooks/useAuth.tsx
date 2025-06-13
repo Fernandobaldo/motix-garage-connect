@@ -11,6 +11,7 @@ interface Profile {
   tenant_id: string | null;
   created_at: string;
   updated_at: string;
+  last_login_at: string | null;
 }
 
 interface AuthContextType {
@@ -42,6 +43,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          // Update last login timestamp
+          if (event === 'SIGNED_IN') {
+            setTimeout(async () => {
+              await updateLastLogin();
+            }, 0);
+          }
+          
           // Fetch user profile when authenticated
           setTimeout(async () => {
             await fetchUserProfile(session.user.id);
@@ -65,6 +73,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const updateLastLogin = async () => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', user?.id);
+      
+      if (error) {
+        console.error('Error updating last login:', error);
+      }
+    } catch (error) {
+      console.error('Error updating last login:', error);
+    }
+  };
 
   const fetchUserProfile = async (userId: string) => {
     try {
