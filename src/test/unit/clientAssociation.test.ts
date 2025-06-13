@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useClientAssociation } from '@/hooks/useClientAssociation';
 import { useAuth } from '@/hooks/useAuth';
+import { createMockAuthContext } from '@/test/utils/mockAuthProvider';
 import React from 'react';
 
 // Mock hooks
@@ -28,8 +29,7 @@ describe('useClientAssociation Hook', () => {
       },
     });
 
-    mockUseAuth.mockReturnValue({
-      user: null,
+    mockUseAuth.mockReturnValue(createMockAuthContext({
       profile: {
         id: 'test-user',
         role: 'workshop',
@@ -40,14 +40,7 @@ describe('useClientAssociation Hook', () => {
         phone: null,
         last_login_at: null,
       },
-      session: null,
-      loading: false,
-      profileError: null,
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      signOut: vi.fn(),
-      updateProfile: vi.fn(),
-    });
+    }));
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -69,8 +62,8 @@ describe('useClientAssociation Hook', () => {
     const { result } = renderHook(() => useClientAssociation(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.stats).toEqual(mockStats);
-      expect(result.current.loading).toBe(false);
+      expect(result.current.associationStats).toEqual(mockStats);
+      expect(result.current.statsLoading).toBe(false);
     });
   });
 
@@ -84,8 +77,8 @@ describe('useClientAssociation Hook', () => {
     const { result } = renderHook(() => useClientAssociation(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.error).toBeTruthy();
-      expect(result.current.loading).toBe(false);
+      expect(result.current.associationStats).toBeUndefined();
+      expect(result.current.statsLoading).toBe(false);
     });
   });
 
@@ -98,15 +91,13 @@ describe('useClientAssociation Hook', () => {
     const { result } = renderHook(() => useClientAssociation(), { wrapper });
 
     await waitFor(() => {
-      expect(result.current.verifyAssociations).toBeDefined();
+      expect(result.current.repairAssociations).toBeDefined();
     });
 
-    const verifyPromise = result.current.verifyAssociations();
+    result.current.repairAssociations();
     
     await waitFor(() => {
-      expect(result.current.verifying).toBe(false);
+      expect(result.current.isRepairing).toBe(false);
     });
-
-    await expect(verifyPromise).resolves.toBeUndefined();
   });
 });

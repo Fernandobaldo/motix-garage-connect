@@ -1,9 +1,9 @@
-
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import ClientAssociationManager from '@/components/dashboard/ClientAssociationManager';
+import { createMockAuthContext } from '@/test/utils/mockAuthProvider';
 
 vi.mock('@/hooks/useAuth');
 vi.mock('@/integrations/supabase/client', () => ({
@@ -26,7 +26,7 @@ describe('Client Association System Flow', () => {
       },
     });
 
-    mockUseAuth.mockReturnValue({
+    mockUseAuth.mockReturnValue(createMockAuthContext({
       user: { id: 'workshop-user' } as any,
       profile: {
         id: 'workshop-user',
@@ -38,14 +38,7 @@ describe('Client Association System Flow', () => {
         phone: null,
         last_login_at: null,
       },
-      session: null,
-      loading: false,
-      profileError: null,
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      signOut: vi.fn(),
-      updateProfile: vi.fn(),
-    });
+    }));
   });
 
   const renderWithProviders = (ui: React.ReactElement) => {
@@ -76,8 +69,7 @@ describe('Client Association System Flow', () => {
       expect(screen.getByText('25')).toBeInTheDocument();
       expect(screen.getByText('15')).toBeInTheDocument();
       expect(screen.getByText('60')).toBeInTheDocument();
-      expect(screen.getByText('120')).toBeIn()
-
+      expect(screen.getByText('120')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Account Clients')).toBeInTheDocument();
