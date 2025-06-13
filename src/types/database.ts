@@ -18,9 +18,10 @@ export type WorkshopPreferences = Tables<'workshop_preferences'>;
 
 export type ServiceStatus = 'pending' | 'in_progress' | 'awaiting_approval' | 'completed' | 'cancelled';
 
-// Extended Tenant type with subscription_plan
+// Extended Tenant type with subscription_plan and is_blocked
 export interface Tenant extends Tables<'tenants'> {
   subscription_plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  is_blocked: boolean;
 }
 
 // Tenant settings interface for type safety
