@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Car, Wrench, Plus, History, Settings } from 'lucide-react';
 import ServiceRecordsList from '../services/ServiceRecordsList';
 import ServiceRecordModal from '../vehicles/ServiceRecordModal';
@@ -18,20 +17,27 @@ const VehicleServiceTab = () => {
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
 
-  // Fetch vehicles for service creation
-  const { data: vehicles = [] } = useQuery({
+  // Fetch vehicles for service creation with proper data including owner info
+  const { data: vehicles = [], isLoading: vehiclesLoading } = useQuery({
     queryKey: ['vehicles-for-service', profile?.tenant_id],
     queryFn: async () => {
       if (!profile?.tenant_id) return [];
 
       const { data, error } = await supabase
         .from('vehicles')
-        .select('*')
+        .select(`
+          *,
+          owner:profiles!vehicles_owner_id_fkey(*)
+        `)
         .eq('tenant_id', profile.tenant_id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Error fetching vehicles:', error);
+        throw error;
+      }
+      
+      return data || [];
     },
     enabled: !!profile?.tenant_id,
   });
@@ -72,9 +78,10 @@ const VehicleServiceTab = () => {
               <Button
                 onClick={() => setShowServiceModal(true)}
                 className="flex items-center gap-2"
+                disabled={vehiclesLoading}
               >
                 <Plus className="h-4 w-4" />
-                New Service
+                {vehiclesLoading ? 'Loading...' : 'New Service'}
               </Button>
             </div>
           </div>
@@ -96,7 +103,6 @@ const VehicleServiceTab = () => {
         <TabsContent value="active">
           <ServiceRecordsList
             filter="active"
-            onCreateNew={() => setShowServiceModal(true)}
             onPdfExport={handlePdfExport}
           />
         </TabsContent>

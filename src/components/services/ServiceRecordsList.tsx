@@ -3,21 +3,18 @@ import { useState } from "react";
 import { useServiceRecords } from "@/hooks/useServiceRecords";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Plus, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import ServiceFilters from "./ServiceFilters";
 import ServiceRecordCard from "./ServiceRecordCard";
 import type { ServiceFilterState, ServiceRecordWithRelations, ServiceStatus } from "@/types/database";
 
 interface ServiceRecordsListProps {
   filter?: 'active' | 'history' | 'all';
-  onCreateNew?: () => void;
   onPdfExport?: (service: ServiceRecordWithRelations) => void;
 }
 
 const ServiceRecordsList = ({ 
   filter = 'active', 
-  onCreateNew,
   onPdfExport 
 }: ServiceRecordsListProps) => {
   const { serviceRecords, isLoading, updateServiceStatus } = useServiceRecords();
@@ -143,12 +140,6 @@ const ServiceRecordsList = ({
                 {getFilterDescription()}
               </p>
             </div>
-            {onCreateNew && (
-              <Button onClick={onCreateNew} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                New Service
-              </Button>
-            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -175,12 +166,6 @@ const ServiceRecordsList = ({
                   }
                 </p>
               </div>
-              {onCreateNew && filter === 'active' && (
-                <Button onClick={onCreateNew} className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create First Service
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>
