@@ -21,24 +21,23 @@ export const useAuthState = () => {
     console.log('Fetching profile for user:', userId, 'retry:', retryCount);
     
     try {
+      // Use the userId directly since profiles.id is now TEXT
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', userId) // Direct comparison, no casting needed
         .single();
 
       if (error) {
         console.error('Error fetching profile:', error);
         setProfileError(error.message);
         
-        // Set loading to false for the current request
         setLoading(false);
         
         // Schedule retry for network/temporary errors only
         if (retryCount < 2 && (error.code === 'PGRST000' || !error.code)) {
           console.log('Scheduling profile fetch retry in 1 second...');
           setTimeout(() => {
-            // Only set loading true for the retry attempt
             setLoading(true);
             fetchUserProfile(userId, retryCount + 1);
           }, 1000);
@@ -64,10 +63,11 @@ export const useAuthState = () => {
     }
 
     try {
+      // Use the userId directly since profiles.id is now TEXT
       const { error } = await supabase
         .from('profiles')
         .update({ last_login_at: new Date().toISOString() })
-        .eq('id', userId);
+        .eq('id', userId); // Direct comparison, no casting needed
       
       if (error) {
         console.error('Error updating last login:', error);
@@ -89,7 +89,7 @@ export const useAuthState = () => {
         
         if (session?.user) {
           console.log('User authenticated, fetching profile for:', session.user.id);
-          // Fetch user profile when authenticated
+          // Fetch user profile when authenticated - user.id is already TEXT from Supabase
           await fetchUserProfile(session.user.id);
           
           // Update last login timestamp only for sign in events
