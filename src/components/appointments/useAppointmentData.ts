@@ -30,11 +30,7 @@ export const useAppointmentData = () => {
             *
           ),
           vehicle:vehicles!appointments_vehicle_id_fkey (
-            id,
-            make,
-            model,
-            year,
-            license_plate
+            *
           )
         `)
         .eq('tenant_id', profile.tenant_id)

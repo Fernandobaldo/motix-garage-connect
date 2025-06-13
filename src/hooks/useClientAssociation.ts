@@ -36,8 +36,13 @@ export const useClientAssociation = () => {
 
       if (error) throw error;
       
-      // Type assertion since we know the structure from the database function
-      return data as AssociationStats;
+      // Since RPC functions return Json type, we need to properly cast it
+      // The function returns a jsonb object with the expected structure
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error('Invalid response format from association stats');
+      }
+      
+      return data as unknown as AssociationStats;
     },
     enabled: !!profile?.tenant_id && profile?.role === 'workshop',
   });
