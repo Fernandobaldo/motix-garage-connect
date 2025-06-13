@@ -186,7 +186,7 @@ describe('FeatureAccess Component', () => {
     }));
 
     renderWithProviders(
-      <FeatureAccess feature="inventory" fallbackMessage="Inventory requires Pro plan">
+      <FeatureAccess feature="inventory" fallback={<div>Inventory requires Pro plan</div>}>
         <div>Inventory Feature</div>
       </FeatureAccess>
     );
