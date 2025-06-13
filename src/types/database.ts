@@ -12,6 +12,12 @@ export type ChatConversation = Tables<'chat_conversations'>;
 export type ChatMessage = Tables<'chat_messages'>;
 export type ChatParticipant = Tables<'chat_participants'>;
 
+// New service-related types
+export type ServiceRecord = Tables<'service_records'>;
+export type WorkshopPreferences = Tables<'workshop_preferences'>;
+
+export type ServiceStatus = 'pending' | 'in_progress' | 'awaiting_approval' | 'completed' | 'cancelled';
+
 // Extended Tenant type with subscription_plan
 export interface Tenant extends Tables<'tenants'> {
   subscription_plan: 'free' | 'starter' | 'pro' | 'enterprise';
@@ -28,6 +34,18 @@ export interface TenantSettings {
 
 // Extended types with relations
 export interface AppointmentWithRelations extends Tables<'appointments'> {
+  client?: Profile | null;
+  workshop?: Workshop | null;
+  vehicle?: Vehicle | null;
+}
+
+export interface ServiceRecordWithRelations extends ServiceRecord {
+  client?: Profile | null;
+  workshop?: Workshop | null;
+  vehicle?: Vehicle | null;
+}
+
+export interface ServiceHistoryWithRelations extends ServiceHistory {
   client?: Profile | null;
   workshop?: Workshop | null;
   vehicle?: Vehicle | null;
@@ -66,6 +84,16 @@ export interface PartUsed {
   name: string;
   quantity: number;
   price: number;
+}
+
+// Service filtering types
+export interface ServiceFilterState {
+  status?: ServiceStatus;
+  dateRange?: 'all' | 'today' | 'week' | 'month';
+  serviceType?: string;
+  clientName?: string;
+  licensePlate?: string;
+  vehicleId?: string;
 }
 
 // Component prop types

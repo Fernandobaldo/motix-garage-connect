@@ -786,6 +786,7 @@ export type Database = {
           parts_used: Json | null
           quotation_id: string | null
           service_type: string
+          status: Database["public"]["Enums"]["service_status"] | null
           technician_notes: string | null
           tenant_id: string
           vehicle_id: string
@@ -806,6 +807,7 @@ export type Database = {
           parts_used?: Json | null
           quotation_id?: string | null
           service_type: string
+          status?: Database["public"]["Enums"]["service_status"] | null
           technician_notes?: string | null
           tenant_id: string
           vehicle_id: string
@@ -826,6 +828,7 @@ export type Database = {
           parts_used?: Json | null
           quotation_id?: string | null
           service_type?: string
+          status?: Database["public"]["Enums"]["service_status"] | null
           technician_notes?: string | null
           tenant_id?: string
           vehicle_id?: string
@@ -869,6 +872,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      service_records: {
+        Row: {
+          appointment_id: string | null
+          client_id: string | null
+          cost: number | null
+          created_at: string
+          description: string | null
+          estimated_completion_date: string | null
+          id: string
+          images: Json | null
+          labor_hours: number | null
+          mileage: number | null
+          parts_used: Json | null
+          quotation_id: string | null
+          service_type: string
+          status: Database["public"]["Enums"]["service_status"]
+          technician_notes: string | null
+          tenant_id: string
+          updated_at: string
+          vehicle_id: string
+          workshop_id: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          client_id?: string | null
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          estimated_completion_date?: string | null
+          id?: string
+          images?: Json | null
+          labor_hours?: number | null
+          mileage?: number | null
+          parts_used?: Json | null
+          quotation_id?: string | null
+          service_type: string
+          status?: Database["public"]["Enums"]["service_status"]
+          technician_notes?: string | null
+          tenant_id: string
+          updated_at?: string
+          vehicle_id: string
+          workshop_id: string
+        }
+        Update: {
+          appointment_id?: string | null
+          client_id?: string | null
+          cost?: number | null
+          created_at?: string
+          description?: string | null
+          estimated_completion_date?: string | null
+          id?: string
+          images?: Json | null
+          labor_hours?: number | null
+          mileage?: number | null
+          parts_used?: Json | null
+          quotation_id?: string | null
+          service_type?: string
+          status?: Database["public"]["Enums"]["service_status"]
+          technician_notes?: string | null
+          tenant_id?: string
+          updated_at?: string
+          vehicle_id?: string
+          workshop_id?: string
+        }
+        Relationships: []
       }
       tenants: {
         Row: {
@@ -1051,6 +1120,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      workshop_preferences: {
+        Row: {
+          created_at: string
+          currency_code: string
+          distance_unit: string
+          id: string
+          tenant_id: string
+          timezone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency_code?: string
+          distance_unit?: string
+          id?: string
+          tenant_id: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency_code?: string
+          distance_unit?: string
+          id?: string
+          tenant_id?: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       workshop_public_links: {
         Row: {
@@ -1310,6 +1409,12 @@ export type Database = {
       }
     }
     Enums: {
+      service_status:
+        | "pending"
+        | "in_progress"
+        | "awaiting_approval"
+        | "completed"
+        | "cancelled"
       subscription_plan: "free" | "starter" | "pro" | "enterprise"
       user_role: "client" | "workshop" | "admin" | "superadmin"
     }
@@ -1427,6 +1532,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      service_status: [
+        "pending",
+        "in_progress",
+        "awaiting_approval",
+        "completed",
+        "cancelled",
+      ],
       subscription_plan: ["free", "starter", "pro", "enterprise"],
       user_role: ["client", "workshop", "admin", "superadmin"],
     },

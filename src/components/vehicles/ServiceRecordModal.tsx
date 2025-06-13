@@ -10,6 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { useWorkshopPreferences } from '@/hooks/useWorkshopPreferences';
+import { formatCurrency, formatDistance } from '@/utils/currency';
+import type { ServiceStatus } from '@/types/database';
 
 interface Vehicle {
   id: string;
@@ -17,6 +20,7 @@ interface Vehicle {
   make: string;
   model: string;
   year: number;
+  owner_id: string;
 }
 
 interface ServiceRecordModalProps {
@@ -37,6 +41,7 @@ const ServiceRecordModal = ({
   const { toast } = useToast();
   const { profile } = useAuth();
   const { tenant } = useTenant();
+  const { preferences } = useWorkshopPreferences();
   
   const [formData, setFormData] = useState({
     vehicle_id: preselectedVehicleId || '',
@@ -46,6 +51,8 @@ const ServiceRecordModal = ({
     labor_hours: '',
     mileage: '',
     technician_notes: '',
+    status: 'pending' as ServiceStatus,
+    estimated_completion_date: '',
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,21 +81,26 @@ const ServiceRecordModal = ({
     setIsSubmitting(true);
 
     try {
+      // Get client_id from vehicle owner
+      const selectedVehicle = vehicles.find(v => v.id === formData.vehicle_id);
+      
       const serviceRecord = {
         tenant_id: tenant.id,
         vehicle_id: formData.vehicle_id,
         workshop_id: profile.id,
+        client_id: selectedVehicle?.owner_id || null,
         service_type: formData.service_type,
         description: formData.description || null,
         cost: formData.cost ? parseFloat(formData.cost) : null,
         labor_hours: formData.labor_hours ? parseFloat(formData.labor_hours) : null,
         mileage: formData.mileage ? parseInt(formData.mileage) : null,
         technician_notes: formData.technician_notes || null,
-        completed_at: new Date().toISOString(),
+        status: formData.status,
+        estimated_completion_date: formData.estimated_completion_date || null,
       };
 
       const { error } = await supabase
-        .from('service_history')
+        .from('service_records')
         .insert(serviceRecord);
 
       if (error) {
@@ -113,6 +125,8 @@ const ServiceRecordModal = ({
         labor_hours: '',
         mileage: '',
         technician_notes: '',
+        status: 'pending',
+        estimated_completion_date: '',
       });
     } catch (error) {
       console.error('Error creating service record:', error);
@@ -125,6 +139,9 @@ const ServiceRecordModal = ({
       setIsSubmitting(false);
     }
   };
+
+  const distanceLabel = preferences?.distance_unit === 'km' ? 'Kilometers' : 'Mileage';
+  const currencySymbol = preferences?.currency_code || 'USD';
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -176,6 +193,37 @@ const ServiceRecordModal = ({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                value={formData.status} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as ServiceStatus }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="awaiting_approval">Awaiting Approval</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="estimated_completion_date">Estimated Completion</Label>
+              <Input
+                id="estimated_completion_date"
+                type="datetime-local"
+                value={formData.estimated_completion_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, estimated_completion_date: e.target.value }))}
+              />
+            </div>
+          </div>
+
           <div>
             <Label htmlFor="description">Description</Label>
             <Textarea
@@ -189,7 +237,7 @@ const ServiceRecordModal = ({
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="cost">Cost ($)</Label>
+              <Label htmlFor="cost">Cost ({currencySymbol})</Label>
               <Input
                 id="cost"
                 type="number"
@@ -213,7 +261,7 @@ const ServiceRecordModal = ({
             </div>
             
             <div>
-              <Label htmlFor="mileage">Mileage</Label>
+              <Label htmlFor="mileage">{distanceLabel}</Label>
               <Input
                 id="mileage"
                 type="number"

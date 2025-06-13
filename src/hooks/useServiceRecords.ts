@@ -1,0 +1,99 @@
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import type { ServiceRecordWithRelations, ServiceStatus } from '@/types/database';
+
+export const useServiceRecords = () => {
+  const { profile, user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: serviceRecords = [], isLoading, refetch } = useQuery({
+    queryKey: ['service-records', user?.id, profile?.tenant_id],
+    queryFn: async (): Promise<ServiceRecordWithRelations[]> => {
+      if (!user || !profile?.tenant_id) return [];
+
+      const { data, error } = await supabase
+        .from('service_records')
+        .select(`
+          *,
+          client:profiles!service_records_client_id_fkey(*),
+          workshop:workshops!service_records_workshop_id_fkey(*),
+          vehicle:vehicles!service_records_vehicle_id_fkey(*)
+        `)
+        .eq('tenant_id', profile.tenant_id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as ServiceRecordWithRelations[];
+    },
+    enabled: !!user && !!profile?.tenant_id,
+  });
+
+  const updateServiceStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: ServiceStatus }) => {
+      const { data, error } = await supabase
+        .from('service_records')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-records'] });
+      queryClient.invalidateQueries({ queryKey: ['service-history'] });
+      toast({
+        title: 'Success',
+        description: 'Service status updated successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update service status',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const createServiceRecord = useMutation({
+    mutationFn: async (serviceData: Partial<ServiceRecordWithRelations>) => {
+      const { data, error } = await supabase
+        .from('service_records')
+        .insert(serviceData)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-records'] });
+      toast({
+        title: 'Success',
+        description: 'Service record created successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to create service record',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  return {
+    serviceRecords,
+    isLoading,
+    refetch,
+    updateServiceStatus: updateServiceStatus.mutate,
+    createServiceRecord: createServiceRecord.mutate,
+    isUpdating: updateServiceStatus.isPending,
+  };
+};
