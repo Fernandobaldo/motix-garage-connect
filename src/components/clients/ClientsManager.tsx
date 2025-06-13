@@ -41,97 +41,81 @@ const ClientsManager = () => {
 
       console.log('Fetching clients for tenant:', profile.tenant_id);
 
-      // Get all unique client IDs from appointments in this tenant
-      const { data: appointmentClients, error: appointmentsError } = await supabase
-        .from('appointments')
-        .select('client_id')
-        .eq('tenant_id', profile.tenant_id);
+      try {
+        // Get all clients in this tenant
+        const { data: clientProfiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, phone')
+          .eq('tenant_id', profile.tenant_id)
+          .eq('role', 'client')
+          .order('created_at', { ascending: false });
 
-      if (appointmentsError) {
-        console.error('Error fetching appointment clients:', appointmentsError);
-        throw appointmentsError;
-      }
+        if (profilesError) {
+          console.error('Error fetching client profiles:', profilesError);
+          throw profilesError;
+        }
 
-      // Get all clients in this tenant (both from appointments and manually created)
-      const { data: allClientProfiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, full_name, phone')
-        .eq('tenant_id', profile.tenant_id)
-        .eq('role', 'client');
+        console.log('Found client profiles:', clientProfiles);
 
-      if (profilesError) {
-        console.error('Error fetching client profiles:', profilesError);
-        throw profilesError;
-      }
+        if (!clientProfiles || clientProfiles.length === 0) {
+          return [];
+        }
 
-      // Combine unique client IDs
-      const appointmentClientIds = new Set(appointmentClients?.map(a => a.client_id) || []);
-      const allClientIds = new Set(allClientProfiles?.map(p => p.id) || []);
-      const uniqueClientIds = new Set([...appointmentClientIds, ...allClientIds]);
+        // For each client, get their details, vehicles, and service history
+        const clientsWithDetails = await Promise.all(
+          clientProfiles.map(async (clientProfile) => {
+            // Get client's vehicles
+            const { data: vehicles } = await supabase
+              .from('vehicles')
+              .select('id, make, model, year, license_plate')
+              .eq('owner_id', clientProfile.id);
 
-      console.log('Found unique client IDs:', Array.from(uniqueClientIds));
-
-      // For each unique client, get their details, vehicles, and service history
-      const clientsWithDetails = await Promise.all(
-        Array.from(uniqueClientIds).map(async (clientId) => {
-          // Get client profile
-          const { data: clientProfile } = await supabase
-            .from('profiles')
-            .select('id, full_name, phone')
-            .eq('id', clientId)
-            .single();
-
-          if (!clientProfile) return null;
-
-          // Get client's vehicles
-          const { data: vehicles } = await supabase
-            .from('vehicles')
-            .select('id, make, model, year, license_plate')
-            .eq('owner_id', clientId);
-
-          // Get appointment count and last appointment
-          const { data: appointments } = await supabase
-            .from('appointments')
-            .select('scheduled_at')
-            .eq('client_id', clientId)
-            .eq('tenant_id', profile.tenant_id)
-            .order('scheduled_at', { ascending: false });
-
-          // Get service count for this client across all their vehicles
-          let serviceCount = 0;
-          let lastServiceDate = null;
-
-          if (vehicles && vehicles.length > 0) {
-            const vehicleIds = vehicles.map(v => v.id);
-            
-            const { data: serviceHistory, error: serviceError } = await supabase
-              .from('service_history')
-              .select('completed_at')
+            // Get appointment count and last appointment
+            const { data: appointments } = await supabase
+              .from('appointments')
+              .select('scheduled_at')
+              .eq('client_id', clientProfile.id)
               .eq('tenant_id', profile.tenant_id)
-              .in('vehicle_id', vehicleIds)
-              .order('completed_at', { ascending: false });
+              .order('scheduled_at', { ascending: false });
 
-            if (!serviceError && serviceHistory) {
-              serviceCount = serviceHistory.length;
-              lastServiceDate = serviceHistory[0]?.completed_at || null;
+            // Get service count for this client across all their vehicles
+            let serviceCount = 0;
+            let lastServiceDate = null;
+
+            if (vehicles && vehicles.length > 0) {
+              const vehicleIds = vehicles.map(v => v.id);
+              
+              const { data: serviceHistory, error: serviceError } = await supabase
+                .from('service_history')
+                .select('completed_at')
+                .eq('tenant_id', profile.tenant_id)
+                .in('vehicle_id', vehicleIds)
+                .order('completed_at', { ascending: false });
+
+              if (!serviceError && serviceHistory) {
+                serviceCount = serviceHistory.length;
+                lastServiceDate = serviceHistory[0]?.completed_at || null;
+              }
             }
-          }
 
-          return {
-            ...clientProfile,
-            email: '', // We don't have email in profiles, could add later
-            vehicles: vehicles || [],
-            service_count: serviceCount,
-            last_service_date: lastServiceDate,
-            appointment_count: appointments?.length || 0,
-            last_appointment_date: appointments?.[0]?.scheduled_at || null,
-          };
-        })
-      );
+            return {
+              ...clientProfile,
+              email: '', // We don't have email in profiles, could add later
+              vehicles: vehicles || [],
+              service_count: serviceCount,
+              last_service_date: lastServiceDate,
+              appointment_count: appointments?.length || 0,
+              last_appointment_date: appointments?.[0]?.scheduled_at || null,
+            };
+          })
+        );
 
-      const validClients = clientsWithDetails.filter(client => client !== null);
-      console.log('Clients with details:', validClients);
-      return validClients;
+        console.log('Clients with details:', clientsWithDetails);
+        return clientsWithDetails;
+      } catch (error) {
+        console.error('Error in client fetch:', error);
+        return [];
+      }
     },
     enabled: !!profile?.tenant_id,
   });
@@ -146,6 +130,7 @@ const ClientsManager = () => {
   ) || [];
 
   const handleClientCreated = () => {
+    console.log('Client created, refreshing list...');
     setShowClientCreation(false);
     refetch();
   };

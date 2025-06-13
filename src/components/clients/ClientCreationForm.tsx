@@ -17,7 +17,10 @@ import UnifiedVehicleForm from '../vehicles/UnifiedVehicleForm';
 const clientSchema = z.object({
   full_name: z.string().min(1, 'Full name is required'),
   phone: z.string().min(1, 'Phone number is required'),
-  email: z.string().email('Valid email is required').optional(),
+  email: z.string().optional().refine((val) => {
+    if (!val || val.trim() === '') return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+  }, 'Please enter a valid email address'),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -50,9 +53,16 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
     setIsSubmitting(true);
     
     try {
+      console.log('Creating client with data:', data);
+      
+      // Generate a temporary email if none provided
+      const tempEmail = data.email && data.email.trim() !== '' 
+        ? data.email 
+        : `${data.phone.replace(/\D/g, '')}@temp.motix.local`;
+      
       // First create the client user account
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email || `${data.phone}@temp.local`, // Use temp email if none provided
+        email: tempEmail,
         password: Math.random().toString(36).slice(-8), // Generate random password
         options: {
           data: {
@@ -63,11 +73,16 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('Auth error:', authError);
+        throw authError;
+      }
 
       if (!authData.user) {
         throw new Error('Failed to create user account');
       }
+
+      console.log('User created:', authData.user.id);
 
       // Update the profile to set the tenant_id
       const { error: profileError } = await supabase
@@ -80,8 +95,13 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
         })
         .eq('id', authData.user.id);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        throw profileError;
+      }
 
+      console.log('Client profile updated successfully');
+      
       setCreatedClientId(authData.user.id);
       setActiveTab('vehicle');
 
