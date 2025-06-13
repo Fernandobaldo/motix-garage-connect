@@ -1,13 +1,21 @@
 
 import { test, expect } from '@playwright/test';
 
+// Extend window interface for test logs
+declare global {
+  interface Window {
+    testLogs: string[];
+  }
+}
+
 test.describe('Authentication Error Handling', () => {
   test.beforeEach(async ({ page }) => {
     // Mock console to capture logs
     await page.addInitScript(() => {
+      (window as any).testLogs = [];
       window.console.log = (...args) => {
-        window.testLogs = window.testLogs || [];
-        window.testLogs.push(args.join(' '));
+        (window as any).testLogs = (window as any).testLogs || [];
+        (window as any).testLogs.push(args.join(' '));
       };
     });
   });

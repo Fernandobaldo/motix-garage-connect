@@ -40,6 +40,7 @@ describe('Client Association System Flow', () => {
       },
       session: null,
       loading: false,
+      profileError: null,
       signIn: vi.fn(),
       signUp: vi.fn(),
       signOut: vi.fn(),
@@ -75,7 +76,8 @@ describe('Client Association System Flow', () => {
       expect(screen.getByText('25')).toBeInTheDocument();
       expect(screen.getByText('15')).toBeInTheDocument();
       expect(screen.getByText('60')).toBeInTheDocument();
-      expect(screen.getByText('120')).toBeInTheDocument();
+      expect(screen.getByText('120')).toBeIn()
+
     });
 
     expect(screen.getByText('Account Clients')).toBeInTheDocument();

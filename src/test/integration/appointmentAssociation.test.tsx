@@ -55,6 +55,7 @@ describe('Appointment Association Integration', () => {
       },
       session: null,
       loading: false,
+      profileError: null,
       signIn: vi.fn(),
       signUp: vi.fn(),
       signOut: vi.fn(),
