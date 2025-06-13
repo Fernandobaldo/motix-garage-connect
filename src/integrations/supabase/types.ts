@@ -1435,6 +1435,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_workshop_association_stats: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_workshop_public_data: {
         Args: { workshop_slug: string }
         Returns: {
@@ -1507,6 +1511,17 @@ export type Database = {
       user_belongs_to_tenant: {
         Args: { check_tenant_id: string }
         Returns: boolean
+      }
+      verify_client_workshop_associations: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          appointment_id: string
+          client_id: string
+          guest_client_id: string
+          vehicle_id: string
+          workshop_tenant_id: string
+          association_status: string
+        }[]
       }
     }
     Enums: {

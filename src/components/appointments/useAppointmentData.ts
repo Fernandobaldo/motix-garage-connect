@@ -46,7 +46,7 @@ export const useAppointmentData = () => {
 
       if (error) throw error;
 
-      // Process appointments to handle guest clients
+      // Process appointments to handle guest clients and verify associations
       const processedAppointments = await Promise.all(
         (data || []).map(async (appointment) => {
           // If no client but has guest_client_id, fetch guest client data
@@ -71,10 +71,15 @@ export const useAppointmentData = () => {
                   last_login_at: null,
                 },
                 client_id: guestClient.id,
+                is_guest_client: true,
               };
             }
           }
-          return appointment;
+          
+          return {
+            ...appointment,
+            is_guest_client: false,
+          };
         })
       );
 
