@@ -7,40 +7,11 @@ import { Car, Wrench, Plus, History, Settings } from 'lucide-react';
 import ServiceRecordsList from '../services/ServiceRecordsList';
 import ServiceRecordModal from '../vehicles/ServiceRecordModal';
 import WorkshopPreferencesModal from '../workshop/WorkshopPreferencesModal';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import type { ServiceRecordWithRelations } from '@/types/database';
 
 const VehicleServiceTab = () => {
-  const { profile } = useAuth();
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [showPreferencesModal, setShowPreferencesModal] = useState(false);
-
-  // Fetch vehicles for service creation with proper data including owner info
-  const { data: vehicles = [], isLoading: vehiclesLoading } = useQuery({
-    queryKey: ['vehicles-for-service', profile?.tenant_id],
-    queryFn: async () => {
-      if (!profile?.tenant_id) return [];
-
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select(`
-          *,
-          owner:profiles!vehicles_owner_id_fkey(*)
-        `)
-        .eq('tenant_id', profile.tenant_id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching vehicles:', error);
-        throw error;
-      }
-      
-      return data || [];
-    },
-    enabled: !!profile?.tenant_id,
-  });
 
   const handlePdfExport = async (service: ServiceRecordWithRelations) => {
     // PDF export functionality will be implemented here
@@ -78,10 +49,9 @@ const VehicleServiceTab = () => {
               <Button
                 onClick={() => setShowServiceModal(true)}
                 className="flex items-center gap-2"
-                disabled={vehiclesLoading}
               >
                 <Plus className="h-4 w-4" />
-                {vehiclesLoading ? 'Loading...' : 'New Service'}
+                New Service
               </Button>
             </div>
           </div>
@@ -120,7 +90,6 @@ const VehicleServiceTab = () => {
         isOpen={showServiceModal}
         onClose={() => setShowServiceModal(false)}
         onSuccess={handleServiceCreated}
-        vehicles={vehicles}
       />
 
       {/* Workshop Preferences Modal */}

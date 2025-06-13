@@ -24,66 +24,11 @@ const QuotationManager = ({ userRole }: QuotationManagerProps) => {
   const { profile } = useAuth();
   const { 
     quotations, 
-    templates, 
     loading, 
-    createQuotation, 
     updateQuotationStatus 
   } = useQuotations();
 
-  // Fetch clients for workshop users
-  const { data: clients = [] } = useQuery({
-    queryKey: ['clients', profile?.tenant_id],
-    queryFn: async () => {
-      if (!profile?.tenant_id || userRole !== 'workshop') return [];
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('tenant_id', profile.tenant_id)
-        .eq('role', 'client');
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!profile?.tenant_id && userRole === 'workshop',
-  });
-
-  // Fetch vehicles
-  const { data: vehicles = [] } = useQuery({
-    queryKey: ['vehicles', profile?.tenant_id],
-    queryFn: async () => {
-      if (!profile?.tenant_id) return [];
-      
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select('id, make, model, year, license_plate, owner_id')
-        .eq('tenant_id', profile.tenant_id);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!profile?.tenant_id,
-  });
-
-  // Fetch workshops
-  const { data: workshops = [] } = useQuery({
-    queryKey: ['workshops', profile?.tenant_id],
-    queryFn: async () => {
-      if (!profile?.tenant_id) return [];
-      
-      const { data, error } = await supabase
-        .from('workshops')
-        .select('id, name')
-        .eq('tenant_id', profile.tenant_id);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!profile?.tenant_id,
-  });
-
-  const handleCreateQuotation = async (quotationData: any) => {
-    await createQuotation(quotationData);
+  const handleQuotationCreated = () => {
     setShowNewQuoteForm(false);
   };
 
@@ -179,12 +124,7 @@ const QuotationManager = ({ userRole }: QuotationManagerProps) => {
       {/* New Quote Form */}
       {showNewQuoteForm && userRole === 'workshop' && (
         <QuotationForm
-          onSubmit={handleCreateQuotation}
-          onCancel={() => setShowNewQuoteForm(false)}
-          templates={templates}
-          clients={clients}
-          vehicles={vehicles}
-          workshops={workshops}
+          onSuccess={handleQuotationCreated}
         />
       )}
 

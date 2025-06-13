@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -99,6 +98,11 @@ const QuotationForm = ({ onSuccess }: QuotationFormProps) => {
     return calculateSubtotal() + calculateTax();
   };
 
+  const generateQuoteNumber = () => {
+    const timestamp = Date.now();
+    return `Q${timestamp}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -129,6 +133,7 @@ const QuotationForm = ({ onSuccess }: QuotationFormProps) => {
           total_cost: calculateTotal(),
           parts_cost: items.filter(i => i.itemType === 'part').reduce((sum, item) => sum + item.totalPrice, 0),
           labor_cost: items.filter(i => i.itemType === 'labor').reduce((sum, item) => sum + item.totalPrice, 0),
+          quote_number: generateQuoteNumber(),
         })
         .select('id')
         .single();

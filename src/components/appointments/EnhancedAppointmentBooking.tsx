@@ -32,7 +32,7 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
     description: '',
     selectedDate: '',
     selectedTime: '',
-    duration: 60,
+    duration: '60',
     clientId: '',
     guestClientId: '',
     vehicleId: '',
@@ -60,11 +60,12 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
     }
   };
 
-  const handleExistingClientSelect = (clientId: string, clientType: 'auth' | 'guest') => {
-    if (clientType === 'auth') {
-      setAppointmentData(prev => ({ ...prev, clientId, guestClientId: '' }));
+  const handleExistingClientSelect = (client: { id: string; name: string; type: 'auth' | 'guest' }) => {
+    setSelectedClient(client);
+    if (client.type === 'auth') {
+      setAppointmentData(prev => ({ ...prev, clientId: client.id, guestClientId: '' }));
     } else {
-      setAppointmentData(prev => ({ ...prev, guestClientId: clientId, clientId: '' }));
+      setAppointmentData(prev => ({ ...prev, guestClientId: client.id, clientId: '' }));
     }
   };
 
@@ -104,7 +105,7 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
           service_type: appointmentData.serviceType,
           description: appointmentData.description,
           scheduled_at: scheduledAt.toISOString(),
-          duration_minutes: appointmentData.duration,
+          duration_minutes: parseInt(appointmentData.duration),
           status: 'confirmed',
         });
 
@@ -120,7 +121,7 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
         description: '',
         selectedDate: '',
         selectedTime: '',
-        duration: 60,
+        duration: '60',
         clientId: '',
         guestClientId: '',
         vehicleId: '',
@@ -186,8 +187,9 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
               </div>
 
               <ServiceDurationSelector
-                value={appointmentData.duration}
-                onChange={(duration) => setAppointmentData(prev => ({ ...prev, duration }))}
+                serviceType={appointmentData.serviceType}
+                duration={appointmentData.duration}
+                onDurationChange={(duration) => setAppointmentData(prev => ({ ...prev, duration }))}
               />
 
               <div>
@@ -273,7 +275,7 @@ const EnhancedAppointmentBooking = ({ onSuccess }: EnhancedAppointmentBookingPro
           {currentStep === 3 && (
             <AvailableTimeSlots
               serviceType={appointmentData.serviceType}
-              duration={appointmentData.duration}
+              duration={parseInt(appointmentData.duration)}
               onDateTimeSelect={handleDateTimeSelect}
               selectedDate={appointmentData.selectedDate}
               selectedTime={appointmentData.selectedTime}
