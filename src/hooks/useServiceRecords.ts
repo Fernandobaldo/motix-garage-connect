@@ -15,19 +15,70 @@ export const useServiceRecords = () => {
     queryFn: async (): Promise<ServiceRecordWithRelations[]> => {
       if (!user || !profile?.tenant_id) return [];
 
-      const { data, error } = await supabase
+      // First, get the service records
+      const { data: records, error } = await supabase
         .from('service_records')
-        .select(`
-          *,
-          client:client_id(full_name),
-          workshop:workshop_id(name),
-          vehicle:vehicle_id(make, model, year, license_plate)
-        `)
+        .select('*')
         .eq('tenant_id', profile.tenant_id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as unknown as ServiceRecordWithRelations[];
+      if (!records || records.length === 0) return [];
+
+      // Get unique client IDs, workshop IDs, and vehicle IDs
+      const clientIds = [...new Set(records.map(r => r.client_id).filter(Boolean))];
+      const workshopIds = [...new Set(records.map(r => r.workshop_id).filter(Boolean))];
+      const vehicleIds = [...new Set(records.map(r => r.vehicle_id).filter(Boolean))];
+
+      // Fetch related data in parallel
+      const [clientsData, workshopsData, vehiclesData] = await Promise.all([
+        // Try to get clients from profiles first, then from clients table
+        clientIds.length > 0 ? Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, full_name, phone')
+            .in('id', clientIds),
+          supabase
+            .from('clients')
+            .select('id, full_name, phone')
+            .in('id', clientIds)
+        ]) : [{ data: [] }, { data: [] }],
+        
+        workshopIds.length > 0 ? 
+          supabase
+            .from('workshops')
+            .select('id, name')
+            .in('id', workshopIds) : 
+          { data: [] },
+        
+        vehicleIds.length > 0 ? 
+          supabase
+            .from('vehicles')
+            .select('id, make, model, year, license_plate')
+            .in('id', vehicleIds) : 
+          { data: [] }
+      ]);
+
+      // Combine client data from both sources
+      const allClients = [
+        ...(clientsData[0].data || []),
+        ...(clientsData[1].data || [])
+      ];
+
+      // Create lookup maps
+      const clientsMap = new Map(allClients.map(c => [c.id, c]));
+      const workshopsMap = new Map((workshopsData.data || []).map(w => [w.id, w]));
+      const vehiclesMap = new Map((vehiclesData.data || []).map(v => [v.id, v]));
+
+      // Combine the data
+      const enrichedRecords: ServiceRecordWithRelations[] = records.map(record => ({
+        ...record,
+        client: record.client_id ? clientsMap.get(record.client_id) || null : null,
+        workshop: record.workshop_id ? workshopsMap.get(record.workshop_id) || null : null,
+        vehicle: record.vehicle_id ? vehiclesMap.get(record.vehicle_id) || null : null,
+      }));
+
+      return enrichedRecords;
     },
     enabled: !!user && !!profile?.tenant_id,
   });
