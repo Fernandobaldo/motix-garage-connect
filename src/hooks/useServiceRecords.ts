@@ -27,7 +27,7 @@ export const useServiceRecords = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as ServiceRecordWithRelations[];
+      return (data || []) as unknown as ServiceRecordWithRelations[];
     },
     enabled: !!user && !!profile?.tenant_id,
   });
