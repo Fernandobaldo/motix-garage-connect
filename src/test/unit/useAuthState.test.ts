@@ -20,7 +20,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 
 describe('useAuthState Hook', () => {
   let queryClient: QueryClient;
-  let mockSubscription: { unsubscribe: vi.Mock };
+  let mockSubscription: { unsubscribe: ReturnType<typeof vi.fn> };
   let mockAuthCallback: (event: string, session: any) => void;
 
   beforeEach(() => {

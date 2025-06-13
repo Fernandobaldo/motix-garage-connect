@@ -19,6 +19,7 @@ export const useAuthState = () => {
     }
 
     console.log('Fetching profile for user:', userId, 'retry:', retryCount);
+    
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -30,28 +31,28 @@ export const useAuthState = () => {
         console.error('Error fetching profile:', error);
         setProfileError(error.message);
         
-        // Retry up to 2 times for network/temporary errors
+        // Set loading to false for the current request
+        setLoading(false);
+        
+        // Schedule retry for network/temporary errors only
         if (retryCount < 2 && (error.code === 'PGRST000' || !error.code)) {
-          console.log('Retrying profile fetch in 1 second...');
+          console.log('Scheduling profile fetch retry in 1 second...');
           setTimeout(() => {
+            // Only set loading true for the retry attempt
+            setLoading(true);
             fetchUserProfile(userId, retryCount + 1);
           }, 1000);
-          return;
         }
-        
-        // Always set loading to false even on error
-        setLoading(false);
         return;
       }
 
       console.log('Profile fetched successfully:', data);
       setProfile(data as Profile);
       setProfileError(null);
+      setLoading(false);
     } catch (error) {
       console.error('Unexpected error fetching profile:', error);
       setProfileError('Failed to load profile');
-    } finally {
-      // Ensure loading is always set to false
       setLoading(false);
     }
   };
@@ -96,7 +97,7 @@ export const useAuthState = () => {
             await updateLastLogin(session.user.id);
           }
         } else {
-          console.log('No user session, clearing profile');
+          console.log('No user session, clearing profile and stopping loading');
           setProfile(null);
           setProfileError(null);
           setLoading(false);
@@ -114,6 +115,7 @@ export const useAuthState = () => {
         console.log('Found existing session, fetching profile');
         fetchUserProfile(session.user.id);
       } else {
+        console.log('No existing session, stopping loading');
         setLoading(false);
       }
     });
