@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,7 @@ const ClientsManager = () => {
       console.log('Fetching clients for tenant:', profile.tenant_id);
 
       try {
-        // Get all clients in this tenant
+        // Get all clients in this tenant - now includes both auth users and direct profile entries
         const { data: clientProfiles, error: profilesError } = await supabase
           .from('profiles')
           .select('id, full_name, phone')
@@ -100,7 +99,7 @@ const ClientsManager = () => {
 
             return {
               ...clientProfile,
-              email: '', // We don't have email in profiles, could add later
+              email: '', // We don't store email for direct profile clients
               vehicles: vehicles || [],
               service_count: serviceCount,
               last_service_date: lastServiceDate,

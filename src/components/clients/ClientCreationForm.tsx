@@ -55,54 +55,28 @@ const ClientCreationForm = ({ onSuccess }: ClientCreationFormProps) => {
     try {
       console.log('Creating client with data:', data);
       
-      // Generate a temporary email if none provided
-      const tempEmail = data.email && data.email.trim() !== '' 
-        ? data.email 
-        : `${data.phone.replace(/\D/g, '')}@temp.motix.local`;
+      // Generate a UUID for the client
+      const clientId = crypto.randomUUID();
       
-      // First create the client user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: tempEmail,
-        password: Math.random().toString(36).slice(-8), // Generate random password
-        options: {
-          data: {
-            full_name: data.full_name,
-            phone: data.phone,
-            role: 'client'
-          }
-        }
-      });
-
-      if (authError) {
-        console.error('Auth error:', authError);
-        throw authError;
-      }
-
-      if (!authData.user) {
-        throw new Error('Failed to create user account');
-      }
-
-      console.log('User created:', authData.user.id);
-
-      // Update the profile to set the tenant_id
+      // Insert client directly into profiles table
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ 
+        .insert({
+          id: clientId,
           tenant_id: profile.tenant_id,
           full_name: data.full_name,
           phone: data.phone,
           role: 'client'
-        })
-        .eq('id', authData.user.id);
+        });
 
       if (profileError) {
         console.error('Profile error:', profileError);
         throw profileError;
       }
 
-      console.log('Client profile updated successfully');
+      console.log('Client profile created successfully with ID:', clientId);
       
-      setCreatedClientId(authData.user.id);
+      setCreatedClientId(clientId);
       setActiveTab('vehicle');
 
       toast({
