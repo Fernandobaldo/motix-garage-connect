@@ -7,13 +7,11 @@ import { useAuth } from '@/hooks/useAuth';
 
 // Mock dependencies
 vi.mock('@/integrations/supabase/client');
-vi.mock('@/hooks/useAuth', () => ({
-  useAuth: vi.fn(),
-}));
+vi.mock('@/hooks/useAuth');
 vi.mock('@/hooks/use-toast');
 
 const mockSupabase = supabase as any;
-const mockUseAuth = useAuth as unknown as vi.Mock;
+const mockUseAuth = vi.mocked(useAuth);
 
 // Test wrapper with QueryClient
 const createWrapper = () => {
