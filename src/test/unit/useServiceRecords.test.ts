@@ -1,4 +1,3 @@
-
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -11,8 +10,8 @@ vi.mock('@/integrations/supabase/client');
 vi.mock('@/hooks/useAuth');
 vi.mock('@/hooks/use-toast');
 
-const mockSupabase = vi.mocked(supabase);
-const mockUseAuth = vi.mocked(useAuth);
+const mockSupabase = supabase as any;
+const mockUseAuth = useAuth as unknown as jest.Mock;
 
 // Test wrapper with QueryClient
 const createWrapper = () => {
