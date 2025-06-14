@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,12 +79,24 @@ function buildTechnicianNotes(nextOilChangeMileage: string, technicianNotes: str
   return JSON.stringify({ nextOilChangeMileage }) + "\n" + safeNotes;
 }
 
+// Add a helper to get an empty form state, so it's always the same shape/blank for create.
+function getEmptyFormState(): ServiceRecordFormState {
+  return {
+    services: [],
+    description: "",
+    mileage: "",
+    technicianNotes: "",
+    nextOilChangeMileage: "",
+  };
+}
+
 export const useServiceRecordForm = (
   mode: "add" | "edit",
   initialRecord?: ServiceRecordWithRelations,
   onSuccess?: () => void,
   onClose?: () => void,
-  extra?: { selectedVehicle?: any; selectedClient?: { id: string; name: string; type: "auth" | "guest" } }
+  extra?: { selectedVehicle?: any; selectedClient?: { id: string; name: string; type: "auth" | "guest" } },
+  isOpen?: boolean // <-- NEW
 ) => {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -97,15 +108,29 @@ export const useServiceRecordForm = (
     extracted = extractNextOilChangeMileage(initialRecord.technician_notes);
   }
 
-  const [form, setForm] = useState<ServiceRecordFormState>({
-    services: initialRecord?.service_type
-      ? parseServicesFromRecord(initialRecord.service_type, initialRecord.parts_used)
-      : [], // For new record: completely empty by default!
-    description: initialRecord?.description || "",
-    mileage: initialRecord?.mileage?.toString() || "",
-    technicianNotes: extracted.plainNotes || "",
-    nextOilChangeMileage: extracted.nextOilChangeMileage || "",
-  });
+  // Always use the getEmptyFormState for initial state if mode is add
+  const [form, setForm] = useState<ServiceRecordFormState>(
+    mode === "add"
+      ? getEmptyFormState()
+      : {
+          services: initialRecord?.service_type
+            ? parseServicesFromRecord(initialRecord.service_type, initialRecord.parts_used)
+            : [], // For new record: completely empty by default!
+          description: initialRecord?.description || "",
+          mileage: initialRecord?.mileage?.toString() || "",
+          technicianNotes: extracted.plainNotes || "",
+          nextOilChangeMileage: extracted.nextOilChangeMileage || "",
+        }
+  );
+
+  // --- FORM RESET LOGIC FOR CREATE MODE ---
+  useEffect(() => {
+    // When opening the modal in create/add mode, always reset to empty when opening.
+    if (mode === "add" && isOpen) {
+      setForm(getEmptyFormState());
+    }
+    // eslint-disable-next-line
+  }, [isOpen, mode]);
 
   useEffect(() => {
     if (mode === "edit" && initialRecord) {

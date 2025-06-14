@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -98,7 +97,8 @@ const ServiceRecordModal = ({
           selectedVehicle,
           selectedClient,
         }
-      : undefined
+      : undefined,
+    isOpen // <-- Pass isOpen to hook so it can reset state
   );
 
   // Wrapper for handleSubmit (CREATE: Block if missing selections)
