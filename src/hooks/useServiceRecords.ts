@@ -232,7 +232,7 @@ export const useServiceRecords = () => {
     updateServiceRecord: updateServiceRecordMutation.mutate,
     isUpdatePending: updateServiceRecordMutation.isPending,
     deleteServiceRecord: deleteServiceRecordMutation.mutate,
-    isDeletePending: deleteServiceRecordMutation.isDeletePending,
+    isDeletePending: deleteServiceRecordMutation.isPending,
     getServiceRecordById,
   };
 };
