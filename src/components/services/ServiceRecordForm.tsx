@@ -2,7 +2,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import ItemsSection from "@/components/appointments/ServiceReportPartsSection";
 import ServicesWithItemsSection from "./ServicesWithItemsSection";
 import { ServiceWithItems, ServiceRecordFormState } from "./useServiceRecordForm";
@@ -13,14 +12,13 @@ interface ServiceRecordFormProps {
   form: ServiceRecordFormState;
   setField: (name: keyof ServiceRecordFormState, value: any) => void;
   loading: boolean;
-  onSubmit: (e: React.FormEvent) => void;
+  // No onSubmit! Submission handled at modal/form level
 }
 
 const ServiceRecordForm = ({
   form,
   setField,
   loading,
-  onSubmit,
 }: ServiceRecordFormProps) => {
   // Calculate total cost from all services' items
   const totalCost = form.services.reduce(
@@ -52,7 +50,7 @@ const ServiceRecordForm = ({
   );
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit} autoComplete="off">
+    <div className="space-y-4" autoComplete="off">
       <ServicesWithItemsSection
         services={form.services}
         onChange={svcs => setField("services", svcs)}
@@ -106,15 +104,8 @@ const ServiceRecordForm = ({
           Total Cost: {formatCurrency(totalCost)}
         </div>
       </div>
-      <div className="flex justify-end space-x-2 pt-2">
-        <Button variant="outline" type="reset" disabled={loading}>
-          Reset
-        </Button>
-        <Button type="submit" disabled={loading || !servicesValid || !itemsValid}>
-          {loading ? "Saving..." : "Save"}
-        </Button>
-      </div>
-    </form>
+      {/* No action buttons here! Only visible in parent modal */}
+    </div>
   );
 };
 

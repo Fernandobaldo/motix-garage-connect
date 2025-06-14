@@ -100,7 +100,7 @@ export const useServiceRecordForm = (
   const [form, setForm] = useState<ServiceRecordFormState>({
     services: initialRecord?.service_type
       ? parseServicesFromRecord(initialRecord.service_type, initialRecord.parts_used)
-      : [{ serviceType: { value: "" }, items: [{ name: "", quantity: 1, price: 0 }] }],
+      : [], // For new record: completely empty by default!
     description: initialRecord?.description || "",
     mileage: initialRecord?.mileage?.toString() || "",
     technicianNotes: extracted.plainNotes || "",

@@ -165,8 +165,7 @@ const ServiceRecordModal = ({
             form={form}
             setField={setField}
             loading={loading}
-            onSubmit={wrappedHandleSubmit}
-            // TODO: Optionally, pass readOnly/disabled fields if wanted
+            // No onSubmit!
           />
           <div className="flex justify-end space-x-4 pt-4">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
@@ -176,7 +175,15 @@ const ServiceRecordModal = ({
               type="submit"
               disabled={
                 loading ||
-                (isCreate && (!selectedVehicle || !selectedClient))
+                (isCreate && (!selectedVehicle || !selectedClient)) ||
+                // Modal disables submit if no selected v/cl OR if no services or items filled in
+                (form.services.length === 0 ||
+                  !form.services.every(
+                    svc =>
+                      svc.serviceType.value &&
+                      svc.items.length > 0 &&
+                      svc.items.every((item) => !!item.name)
+                  ))
               }
             >
               {loading
@@ -193,6 +200,4 @@ const ServiceRecordModal = ({
     </Dialog>
   );
 };
-
 export default ServiceRecordModal;
-
