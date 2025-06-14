@@ -1424,7 +1424,7 @@ export type Database = {
         }[]
       }
       get_user_role: {
-        Args: { user_uuid: string }
+        Args: Record<PropertyKey, never> | { user_uuid: string }
         Returns: string
       }
       get_user_tenant_id: {

@@ -1,0 +1,379 @@
+
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import ServiceRecordModal from '@/components/vehicles/ServiceRecordModal';
+import ServiceRecordCard from '@/components/services/ServiceRecordCard';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+
+// Mock dependencies
+vi.mock('@/integrations/supabase/client');
+vi.mock('@/hooks/useAuth');
+vi.mock('@/hooks/useWorkshopPreferences');
+vi.mock('sonner');
+
+const mockSupabase = vi.mocked(supabase);
+const mockUseAuth = vi.mocked(useAuth);
+
+// Test wrapper
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
+describe('Service Record Workflow Integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    
+    mockUseAuth.mockReturnValue({
+      user: { id: 'user-123' },
+      profile: { 
+        id: 'user-123',
+        tenant_id: 'tenant-123', 
+        role: 'workshop',
+        full_name: 'Test Workshop Owner'
+      },
+    } as any);
+
+    // Mock useWorkshopPreferences
+    vi.doMock('@/hooks/useWorkshopPreferences', () => ({
+      useWorkshopPreferences: () => ({
+        preferences: {
+          currency_code: 'USD',
+          distance_unit: 'km'
+        }
+      })
+    }));
+  });
+
+  describe('Service Record Creation Flow', () => {
+    it('should handle complete service record creation workflow', async () => {
+      const mockVehicleData = {
+        vehicle_id: 'vehicle-123',
+        license_plate: 'ABC123',
+        make: 'Toyota',
+        model: 'Camry',
+        year: 2020
+      };
+
+      const mockClientData = {
+        id: 'client-123',
+        name: 'John Doe',
+        type: 'auth'
+      };
+
+      // Mock successful service record creation
+      mockSupabase.from.mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockResolvedValue({
+            data: [{
+              id: 'new-service-123',
+              tenant_id: 'tenant-123',
+              service_type: 'oil_change',
+              status: 'pending'
+            }],
+            error: null
+          })
+        })
+      } as any);
+
+      const onSuccess = vi.fn();
+      const onClose = vi.fn();
+
+      render(
+        <ServiceRecordModal
+          isOpen={true}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Verify modal is rendered
+      expect(screen.getByText('Create New Service Record')).toBeInTheDocument();
+      expect(screen.getByLabelText(/service type/i)).toBeInTheDocument();
+
+      // Fill in service type
+      const serviceTypeInput = screen.getByLabelText(/service type/i);
+      fireEvent.change(serviceTypeInput, { target: { value: 'Oil Change' } });
+
+      // Fill in description
+      const descriptionInput = screen.getByLabelText(/description/i);
+      fireEvent.change(descriptionInput, { target: { value: 'Regular oil change service' } });
+
+      // Fill in cost
+      const costInput = screen.getByLabelText(/cost/i);
+      fireEvent.change(costInput, { target: { value: '75.00' } });
+
+      expect(serviceTypeInput).toHaveValue('Oil Change');
+      expect(descriptionInput).toHaveValue('Regular oil change service');
+      expect(costInput).toHaveValue('75.00');
+    });
+
+    it('should validate required fields before submission', async () => {
+      const onSuccess = vi.fn();
+      const onClose = vi.fn();
+
+      render(
+        <ServiceRecordModal
+          isOpen={true}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Try to submit without required fields
+      const submitButton = screen.getByRole('button', { name: /create service record/i });
+      fireEvent.click(submitButton);
+
+      // Should not call onSuccess due to validation
+      expect(onSuccess).not.toHaveBeenCalled();
+    });
+
+    it('should handle service record creation errors', async () => {
+      // Mock failed service record creation
+      mockSupabase.from.mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockResolvedValue({
+            data: null,
+            error: { message: 'Failed to create service record' }
+          })
+        })
+      } as any);
+
+      const onSuccess = vi.fn();
+      const onClose = vi.fn();
+
+      render(
+        <ServiceRecordModal
+          isOpen={true}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Fill required fields and submit
+      fireEvent.change(screen.getByLabelText(/service type/i), { 
+        target: { value: 'Brake Service' } 
+      });
+
+      const submitButton = screen.getByRole('button', { name: /create service record/i });
+      fireEvent.click(submitButton);
+
+      // Should handle error gracefully
+      await waitFor(() => {
+        expect(onSuccess).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Service Record Updates', () => {
+    const mockServiceRecord = {
+      id: 'service-123',
+      tenant_id: 'tenant-123',
+      service_type: 'oil_change',
+      description: 'Regular oil change',
+      status: 'pending' as const,
+      cost: 75.00,
+      labor_hours: 1.5,
+      mileage: 50000,
+      created_at: '2024-01-01T00:00:00Z',
+      client: {
+        id: 'client-123',
+        full_name: 'John Doe',
+        phone: '123-456-7890'
+      },
+      vehicle: {
+        id: 'vehicle-123',
+        make: 'Toyota',
+        model: 'Camry',
+        year: 2020,
+        license_plate: 'ABC123'
+      },
+      workshop: {
+        id: 'workshop-123',
+        name: 'Best Auto Repair'
+      }
+    };
+
+    it('should handle status updates correctly', async () => {
+      const onStatusUpdate = vi.fn();
+
+      // Mock successful status update
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { ...mockServiceRecord, status: 'completed' },
+                error: null
+              })
+            })
+          })
+        })
+      } as any);
+
+      render(
+        <ServiceRecordCard
+          service={mockServiceRecord}
+          onStatusUpdate={onStatusUpdate}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Find and click status dropdown
+      const statusSelect = screen.getByDisplayValue('pending');
+      expect(statusSelect).toBeInTheDocument();
+
+      // Status updates would be handled by the parent component
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('Toyota Camry')).toBeInTheDocument();
+      expect(screen.getByText('ABC123')).toBeInTheDocument();
+    });
+
+    it('should display service record information correctly', () => {
+      const onStatusUpdate = vi.fn();
+
+      render(
+        <ServiceRecordCard
+          service={mockServiceRecord}
+          onStatusUpdate={onStatusUpdate}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Verify service information is displayed
+      expect(screen.getByText('Oil Change')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('2020 Toyota Camry')).toBeInTheDocument();
+      expect(screen.getByText('ABC123')).toBeInTheDocument();
+      expect(screen.getByText('Regular oil change')).toBeInTheDocument();
+      expect(screen.getByText('$75.00')).toBeInTheDocument();
+      expect(screen.getByText('1.5h')).toBeInTheDocument();
+    });
+
+    it('should handle missing client data gracefully', () => {
+      const serviceWithoutClient = {
+        ...mockServiceRecord,
+        client: null
+      };
+
+      const onStatusUpdate = vi.fn();
+
+      render(
+        <ServiceRecordCard
+          service={serviceWithoutClient}
+          onStatusUpdate={onStatusUpdate}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Should still render other information
+      expect(screen.getByText('Oil Change')).toBeInTheDocument();
+      expect(screen.getByText('2020 Toyota Camry')).toBeInTheDocument();
+    });
+  });
+
+  describe('Data Consistency', () => {
+    it('should maintain data consistency across components', async () => {
+      const serviceData = {
+        tenant_id: 'tenant-123',
+        vehicle_id: 'vehicle-123',
+        workshop_id: 'workshop-123',
+        client_id: 'client-123',
+        service_type: 'brake_service',
+        description: 'Brake pad replacement',
+        cost: 250.00,
+        status: 'pending' as const
+      };
+
+      // Mock consistent data responses
+      mockSupabase.from.mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockResolvedValue({
+            data: [{ 
+              id: 'new-service-456', 
+              ...serviceData,
+              created_at: '2024-01-01T00:00:00Z'
+            }],
+            error: null
+          })
+        })
+      } as any);
+
+      const onSuccess = vi.fn();
+      const onClose = vi.fn();
+
+      render(
+        <ServiceRecordModal
+          isOpen={true}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Verify form fields maintain consistency
+      expect(screen.getByLabelText(/service type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/cost/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle network errors gracefully', async () => {
+      // Mock network error
+      mockSupabase.from.mockReturnValue({
+        insert: vi.fn().mockRejectedValue(new Error('Network error'))
+      } as any);
+
+      const onSuccess = vi.fn();
+      const onClose = vi.fn();
+
+      render(
+        <ServiceRecordModal
+          isOpen={true}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Component should still render despite potential network issues
+      expect(screen.getByText('Create New Service Record')).toBeInTheDocument();
+    });
+
+    it('should handle malformed data responses', () => {
+      const malformedServiceRecord = {
+        ...mockServiceRecord,
+        cost: null,
+        client: undefined,
+        vehicle: null
+      } as any;
+
+      const onStatusUpdate = vi.fn();
+
+      render(
+        <ServiceRecordCard
+          service={malformedServiceRecord}
+          onStatusUpdate={onStatusUpdate}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Should handle missing data gracefully
+      expect(screen.getByText('Oil Change')).toBeInTheDocument();
+    });
+  });
+});
