@@ -1,3 +1,4 @@
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,16 +48,7 @@ const ServiceRecordForm = ({
         onChange={svcs => setField("services", svcs)}
         disabled={loading}
       />
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          rows={3}
-          placeholder="Describe the service performed..."
-          value={form.description}
-          onChange={(e) => setField("description", e.target.value)}
-        />
-      </div>
+      {/* Description field removed */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="mileage">Current Mileage</Label>
@@ -100,3 +92,4 @@ const ServiceRecordForm = ({
 };
 
 export default ServiceRecordForm;
+
