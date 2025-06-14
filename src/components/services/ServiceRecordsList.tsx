@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useServiceRecords } from "@/hooks/useServiceRecords";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,12 +23,19 @@ const ServiceRecordsList = ({
     isLoading,
     updateServiceStatus,
     getServiceRecordById,
-  } = useServiceRecords();
+    refetch,
+  } = useServiceRecords(); 
   const [filters, setFilters] = useState<ServiceFilterState>({});
 
   // Modal/UI state for details & edit
   const [editingService, setEditingService] = useState<ServiceRecordWithRelations | null>(null);
   const [detailsService, setDetailsService] = useState<ServiceRecordWithRelations | null>(null);
+
+  // Refresh list after add/edit modal closes or after updates
+  const refreshOnEdit = () => {
+    setEditingService(null);
+    refetch();
+  };
 
   // Filter services based on the main filter and additional filters
   const filteredServices = serviceRecords.filter((service) => {
@@ -199,8 +205,8 @@ const ServiceRecordsList = ({
       <ServiceRecordEditModal
         isOpen={!!editingService}
         service={editingService!}
-        onClose={() => setEditingService(null)}
-        onSuccess={() => setEditingService(null)}
+        onClose={refreshOnEdit}
+        onSuccess={refreshOnEdit}
       />
       <ServiceRecordDetailsModal
         isOpen={!!detailsService}
@@ -212,4 +218,3 @@ const ServiceRecordsList = ({
 };
 
 export default ServiceRecordsList;
-

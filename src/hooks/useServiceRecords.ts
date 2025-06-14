@@ -222,14 +222,14 @@ export const useServiceRecords = () => {
   return {
     serviceRecords,
     isLoading,
-    refetch,
+    refetch, // <-- expose refetch
     updateServiceStatus,
     createServiceRecord: createServiceRecord.mutate,
     isUpdating: updateServiceStatusMutation.isPending,
     updateServiceRecord: updateServiceRecordMutation.mutate,
     isUpdatePending: updateServiceRecordMutation.isPending,
     deleteServiceRecord: deleteServiceRecordMutation.mutate,
-    isDeletePending: deleteServiceRecordMutation.isPending,
+    isDeletePending: deleteServiceRecordMutation.isDeletePending,
     getServiceRecordById,
   };
 };

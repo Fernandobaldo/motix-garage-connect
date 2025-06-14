@@ -1,9 +1,9 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useServiceRecordForm } from "./useServiceRecordForm";
 import ServiceRecordForm from "./ServiceRecordForm";
 import type { ServiceRecordWithRelations } from "@/types/database";
+import { useServiceRecords } from "@/hooks/useServiceRecords";
 
 interface Props {
   isOpen: boolean;
@@ -17,17 +17,32 @@ interface Props {
  * and pre-populates all fields for editing.
  */
 const ServiceRecordEditModal = ({ isOpen, service, onClose, onSuccess }: Props) => {
+  // Fetch refetch from the service records hook
+  const { refetch } = useServiceRecords();
+
+  const handleModalClose = () => {
+    onClose();
+    // always refetch after closing in case of changes
+    refetch();
+  };
+
+  const handleSuccess = () => {
+    onSuccess?.();
+    refetch();
+    onClose();
+  };
+
   const { form, setField, loading, handleSubmit } = useServiceRecordForm(
     "edit",
     service,
-    onSuccess,
-    onClose
+    handleSuccess,
+    handleModalClose
   );
 
   if (!service) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleModalClose}>
       <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Service Record</DialogTitle>
@@ -45,7 +60,7 @@ const ServiceRecordEditModal = ({ isOpen, service, onClose, onSuccess }: Props) 
             <Button
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={handleModalClose}
               disabled={loading}
             >
               Cancel
@@ -73,4 +88,3 @@ const ServiceRecordEditModal = ({ isOpen, service, onClose, onSuccess }: Props) 
 };
 
 export default ServiceRecordEditModal;
-
