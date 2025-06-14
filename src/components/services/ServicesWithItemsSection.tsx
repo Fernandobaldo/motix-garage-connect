@@ -39,13 +39,13 @@ const ServicesWithItemsSection = ({
   onChange,
   disabled,
 }: ServicesWithItemsSectionProps) => {
-  // Add service: ensure items get correct serviceType field
+  // Add service: ensure items do NOT have serviceType field
   const addService = () =>
     onChange([
       ...services,
       {
         serviceType: { value: "" },
-        items: [{ name: "", quantity: 1, price: 0, serviceType: "" }],
+        items: [{ name: "", quantity: 1, price: 0 }],
       }
     ]);
 
@@ -54,46 +54,26 @@ const ServicesWithItemsSection = ({
     onChange(services.filter((_, idx) => idx !== i));
   };
 
-  // Update service type: also updates the serviceType field on the items
+  // Update service type: do NOT update item fields with serviceType
   const handleServiceTypeChange = (i: number, value: string) => {
     const updated = [...services];
     updated[i].serviceType = { value, custom: value === "Other" ? updated[i].serviceType.custom ?? "" : undefined };
-    // Update serviceType on all items in this service
-    updated[i].items = updated[i].items.map(item => ({
-      ...item,
-      serviceType:
-        value === "Other" && updated[i].serviceType.custom
-          ? updated[i].serviceType.custom
-          : value,
-    }));
     onChange(updated);
   };
 
-  // Custom service name update: also update serviceType
+  // Custom service name update: do NOT update items with serviceType
   const handleCustomChange = (i: number, custom: string) => {
     const updated = [...services];
     updated[i].serviceType = { ...updated[i].serviceType, custom };
-    // If value is "Other", we'll use custom name as type
-    if (updated[i].serviceType.value === "Other") {
-      updated[i].items = updated[i].items.map(item => ({
-        ...item,
-        serviceType: custom,
-      }));
-    }
     onChange(updated);
   };
 
-  // Add item to service: pre-fill serviceType
+  // Add item to service: do NOT set serviceType in item
   const addItem = (svcIdx: number) => {
-    const svc = services[svcIdx];
-    const svcType =
-      svc.serviceType.value === "Other" && svc.serviceType.custom
-        ? svc.serviceType.custom
-        : svc.serviceType.value;
     const updated = [...services];
     updated[svcIdx].items = [
       ...updated[svcIdx].items,
-      { name: "", quantity: 1, price: 0, serviceType: svcType },
+      { name: "", quantity: 1, price: 0 },
     ];
     onChange(updated);
   };
@@ -106,16 +86,13 @@ const ServicesWithItemsSection = ({
   };
 
   // --- UI State: collapse/expand items, and track "touched" for validation
-  // We have to keep both in memory, not in the services model itself.
   const [expanded, setExpanded] = useState<boolean[]>(() => services.map(svc => !!svc.serviceType.value));
   const [itemNameTouched, setItemNameTouched] = useState<Record<string, boolean>>({});
 
-  // Keep expanded in sync with services
   useEffect(() => {
     setExpanded(services.map(svc => !!svc.serviceType.value));
   }, [services.length]);
 
-  // When user selects a type, expand section for that service
   const handleExpandOnType = (i: number, value: string) => {
     handleServiceTypeChange(i, value);
     setExpanded(arr => {
@@ -129,7 +106,6 @@ const ServicesWithItemsSection = ({
   const { preferences } = useWorkshopPreferences();
   const currencySymbol = getCurrencySymbol(preferences?.currency_code || "EUR");
 
-  // Generate a unique key for each item (safe as service-idx + item-idx, as both are stable)
   function itemFieldKey(sIdx: number, iIdx: number) {
     return `${sIdx}-${iIdx}`;
   }
@@ -137,7 +113,6 @@ const ServicesWithItemsSection = ({
   // Track when an item name input has been touched/cleared entirely
   const handleNameChange = (svcIdx: number, itemIdx: number, value: string) => {
     const key = itemFieldKey(svcIdx, itemIdx);
-    // Mark as touched if user changes and empties input after typing something
     setItemNameTouched((prev) => ({
       ...prev,
       [key]: prev[key] || value === "" ? true : false,
@@ -153,7 +128,7 @@ const ServicesWithItemsSection = ({
     }
   };
 
-  // Update item fields (untouched ones remain unaffected)
+  // Update item fields (NEVER add serviceType in item!)
   const updateItem = (
     svcIdx: number,
     itemIdx: number,
@@ -164,11 +139,6 @@ const ServicesWithItemsSection = ({
     updated[svcIdx].items[itemIdx] = {
       ...updated[svcIdx].items[itemIdx],
       [field]: value,
-      // always keep latest serviceType
-      serviceType:
-        updated[svcIdx].serviceType.value === "Other" && updated[svcIdx].serviceType.custom
-          ? updated[svcIdx].serviceType.custom
-          : updated[svcIdx].serviceType.value,
     };
     onChange(updated);
   };
