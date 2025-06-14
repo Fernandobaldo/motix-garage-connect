@@ -215,6 +215,9 @@ describe('Service Record Workflow Integration', () => {
     });
 
     it('should validate required fields before submission', async () => {
+      const onSuccess = vi.fn();
+      const onClose = vi.fn();
+
       render(
         <ServiceRecordModal
           isOpen={true}
