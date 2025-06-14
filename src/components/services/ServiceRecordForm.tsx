@@ -2,7 +2,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import ItemsSection from "@/components/appointments/ServiceReportPartsSection";
 import ServicesWithItemsSection from "./ServicesWithItemsSection";
 import { ServiceWithItems, ServiceRecordFormState } from "./useServiceRecordForm";
 import { formatCurrency } from "@/utils/currency";
@@ -57,8 +56,9 @@ const ServiceRecordForm = ({
 
   return (
     <div className="space-y-4">
-      <Accordion type="multiple" defaultValue={['services', 'technotes']}>
-        {/* Services Section */}
+
+      {/* Services Section (always first) */}
+      <Accordion type="multiple" defaultValue={['services']}>
         <AccordionItem value="services">
           <AccordionTrigger>
             <span className="font-medium">Services</span>
@@ -67,22 +67,6 @@ const ServiceRecordForm = ({
             <ServicesWithItemsSection
               services={form.services}
               onChange={svcs => setField("services", svcs)}
-              disabled={loading}
-            />
-          </AccordionContent>
-        </AccordionItem>
-        {/* Technician Notes Section */}
-        <AccordionItem value="technotes">
-          <AccordionTrigger>
-            <span className="font-medium">Technician Notes</span>
-          </AccordionTrigger>
-          <AccordionContent>
-            <Textarea
-              id="technician_notes"
-              placeholder="Internal notes, observations, recommendations..."
-              value={form.technicianNotes}
-              onChange={(e) => setField("technicianNotes", e.target.value)}
-              rows={2}
               disabled={loading}
             />
           </AccordionContent>
@@ -119,6 +103,25 @@ const ServiceRecordForm = ({
           </div>
         </div>
       )}
+
+      {/* Technician Notes - always last */}
+      <Accordion type="multiple" defaultValue={['technotes']}>
+        <AccordionItem value="technotes">
+          <AccordionTrigger>
+            <span className="font-medium">Technician Notes</span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Textarea
+              id="technician_notes"
+              placeholder="Internal notes, observations, recommendations..."
+              value={form.technicianNotes}
+              onChange={(e) => setField("technicianNotes", e.target.value)}
+              rows={2}
+              disabled={loading}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {/* Total Cost (readonly) */}
       <div className="flex justify-end pt-2">
