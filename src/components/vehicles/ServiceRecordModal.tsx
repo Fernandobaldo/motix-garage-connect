@@ -74,9 +74,6 @@ const ServiceRecordModal = ({
     null
   );
 
-  // Add this (NEW):
-  const { refreshRecords } = useServiceRecords();
-
   useEffect(() => {
     // Reset on open/close only for create mode
     if (!isOpen && mode === "create") {
@@ -93,24 +90,20 @@ const ServiceRecordModal = ({
   const { form, setField, loading, handleSubmit, setForm } = useServiceRecordForm(
     mode === "edit" ? "edit" : "add",
     mode === "edit" ? initialRecord : undefined,
-    onSuccess,
+    // Updated onSuccess: just close modal, let invalidation handle refresh
+    () => {
+      onSuccess?.();
+      onClose();
+    },
     onClose,
-    // Pass selected vehicle and client in create mode only
     mode === "create"
       ? {
           selectedVehicle,
           selectedClient,
         }
       : undefined,
-    isOpen // <-- Pass isOpen to hook so it can reset state
+    isOpen
   );
-
-  // Add a wrapped onSuccess that refreshes the list:
-  const handleSuccess = () => {
-    refreshRecords?.();
-    onSuccess?.();
-    onClose();
-  };
 
   // Wrapper for handleSubmit (CREATE: Block if missing selections)
   const wrappedHandleSubmit = (e: React.FormEvent) => {

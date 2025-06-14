@@ -12,6 +12,7 @@ export const useServiceRecords = () => {
   const { data: serviceRecords = [], isLoading, refetch } = useQuery({
     queryKey: ['service-records', user?.id, profile?.tenant_id],
     queryFn: async (): Promise<ServiceRecordWithRelations[]> => {
+      console.log("Fetching service records from Supabase!"); // Debug: make sure this appears after creation
       if (!user || !profile?.tenant_id) return [];
 
       // First, get the service records
