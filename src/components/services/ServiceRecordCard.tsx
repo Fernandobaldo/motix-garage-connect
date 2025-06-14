@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,7 +93,7 @@ const ServiceRecordCard = ({
     <Card className="hover:shadow-md transition-shadow" data-testid="service-record-card">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          {/* TITLE AREA: Vehicle info as main identifier */}
+          {/* Vehicle info as the main title */}
           <div className="flex flex-col w-full min-w-0">
             <h3 className="font-semibold text-lg truncate" title={vehicleTitle}>
               <Car className="inline mr-1 w-4 h-4 text-muted-foreground" />
@@ -133,34 +132,6 @@ const ServiceRecordCard = ({
           </div>
           <ServiceStatusBadge status={service.status} className="mt-2" />
         </div>
-        {/* Actions (view/edit/delete) */}
-        <div className="flex gap-2 items-center mt-2">
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="View Details"
-            onClick={() => onViewDetails?.(service)}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="Edit"
-            onClick={() => setShowEdit(true)}
-          >
-            <EditIcon className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="Delete"
-            onClick={() => setConfirmDelete(true)}
-            disabled={isDeletePending}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -171,16 +142,8 @@ const ServiceRecordCard = ({
           </div>
         )}
 
-        {/* Service Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          {service.cost && (
-            <div>
-              <p className="text-muted-foreground">Cost</p>
-              <p className="font-medium">
-                {formatCurrency(Number(service.cost), preferences?.currency_code)}
-              </p>
-            </div>
-          )}
+        {/* Service Stats WITHOUT Cost or Parts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           {service.labor_hours && (
             <div>
               <p className="text-muted-foreground">Labor Hours</p>
@@ -195,12 +158,6 @@ const ServiceRecordCard = ({
               <p className="font-medium">
                 {formatDistance(service.mileage, preferences?.distance_unit)}
               </p>
-            </div>
-          )}
-          {service.parts_used && Array.isArray(service.parts_used) && service.parts_used.length > 0 && (
-            <div>
-              <p className="text-muted-foreground">Parts</p>
-              <p className="font-medium">{service.parts_used.length} items</p>
             </div>
           )}
         </div>
@@ -239,6 +196,13 @@ const ServiceRecordCard = ({
             </div>
           )}
           <div className="flex items-center gap-2">
+            {/* Preview Button beside Edit */}
+            {onViewDetails && (
+              <Button variant="outline" size="sm" onClick={() => onViewDetails(service)}>
+                <Eye className="h-4 w-4 mr-1" />
+                Preview
+              </Button>
+            )}
             {onEdit && (
               <Button variant="outline" size="sm" onClick={() => onEdit(service)}>
                 <Edit className="h-4 w-4 mr-1" />
