@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -82,15 +81,17 @@ export const useWorkshopPreferences = () => {
       if (error?.code === '42501') return false;
       return failureCount < 2;
     },
-    onError: (err: any) => {
-      if (err && err.code !== '42501') {
-        toast({
-          title: 'Error loading preferences',
-          description: err?.message || 'Unable to load workshop preferences.',
-          variant: 'destructive',
-        });
-      }
-    }
+    meta: {
+      onError: (err: any) => {
+        if (err && err.code !== '42501') {
+          toast({
+            title: 'Error loading preferences',
+            description: err?.message || 'Unable to load workshop preferences.',
+            variant: 'destructive',
+          });
+        }
+      },
+    },
   });
 
   const updatePreferences = useMutation({
