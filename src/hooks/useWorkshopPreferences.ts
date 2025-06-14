@@ -10,33 +10,67 @@ export const useWorkshopPreferences = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: preferences, isLoading } = useQuery({
+  const { data: preferences, isLoading, error, refetch } = useQuery({
     queryKey: ['workshop-preferences', profile?.tenant_id],
     queryFn: async (): Promise<WorkshopPreferences | null> => {
-      if (!profile?.tenant_id) return null;
+      if (!profile?.tenant_id) {
+        console.warn('[WorkshopPreferences] No tenant_id found on profile');
+        return null;
+      }
 
       const { data, error } = await supabase
         .from('workshop_preferences')
         .select('*')
         .eq('tenant_id', profile.tenant_id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // No preferences found, create default ones
-          const { data: newPrefs, error: createError } = await supabase
-            .from('workshop_preferences')
-            .insert({
-              tenant_id: profile.tenant_id,
-              currency_code: 'USD',
-              distance_unit: 'km',
-              timezone: 'UTC'
-            })
-            .select('*')
-            .single();
+          // No preferences found, attempt to create defaults
+          try {
+            const { data: newPrefs, error: createError } = await supabase
+              .from('workshop_preferences')
+              .insert({
+                tenant_id: profile.tenant_id,
+                currency_code: 'USD',
+                distance_unit: 'km',
+                timezone: 'UTC'
+              })
+              .select('*')
+              .maybeSingle();
 
-          if (createError) throw createError;
-          return newPrefs;
+            if (createError) {
+              if (createError.code === '42501') {
+                // RLS violation (shouldn't happen with policies, but handle just in case)
+                toast({
+                  title: 'Access Denied',
+                  description: 'You do not have permission to create workshop preferences for this tenant.',
+                  variant: 'destructive',
+                });
+                console.error('[WorkshopPreferences] RLS violation when creating preferences.', createError);
+                return null;
+              }
+              throw createError;
+            }
+            return newPrefs;
+          } catch (caughtCreateErr: any) {
+            toast({
+              title: 'Workshop Preferences Error',
+              description: caughtCreateErr?.message || 'Failed to create default preferences. Please contact support.',
+              variant: 'destructive',
+            });
+            throw caughtCreateErr;
+          }
+        }
+        // Handle RLS violation on select
+        if (error.code === '42501') {
+          toast({
+            title: 'Access Denied',
+            description: 'You do not have permission to view workshop preferences for this tenant.',
+            variant: 'destructive',
+          });
+          console.error('[WorkshopPreferences] RLS violation when selecting preferences.', error);
+          return null;
         }
         throw error;
       }
@@ -44,6 +78,19 @@ export const useWorkshopPreferences = () => {
       return data;
     },
     enabled: !!profile?.tenant_id,
+    retry: (failureCount, error: any) => {
+      if (error?.code === '42501') return false;
+      return failureCount < 2;
+    },
+    onError: (err: any) => {
+      if (err && err.code !== '42501') {
+        toast({
+          title: 'Error loading preferences',
+          description: err?.message || 'Unable to load workshop preferences.',
+          variant: 'destructive',
+        });
+      }
+    }
   });
 
   const updatePreferences = useMutation({
@@ -55,9 +102,19 @@ export const useWorkshopPreferences = () => {
         .update(updates)
         .eq('tenant_id', profile.tenant_id)
         .select('*')
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42501') {
+          toast({
+            title: 'Access Denied',
+            description: 'You do not have permission to update workshop preferences.',
+            variant: 'destructive',
+          });
+          throw error;
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -67,12 +124,14 @@ export const useWorkshopPreferences = () => {
         description: 'Preferences updated successfully',
       });
     },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: 'Failed to update preferences',
-        variant: 'destructive',
-      });
+    onError: (error: any) => {
+      if (error?.code !== '42501') {
+        toast({
+          title: 'Error',
+          description: 'Failed to update preferences',
+          variant: 'destructive',
+        });
+      }
     },
   });
 
@@ -81,5 +140,7 @@ export const useWorkshopPreferences = () => {
     isLoading,
     updatePreferences: updatePreferences.mutate,
     isUpdating: updatePreferences.isPending,
+    error,
+    refetch,
   };
 };
