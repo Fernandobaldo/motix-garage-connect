@@ -55,7 +55,10 @@ const ServiceRecordForm = ({
       svc.serviceType.value?.toLowerCase().includes("change")
   );
 
-  // Use correct label for Next Oil Change Mileage
+  // Use correct label for Current and Next Oil Change Mileage
+  const currentMileageLabel = isMiles
+    ? "Current Miles"
+    : "Current Kilometers";
   const nextOilChangeLabel = isMiles
     ? "Next Oil Change Miles"
     : "Next Oil Change Kilometers";
@@ -83,7 +86,7 @@ const ServiceRecordForm = ({
       {hasOilChange && (
         <div className={`grid grid-cols-1 md:grid-cols-2 gap-4`}>
           <div>
-            <Label htmlFor="mileage">Current Mileage ({distanceUnit})</Label>
+            <Label htmlFor="mileage">{currentMileageLabel}</Label>
             <Input
               id="mileage"
               type="number"
