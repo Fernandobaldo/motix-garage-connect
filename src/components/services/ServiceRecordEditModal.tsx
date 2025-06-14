@@ -1,4 +1,6 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useServiceRecordForm } from "./useServiceRecordForm";
 import ServiceRecordForm from "./ServiceRecordForm";
 import type { ServiceRecordWithRelations } from "@/types/database";
@@ -30,14 +32,45 @@ const ServiceRecordEditModal = ({ isOpen, service, onClose, onSuccess }: Props) 
         <DialogHeader>
           <DialogTitle>Edit Service Record</DialogTitle>
         </DialogHeader>
-        <ServiceRecordForm
-          form={form}
-          setField={setField}
-          loading={loading}
-        />
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6"
+        >
+          <ServiceRecordForm
+            form={form}
+            setField={setField}
+            loading={loading}
+          />
+          <div className="flex justify-end space-x-4 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                loading ||
+                form.services.length === 0 ||
+                !form.services.every(
+                  svc =>
+                    svc.serviceType.value &&
+                    svc.items.length > 0 &&
+                    svc.items.every((item) => !!item.name)
+                )
+              }
+            >
+              {loading ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
 };
 
 export default ServiceRecordEditModal;
+
