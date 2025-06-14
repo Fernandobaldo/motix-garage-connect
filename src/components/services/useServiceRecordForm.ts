@@ -1,26 +1,25 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { ServiceRecordWithRelations, PartUsed } from "@/types/database";
 
-/** --- NEW NESTED STRUCTURE --- */
 export interface ServiceWithItems {
   serviceType: { value: string; custom?: string };
   items: PartUsed[];
 }
 
-// Old types removed
 export interface ServiceRecordFormState {
   services: ServiceWithItems[];
   description: string;
   mileage: string;
   technicianNotes: string;
+  nextOilChangeMileage: string; // NEW FIELD
 }
 
-// Utility: flatten the services to the old data model
+// Utility: flatten the services to old data model
 const flattenServicesToFields = (services: ServiceWithItems[]) => {
-  // For legacy save: flatten all serviceTypes to comma-separated string
   const serviceTypeString = services
     .map((svc) =>
       svc.serviceType.value === "Other" && svc.serviceType.custom
@@ -29,19 +28,16 @@ const flattenServicesToFields = (services: ServiceWithItems[]) => {
     )
     .filter(Boolean)
     .join(", ");
-  // Flatten all items under all services (still flat array in db for now)
   const allItems: PartUsed[] = services.flatMap((svc) => svc.items);
   return { serviceTypeString, allItems };
 };
 
 const parseServicesFromRecord = (service_type: string, parts_used: any): ServiceWithItems[] => {
-  // This tries to group them 1:1 if possible or fallback to a single service with all parts
   const serviceTypes = service_type
     ? service_type.split(",").map((v) => ({ value: v.trim() }))
     : [{ value: "" }];
 
   const items: PartUsed[] = Array.isArray(parts_used) ? (parts_used as PartUsed[]) : [];
-  // Map items equally to services if possible (best effort), or all items to first
   if (serviceTypes.length === 1) {
     return [{ serviceType: serviceTypes[0], items }];
   }
@@ -50,11 +46,39 @@ const parseServicesFromRecord = (service_type: string, parts_used: any): Service
     items: [],
   }));
   if (items.length > 0) {
-    // Just add all items to the first service (can be improved)
     perSvc[0].items = items;
   }
   return perSvc;
 };
+
+// Utility to extract nextOilChangeMileage from technician notes (if present as JSON)
+function extractNextOilChangeMileage(technicianNotes: string | undefined): { nextOilChangeMileage: string, plainNotes: string } {
+  if (!technicianNotes) return { nextOilChangeMileage: "", plainNotes: "" };
+  // Our convention: if the notes start with {"nextOilChangeMileage":"12345"}\n, extract it
+  try {
+    if (technicianNotes.startsWith("{")) {
+      const endIdx = technicianNotes.indexOf("}\n");
+      if (endIdx !== -1) {
+        const jsonBlob = technicianNotes.slice(0, endIdx + 1);
+        const parsed = JSON.parse(jsonBlob);
+        const plainNotes = technicianNotes.slice(endIdx + 2);
+        return {
+          nextOilChangeMileage: parsed.nextOilChangeMileage ?? "",
+          plainNotes,
+        };
+      }
+    }
+  } catch (_) {}
+  return { nextOilChangeMileage: "", plainNotes: technicianNotes };
+}
+
+// Utility to prepend nextOilChangeMileage to technician notes
+function buildTechnicianNotes(nextOilChangeMileage: string, technicianNotes: string) {
+  if (!nextOilChangeMileage) return technicianNotes?.trim() || "";
+  const safeNotes = technicianNotes ? technicianNotes.trim() : "";
+  // Prepend JSON and two newlines (easy to parse/detect)
+  return JSON.stringify({ nextOilChangeMileage }) + "\n" + safeNotes;
+}
 
 export const useServiceRecordForm = (
   mode: "add" | "edit",
@@ -67,26 +91,42 @@ export const useServiceRecordForm = (
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
+  // Handle extracting nextOilChangeMileage from technicianNotes JSON prefix
+  let extracted = { nextOilChangeMileage: "", plainNotes: "" };
+  if (initialRecord?.technician_notes) {
+    extracted = extractNextOilChangeMileage(initialRecord.technician_notes);
+  }
+
   const [form, setForm] = useState<ServiceRecordFormState>({
     services: initialRecord?.service_type
       ? parseServicesFromRecord(initialRecord.service_type, initialRecord.parts_used)
       : [{ serviceType: { value: "" }, items: [{ name: "", quantity: 1, price: 0 }] }],
     description: initialRecord?.description || "",
     mileage: initialRecord?.mileage?.toString() || "",
-    technicianNotes: initialRecord?.technician_notes || "",
+    technicianNotes: extracted.plainNotes || "",
+    nextOilChangeMileage: extracted.nextOilChangeMileage || "",
   });
 
   useEffect(() => {
     if (mode === "edit" && initialRecord) {
+      let nextOilChangeMileageFromNotes = "";
+      let notes = initialRecord.technician_notes || "";
+      if (notes) {
+        const ext = extractNextOilChangeMileage(notes);
+        nextOilChangeMileageFromNotes = ext.nextOilChangeMileage;
+        notes = ext.plainNotes;
+      }
       setForm({
         services: initialRecord?.service_type
           ? parseServicesFromRecord(initialRecord.service_type, initialRecord.parts_used)
           : [{ serviceType: { value: "" }, items: [{ name: "", quantity: 1, price: 0 }] }],
         description: initialRecord.description || "",
         mileage: initialRecord.mileage != null ? String(initialRecord.mileage) : "",
-        technicianNotes: initialRecord.technician_notes || "",
+        technicianNotes: notes || "",
+        nextOilChangeMileage: nextOilChangeMileageFromNotes || "",
       });
     }
+    // eslint-disable-next-line
   }, [mode, initialRecord]);
 
   const setField = (name: keyof ServiceRecordFormState, value: any) => {
@@ -116,9 +156,7 @@ export const useServiceRecordForm = (
       return;
     }
     try {
-      // --- ADD MODE (CREATE) ---
       if (mode === "add") {
-        // Validation for vehicle/client done in modal
         if (!profile?.tenant_id) {
           toast({
             title: "Unable to create service record - no workshop selected",
@@ -136,7 +174,6 @@ export const useServiceRecordForm = (
           setLoading(false);
           return;
         }
-        // Flatten
         const { serviceTypeString, allItems } = flattenServicesToFields(form.services);
         const totalCost = form.services.reduce(
           (svcCost, svc) =>
@@ -158,7 +195,11 @@ export const useServiceRecordForm = (
           cost: totalCost,
           mileage: form.mileage ? parseInt(form.mileage) : null,
           labor_hours: null,
-          technician_notes: form.technicianNotes,
+          // Embedding the nextOilChangeMileage into technician_notes
+          technician_notes: buildTechnicianNotes(
+            form.nextOilChangeMileage,
+            form.technicianNotes
+          ),
           parts_used: allItems as any,
           status: "pending",
         });
@@ -192,7 +233,10 @@ export const useServiceRecordForm = (
           cost: totalCost,
           mileage: form.mileage ? parseInt(form.mileage) : null,
           labor_hours: null,
-          technician_notes: form.technicianNotes,
+          technician_notes: buildTechnicianNotes(
+            form.nextOilChangeMileage,
+            form.technicianNotes
+          ),
           parts_used: allItems as any,
         })
         .eq("id", initialRecord.id);

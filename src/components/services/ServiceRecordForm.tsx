@@ -7,6 +7,7 @@ import ItemsSection from "@/components/appointments/ServiceReportPartsSection";
 import ServicesWithItemsSection from "./ServicesWithItemsSection";
 import { ServiceWithItems, ServiceRecordFormState } from "./useServiceRecordForm";
 import { formatCurrency } from "@/utils/currency";
+import { useWorkshopPreferences } from "@/hooks/useWorkshopPreferences";
 
 interface ServiceRecordFormProps {
   form: ServiceRecordFormState;
@@ -41,6 +42,15 @@ const ServiceRecordForm = ({
     svc.items.every(item => !!item.name)
   );
 
+  // Get workshop distance unit preference
+  const { preferences, isLoading: loadingPrefs } = useWorkshopPreferences();
+  const distanceUnit = preferences?.distance_unit === "miles" ? "miles" : "km";
+  // Check if "Oil Change" is being performed
+  const hasOilChange = form.services.some(
+    svc => svc.serviceType.value?.toLowerCase().includes("oil") &&
+      svc.serviceType.value?.toLowerCase().includes("change")
+  );
+
   return (
     <form className="space-y-4" onSubmit={onSubmit} autoComplete="off">
       <ServicesWithItemsSection
@@ -48,21 +58,37 @@ const ServiceRecordForm = ({
         onChange={svcs => setField("services", svcs)}
         disabled={loading}
       />
-      {/* Description field removed */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Mileage Section */}
+      <div className={`grid grid-cols-1 ${hasOilChange ? "md:grid-cols-2" : "md:grid-cols-2"} gap-4`}>
         <div>
-          <Label htmlFor="mileage">Current Mileage</Label>
+          <Label htmlFor="mileage">Current Mileage ({distanceUnit})</Label>
           <Input
             id="mileage"
             type="number"
             min="0"
-            placeholder="e.g., 50000"
+            placeholder={`e.g., 50000`}
             value={form.mileage}
             onChange={(e) => setField("mileage", e.target.value)}
+            disabled={loading}
           />
         </div>
-        {/* Labor Hours still removed */}
+        {/* Show Next Oil Change Mileage if "Oil Change" service is present */}
+        {hasOilChange && (
+          <div>
+            <Label htmlFor="next_oil_change_mileage">Next Oil Change Mileage ({distanceUnit})</Label>
+            <Input
+              id="next_oil_change_mileage"
+              type="number"
+              min="0"
+              placeholder={`e.g., 55000`}
+              value={form.nextOilChangeMileage}
+              onChange={(e) => setField("nextOilChangeMileage", e.target.value)}
+              disabled={loading}
+            />
+          </div>
+        )}
       </div>
+      {/* Technician Notes */}
       <div>
         <Label htmlFor="technician_notes">Technician Notes</Label>
         <Textarea
@@ -71,6 +97,7 @@ const ServiceRecordForm = ({
           value={form.technicianNotes}
           onChange={(e) => setField("technicianNotes", e.target.value)}
           rows={2}
+          disabled={loading}
         />
       </div>
       {/* Total Cost (readonly) */}
@@ -92,4 +119,3 @@ const ServiceRecordForm = ({
 };
 
 export default ServiceRecordForm;
-
