@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { useServiceRecords } from '@/hooks/useServiceRecords';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import * as useAuthModule from '@/hooks/useAuth';
 
 // Mock dependencies
 vi.mock('@/integrations/supabase/client');
@@ -11,7 +11,7 @@ vi.mock('@/hooks/useAuth');
 vi.mock('@/hooks/use-toast');
 
 const mockSupabase = supabase as any;
-const mockUseAuth = vi.mocked(useAuth);
+const mockUseAuth = vi.mocked(useAuthModule.useAuth);
 
 // Test wrapper with QueryClient
 const createWrapper = () => {
