@@ -13,7 +13,6 @@ vi.mock('@/hooks/useAuth', () => ({
 vi.mock('@/hooks/use-toast');
 
 const mockSupabase = supabase as any;
-const { useAuth: mockUseAuth } = require('@/hooks/useAuth');
 
 // Test wrapper with QueryClient
 const createWrapper = () => {
@@ -32,8 +31,8 @@ const createWrapper = () => {
 describe('useServiceRecords', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Directly set up the useAuth mock implementation
-    mockUseAuth.mockImplementation(() => ({
+    // Set up the useAuth mock implementation
+    (useAuth as unknown as vi.Mock).mockImplementation(() => ({
       user: { id: 'user-123' },
       profile: { tenant_id: 'tenant-123', role: 'workshop' },
     }));
