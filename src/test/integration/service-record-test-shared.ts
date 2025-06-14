@@ -2,6 +2,7 @@
 import { vi } from 'vitest';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import type { ServiceStatus } from '@/types/database';
 
 export const mockSupabase = vi.mocked(supabase);
 export const mockUseAuth = vi.mocked(useAuth);
@@ -53,12 +54,15 @@ export const createMockVehicle = (overrides = {}) => ({
   ...overrides,
 });
 
-export const createMockServiceRecord = (overrides = {}) => ({
+// Here is the change: default status is 'pending' and type is ServiceStatus
+export const createMockServiceRecord = (
+  overrides: Partial<import('@/types/database').ServiceRecordWithRelations> & { status?: ServiceStatus } = {}
+): import('@/types/database').ServiceRecordWithRelations => ({
   id: 'service-123',
   tenant_id: 'tenant-123',
   service_type: 'oil_change',
   description: 'Regular oil change',
-  status: 'pending',
+  status: (overrides.status ?? 'pending') as ServiceStatus,
   cost: 75.00,
   labor_hours: 1.5,
   mileage: 50000,
