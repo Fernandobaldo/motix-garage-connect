@@ -817,6 +817,7 @@ export type Database = {
       service_history: {
         Row: {
           appointment_id: string | null
+          client_id: string | null
           completed_at: string
           cost: number | null
           created_at: string
@@ -838,6 +839,7 @@ export type Database = {
         }
         Insert: {
           appointment_id?: string | null
+          client_id?: string | null
           completed_at?: string
           cost?: number | null
           created_at?: string
@@ -859,6 +861,7 @@ export type Database = {
         }
         Update: {
           appointment_id?: string | null
+          client_id?: string | null
           completed_at?: string
           cost?: number | null
           created_at?: string
