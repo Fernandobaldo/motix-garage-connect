@@ -3,9 +3,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import ServiceReportPartsSection from "@/components/appointments/ServiceReportPartsSection";
+import ItemsSection from "@/components/appointments/ServiceReportPartsSection";
+import ServiceItemsSection from "./ServiceItemsSection";
 import type { PartUsed } from "@/types/database";
 import { ServiceRecordFormState } from "./useServiceRecordForm";
+import { formatCurrency } from "@/utils/currency";
 
 interface ServiceRecordFormProps {
   form: ServiceRecordFormState;
@@ -20,33 +22,24 @@ const ServiceRecordForm = ({
   loading,
   onSubmit,
 }: ServiceRecordFormProps) => {
-  // Handles parts logic just like "add service" flow
+  // Calculate total cost from items (parts)
+  const totalCost = form.partsUsed.reduce(
+    (acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0),
+    0
+  );
+  // Validate at least one service type, at least one part with name
+  const servicesValid = Array.isArray(form.serviceTypes) && form.serviceTypes.length > 0 && form.serviceTypes[0].value;
+  const itemsValid = form.partsUsed.every(item => !!item.name);
+
+  // The parent (modal) or the custom submit logic should do validation and show errors
+
   return (
-    <form className="space-y-4" onSubmit={onSubmit}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="service_type">Service Type *</Label>
-          <Input
-            id="service_type"
-            required
-            value={form.serviceType}
-            onChange={(e) => setField("serviceType", e.target.value)}
-            placeholder="e.g., Oil Change"
-          />
-        </div>
-        <div>
-          <Label htmlFor="cost">Cost</Label>
-          <Input
-            id="cost"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={form.cost}
-            onChange={(e) => setField("cost", e.target.value)}
-          />
-        </div>
-      </div>
+    <form className="space-y-4" onSubmit={onSubmit} autoComplete="off">
+      <ServiceItemsSection
+        serviceTypes={form.serviceTypes}
+        onChange={types => setField("serviceTypes", types)}
+        disabled={loading}
+      />
       <div>
         <Label htmlFor="description">Description</Label>
         <Textarea
@@ -69,18 +62,7 @@ const ServiceRecordForm = ({
             onChange={(e) => setField("mileage", e.target.value)}
           />
         </div>
-        <div>
-          <Label htmlFor="labor_hours">Labor Hours</Label>
-          <Input
-            id="labor_hours"
-            type="number"
-            step="0.5"
-            min="0"
-            placeholder="e.g., 2.5"
-            value={form.laborHours}
-            onChange={(e) => setField("laborHours", e.target.value)}
-          />
-        </div>
+        {/* Labor Hours is removed */}
       </div>
       <div>
         <Label htmlFor="technician_notes">Technician Notes</Label>
@@ -92,15 +74,21 @@ const ServiceRecordForm = ({
           rows={2}
         />
       </div>
-      <ServiceReportPartsSection
+      <ItemsSection
         partsUsed={form.partsUsed}
         onPartsChange={(p: PartUsed[]) => setField("partsUsed", p)}
       />
+      {/* Total Cost (readonly) */}
+      <div className="flex justify-end pt-2">
+        <div className="bg-muted rounded font-medium px-4 py-2">
+          Total Cost: {formatCurrency(totalCost)}
+        </div>
+      </div>
       <div className="flex justify-end space-x-2 pt-2">
         <Button variant="outline" type="reset" disabled={loading}>
           Reset
         </Button>
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading || !servicesValid || !itemsValid}>
           {loading ? "Saving..." : "Save"}
         </Button>
       </div>
@@ -109,4 +97,3 @@ const ServiceRecordForm = ({
 };
 
 export default ServiceRecordForm;
-

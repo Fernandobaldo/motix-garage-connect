@@ -5,15 +5,40 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { ServiceRecordWithRelations, PartUsed } from "@/types/database";
 
+/**
+ * Service type option: value from dropdown or custom if "Other."
+ */
+export interface ServiceTypeItem {
+  value: string;
+  custom?: string;
+}
+
 export interface ServiceRecordFormState {
-  serviceType: string;
+  serviceTypes: ServiceTypeItem[]; // Array of service types
   description: string;
-  cost: string;
   mileage: string;
-  laborHours: string;
   technicianNotes: string;
   partsUsed: PartUsed[];
 }
+
+// Utility: convert array of service type objects back to string(s) for storage (comma separated or as JSON string? We'll use comma-separated string for now for backward compatibility)
+const flattenServiceTypes = (items: ServiceTypeItem[]) =>
+  items
+    .map((i) => (i.value === "Other" && i.custom ? i.custom : i.value))
+    .filter(Boolean)
+    .join(", ");
+
+const parseServiceTypes = (service_type: string): ServiceTypeItem[] => {
+  if (!service_type) return [{ value: "" }];
+  // Heuristic: If it's a comma-separated string, split it.
+  if (service_type.includes(",")) {
+    return service_type.split(",").map((v) => {
+      const val = v.trim();
+      return { value: val === "Other" ? "Other" : val };
+    });
+  }
+  return [{ value: service_type }];
+};
 
 export const useServiceRecordForm = (
   mode: "add" | "edit",
@@ -27,30 +52,28 @@ export const useServiceRecordForm = (
 
   // Form state, initialized with blanks or provided record
   const [form, setForm] = useState<ServiceRecordFormState>({
-    serviceType: initialRecord?.service_type || "",
+    serviceTypes: initialRecord?.service_type
+      ? parseServiceTypes(initialRecord.service_type)
+      : [{ value: "" }],
     description: initialRecord?.description || "",
-    cost: initialRecord?.cost?.toString() || "",
     mileage: initialRecord?.mileage?.toString() || "",
-    laborHours: initialRecord?.labor_hours?.toString() || "",
     technicianNotes: initialRecord?.technician_notes || "",
     partsUsed: Array.isArray(initialRecord?.parts_used)
-      ? (initialRecord?.parts_used as unknown as PartUsed[])
+      ? (initialRecord?.parts_used as PartUsed[])
       : [],
   });
 
   useEffect(() => {
     if (mode === "edit" && initialRecord) {
       setForm({
-        serviceType: initialRecord.service_type || "",
+        serviceTypes: initialRecord?.service_type
+          ? parseServiceTypes(initialRecord.service_type)
+          : [{ value: "" }],
         description: initialRecord.description || "",
-        cost: initialRecord.cost != null ? String(initialRecord.cost) : "",
         mileage: initialRecord.mileage != null ? String(initialRecord.mileage) : "",
-        laborHours: initialRecord.labor_hours != null
-          ? String(initialRecord.labor_hours)
-          : "",
         technicianNotes: initialRecord.technician_notes || "",
         partsUsed: Array.isArray(initialRecord.parts_used)
-          ? (initialRecord.parts_used as unknown as PartUsed[])
+          ? (initialRecord.parts_used as PartUsed[])
           : [],
       });
     }
@@ -65,23 +88,40 @@ export const useServiceRecordForm = (
     e.preventDefault();
     setLoading(true);
 
-    // Validation: must have type, vehicle, and client (add mode), skip for now, assume handled in parent
+    // Validation: must have at least one service, at least one item with name
+    if (
+      !form.serviceTypes.length ||
+      !form.serviceTypes[0].value ||
+      form.partsUsed.some((item) => !item.name)
+    ) {
+      toast({
+        title: "Required fields missing",
+        description:
+          "Please fill in at least one service type and each item must have a name.",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
     try {
       if (mode === "add") {
-        // Not called here; new record creation handled elsewhere.
         setLoading(false);
         return;
       }
-      // Edit mode: update the record
       if (!initialRecord) throw new Error("No service record to update");
+      // Calculate total cost for saving
+      const totalCost = form.partsUsed.reduce(
+        (acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0),
+        0
+      );
       const { error } = await supabase
         .from("service_records")
         .update({
-          service_type: form.serviceType,
+          service_type: flattenServiceTypes(form.serviceTypes), // save as comma-separated for compatibility
           description: form.description,
-          cost: form.cost ? parseFloat(form.cost) : null,
+          cost: totalCost, // always update cost as the summary
           mileage: form.mileage ? parseInt(form.mileage) : null,
-          labor_hours: form.laborHours ? parseFloat(form.laborHours) : null,
+          labor_hours: null, // remove labor hours
           technician_notes: form.technicianNotes,
           parts_used: form.partsUsed as any, // Cast for TS and Supabase Json
         })

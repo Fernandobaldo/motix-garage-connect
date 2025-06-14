@@ -185,29 +185,36 @@ describe('Service Record Workflow Integration', () => {
 
       // Verify modal is rendered
       expect(screen.getByText('Create New Service Record')).toBeInTheDocument();
-      expect(screen.getByLabelText(/service type/i)).toBeInTheDocument();
 
-      // Fill in service type
-      const serviceTypeInput = screen.getByLabelText(/service type/i);
-      fireEvent.change(serviceTypeInput, { target: { value: 'Oil Change' } });
+      // Should see Service Types section with Add Service Type button and dropdown
+      expect(screen.getByText(/service type\(s?\)/i)).toBeInTheDocument();
+      fireEvent.click(screen.getByText(/add service type/i));
+      // Should be able to select a service type
+      const dropdown = screen.getAllByRole("button", { name: /select service type/i })[0];
+      fireEvent.mouseDown(dropdown);
+      const option = await screen.findByText("Oil Change");
+      fireEvent.click(option);
 
-      // Fill in description
+      // Description field:
       const descriptionInput = screen.getByLabelText(/description/i);
       fireEvent.change(descriptionInput, { target: { value: 'Regular oil change service' } });
 
-      // Fill in cost
-      const costInput = screen.getByLabelText(/cost/i);
-      fireEvent.change(costInput, { target: { value: '75.00' } });
+      // Items grid (part name required) and total cost calculation
+      const partNameInput = screen.getAllByPlaceholderText(/part name/i)[0];
+      fireEvent.change(partNameInput, { target: { value: 'Oil Filter' } });
 
-      expect(serviceTypeInput).toHaveValue('Oil Change');
-      expect(descriptionInput).toHaveValue('Regular oil change service');
-      expect(costInput).toHaveValue('75.00');
+      const qtyInput = screen.getAllByPlaceholderText(/qty/i)[0];
+      fireEvent.change(qtyInput, { target: { value: '2' } });
+
+      const priceInput = screen.getAllByPlaceholderText(/price/i)[0];
+      fireEvent.change(priceInput, { target: { value: '10' } });
+
+      expect(screen.getByText(/total cost/i)).toHaveTextContent("$20"); // e.g., $20.00
+
+      // Try to submit: should succeed if validations met
     });
 
     it('should validate required fields before submission', async () => {
-      const onSuccess = vi.fn();
-      const onClose = vi.fn();
-
       render(
         <ServiceRecordModal
           isOpen={true}
@@ -216,13 +223,9 @@ describe('Service Record Workflow Integration', () => {
         />,
         { wrapper: createWrapper() }
       );
-
-      // Try to submit without required fields
-      const submitButton = screen.getByRole('button', { name: /create service record/i });
-      fireEvent.click(submitButton);
-
-      // Should not call onSuccess due to validation
-      expect(onSuccess).not.toHaveBeenCalled();
+      // Remove service type and part name to trigger validation error
+      fireEvent.click(screen.getByText(/save/i));
+      expect(await screen.findByText(/required fields missing/i)).toBeInTheDocument();
     });
 
     it('should handle service record creation errors', async () => {
