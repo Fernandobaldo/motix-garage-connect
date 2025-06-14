@@ -1,3 +1,4 @@
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +7,12 @@ import ServicesWithItemsSection from "./ServicesWithItemsSection";
 import { ServiceWithItems, ServiceRecordFormState } from "./useServiceRecordForm";
 import { formatCurrency } from "@/utils/currency";
 import { useWorkshopPreferences } from "@/hooks/useWorkshopPreferences";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 interface ServiceRecordFormProps {
   form: ServiceRecordFormState;
@@ -40,7 +47,7 @@ const ServiceRecordForm = ({
   );
 
   // Get workshop distance unit preference
-  const { preferences, isLoading: loadingPrefs } = useWorkshopPreferences();
+  const { preferences } = useWorkshopPreferences();
   const distanceUnit = preferences?.distance_unit === "miles" ? "miles" : "km";
   // Check if "Oil Change" is being performed
   const hasOilChange = form.services.some(
@@ -50,11 +57,38 @@ const ServiceRecordForm = ({
 
   return (
     <div className="space-y-4">
-      <ServicesWithItemsSection
-        services={form.services}
-        onChange={svcs => setField("services", svcs)}
-        disabled={loading}
-      />
+      <Accordion type="multiple" defaultValue={['services', 'technotes']}>
+        {/* Services Section */}
+        <AccordionItem value="services">
+          <AccordionTrigger>
+            <span className="font-medium">Services</span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <ServicesWithItemsSection
+              services={form.services}
+              onChange={svcs => setField("services", svcs)}
+              disabled={loading}
+            />
+          </AccordionContent>
+        </AccordionItem>
+        {/* Technician Notes Section */}
+        <AccordionItem value="technotes">
+          <AccordionTrigger>
+            <span className="font-medium">Technician Notes</span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Textarea
+              id="technician_notes"
+              placeholder="Internal notes, observations, recommendations..."
+              value={form.technicianNotes}
+              onChange={(e) => setField("technicianNotes", e.target.value)}
+              rows={2}
+              disabled={loading}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
       {/* Mileage Section - Only shown with Oil Change */}
       {hasOilChange && (
         <div className={`grid grid-cols-1 md:grid-cols-2 gap-4`}>
@@ -85,18 +119,7 @@ const ServiceRecordForm = ({
           </div>
         </div>
       )}
-      {/* Technician Notes */}
-      <div>
-        <Label htmlFor="technician_notes">Technician Notes</Label>
-        <Textarea
-          id="technician_notes"
-          placeholder="Internal notes, observations, recommendations..."
-          value={form.technicianNotes}
-          onChange={(e) => setField("technicianNotes", e.target.value)}
-          rows={2}
-          disabled={loading}
-        />
-      </div>
+
       {/* Total Cost (readonly) */}
       <div className="flex justify-end pt-2">
         <div className="bg-muted rounded font-medium px-4 py-2">
@@ -109,3 +132,4 @@ const ServiceRecordForm = ({
 };
 
 export default ServiceRecordForm;
+
