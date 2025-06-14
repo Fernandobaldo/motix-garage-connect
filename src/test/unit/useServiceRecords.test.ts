@@ -11,7 +11,7 @@ vi.mock('@/hooks/useAuth');
 vi.mock('@/hooks/use-toast');
 
 const mockSupabase = supabase as any;
-const mockUseAuth = useAuth as unknown as jest.Mock;
+const mockUseAuth = useAuth as unknown as { mockReturnValue: (val: any) => void };
 
 // Test wrapper with QueryClient
 const createWrapper = () => {
