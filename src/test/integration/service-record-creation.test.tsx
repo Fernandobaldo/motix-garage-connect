@@ -1,3 +1,4 @@
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ServiceRecordModal from '@/components/vehicles/ServiceRecordModal';
@@ -14,7 +15,7 @@ const createWrapper = () => {
   );
 };
 
-describe('Service Record Creation Flow', () => {
+describe('Service Record Creation Flow (Unified Modal)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSupabase.from.mockReset();
@@ -30,18 +31,21 @@ describe('Service Record Creation Flow', () => {
     } as any);
   });
 
-  it('should handle complete service record creation workflow', async () => {
+  it('should handle complete service record creation workflow with shared form', async () => {
     const onSuccess = vi.fn();
     const onClose = vi.fn();
 
     render(
-      <ServiceRecordModal isOpen={true} onClose={onClose} onSuccess={onSuccess} />,
+      <ServiceRecordModal isOpen={true} onClose={onClose} onSuccess={onSuccess} mode="create" />,
       { wrapper: createWrapper() }
     );
 
     expect(screen.getByText('Create New Service Record')).toBeInTheDocument();
 
-    // Add service
+    // Vehicle/client selection should initially be empty
+    expect(screen.queryByText(/vehicle:/i)).not.toBeInTheDocument();
+
+    // Fill out required service type and parts/items
     fireEvent.click(screen.getByText(/add service/i));
     // Select service type for first (required)
     const dropdowns = screen.getAllByRole("button", { name: /select service type/i });
@@ -61,15 +65,14 @@ describe('Service Record Creation Flow', () => {
 
     expect(screen.getByText(/total cost/i)).toHaveTextContent("$20");
 
-    // Can add a second service
+    // Can add another service
     fireEvent.click(screen.getByText(/add service/i));
-    // Select service type for second
     const secondDropdown = screen.getAllByRole("button", { name: /select service type/i })[1];
     fireEvent.mouseDown(secondDropdown);
     const brakeOpt = await screen.findByText("Brake Service");
     fireEvent.click(brakeOpt);
 
-    // Add an item to the second service
+    // Add an item to the new service
     const secondPartName = screen.getAllByPlaceholderText(/part name/i)[1];
     fireEvent.change(secondPartName, { target: { value: 'Brake Pad' } });
     const secondQty = screen.getAllByPlaceholderText(/qty/i)[1];
@@ -77,15 +80,15 @@ describe('Service Record Creation Flow', () => {
     const secondPrice = screen.getAllByPlaceholderText(/price/i)[1];
     fireEvent.change(secondPrice, { target: { value: '50' } });
 
-    // Total cost should now reflect both services: 20 + 50 = 70
     expect(screen.getByText(/total cost/i)).toHaveTextContent("$70");
 
-    // Deleting a service removes its items
+    // Remove the second service, expect total cost to update
     const removeBtns = screen.getAllByLabelText("Remove service");
     fireEvent.click(removeBtns[1]);
-    // Only one service left; total cost returns to $20
     expect(screen.getByText(/total cost/i)).toHaveTextContent("$20");
 
-    // (Tests for submission/validation in other tests)
+    // Simulate vehicle and client selection (normally from LicensePlateSearchField)
+    // We'll directly call the handler due to modal logic
+    // In real tests this should use UI interaction; here we test modal logic.
   });
 });
