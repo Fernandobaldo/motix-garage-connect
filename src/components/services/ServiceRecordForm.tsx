@@ -47,12 +47,18 @@ const ServiceRecordForm = ({
 
   // Get workshop distance unit preference
   const { preferences } = useWorkshopPreferences();
-  const distanceUnit = preferences?.distance_unit === "miles" ? "miles" : "km";
+  const isMiles = preferences?.distance_unit === "miles";
+  const distanceUnit = isMiles ? "miles" : "km";
   // Check if "Oil Change" is being performed
   const hasOilChange = form.services.some(
     svc => svc.serviceType.value?.toLowerCase().includes("oil") &&
       svc.serviceType.value?.toLowerCase().includes("change")
   );
+
+  // Use correct label for Next Oil Change Mileage
+  const nextOilChangeLabel = isMiles
+    ? "Next Oil Change Miles"
+    : "Next Oil Change Kilometers";
 
   return (
     <div className="space-y-4">
@@ -90,7 +96,7 @@ const ServiceRecordForm = ({
           </div>
           {/* Next Oil Change Mileage */}
           <div>
-            <Label htmlFor="next_oil_change_mileage">Next Oil Change Mileage ({distanceUnit})</Label>
+            <Label htmlFor="next_oil_change_mileage">{nextOilChangeLabel}</Label>
             <Input
               id="next_oil_change_mileage"
               type="number"
