@@ -1,8 +1,9 @@
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Car, User, Wrench, Download, Share2, Edit } from "lucide-react";
+import { Calendar, Car, User, Wrench, Download, Share2, Edit, BadgeInfo } from "lucide-react";
 import { format } from "date-fns";
 import ServiceStatusBadge from "./ServiceStatusBadge";
 import type { ServiceRecordWithRelations, ServiceStatus } from "@/types/database";
@@ -14,6 +15,31 @@ import ServiceRecordDetailsModal from "./ServiceRecordDetailsModal";
 import { Trash2, Eye, Edit as EditIcon } from "lucide-react";
 import { useServiceRecords } from "@/hooks/useServiceRecords";
 
+/**
+ * Helper to get label and icon for each service type.
+ */
+const getServiceTypeMeta = (type: string) => {
+  switch (type) {
+    case "oil_change":
+      return { label: "Oil Change", color: "bg-green-100 text-green-600", icon: <Wrench className="w-3 h-3 mr-1 inline-block" /> };
+    case "brake_service":
+      return { label: "Brake Service", color: "bg-blue-100 text-blue-600", icon: <Wrench className="w-3 h-3 mr-1 inline-block" /> };
+    case "tire_rotation":
+      return { label: "Tire Rotation", color: "bg-yellow-100 text-yellow-600", icon: <Wrench className="w-3 h-3 mr-1 inline-block" /> };
+    case "general_maintenance":
+      return { label: "Maintenance", color: "bg-purple-100 text-purple-600", icon: <Wrench className="w-3 h-3 mr-1 inline-block" /> };
+    case "repair":
+      return { label: "Repair", color: "bg-red-100 text-red-600", icon: <Wrench className="w-3 h-3 mr-1 inline-block" /> };
+    case "inspection":
+      return { label: "Inspection", color: "bg-sky-100 text-sky-600", icon: <BadgeInfo className="w-3 h-3 mr-1 inline-block" /> };
+    case "other":
+      return { label: "Other", color: "bg-gray-100 text-gray-600", icon: <Wrench className="w-3 h-3 mr-1 inline-block" /> };
+    default:
+      // Accept free text/custom types as a fallback:
+      return { label: type, color: "bg-gray-50 text-gray-700", icon: null };
+  }
+};
+
 interface ServiceRecordCardProps {
   service: ServiceRecordWithRelations;
   onStatusUpdate: (id: string, status: ServiceStatus) => void;
@@ -22,6 +48,15 @@ interface ServiceRecordCardProps {
   onShare?: (service: ServiceRecordWithRelations) => void;
   isHistoryView?: boolean;
   onViewDetails?: (service: ServiceRecordWithRelations) => void;
+}
+
+// "service_type" is always one string, could be future comma-separated; supports array or string
+function getServiceTypesArr(service: ServiceRecordWithRelations) {
+  if (Array.isArray(service.service_type)) return service.service_type; // future-proof
+  if (typeof service.service_type === "string") {
+    return service.service_type.split(",").map(s => s.trim()).filter(Boolean);
+  }
+  return [];
 }
 
 const ServiceRecordCard = ({
@@ -43,48 +78,63 @@ const ServiceRecordCard = ({
     onStatusUpdate(service.id, newStatus);
   };
 
-  const getServiceTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      oil_change: 'Oil Change',
-      brake_service: 'Brake Service',
-      tire_rotation: 'Tire Rotation',
-      general_maintenance: 'General Maintenance',
-      repair: 'Repair',
-      inspection: 'Inspection',
-      other: 'Other'
-    };
-    return labels[type] || type;
-  };
-
   const handleDelete = () => {
     deleteServiceRecord(service.id);
     setConfirmDelete(false);
   };
 
+  // Vehicle main title and subtitle (plate on same line if known)
+  const vehicleTitle = service.vehicle
+    ? `${service.vehicle.year ?? ""} ${service.vehicle.make ?? ""} ${service.vehicle.model ?? ""} ${service.vehicle.license_plate ? `- ${service.vehicle.license_plate}` : ""}`.trim()
+    : "Unknown vehicle";
+
+  const serviceTypesArr = getServiceTypesArr(service);
+
   return (
     <Card className="hover:shadow-md transition-shadow" data-testid="service-record-card">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h3 className="font-semibold text-lg">
-              {getServiceTypeLabel(service.service_type)}
+          {/* TITLE AREA: Vehicle info as main identifier */}
+          <div className="flex flex-col w-full min-w-0">
+            <h3 className="font-semibold text-lg truncate" title={vehicleTitle}>
+              <Car className="inline mr-1 w-4 h-4 text-muted-foreground" />
+              {vehicleTitle}
             </h3>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                {format(new Date(service.created_at), 'MMM dd, yyyy')}
+
+            {/* CLIENT INFO - subtitle */}
+            {service.client && (
+              <div className="flex items-center gap-2 mt-1">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{service.client.full_name}</span>
+                <span className="text-sm text-muted-foreground">{service.client.phone}</span>
               </div>
-              {service.estimated_completion_date && (
-                <div className="flex items-center gap-1">
-                  <Wrench className="h-4 w-4" />
-                  Due: {format(new Date(service.estimated_completion_date), 'MMM dd')}
-                </div>
+            )}
+
+            {/* SERVICE TYPE PREVIEW */}
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {serviceTypesArr.length > 0 ? (
+                serviceTypesArr.map((type, i) => {
+                  const meta = getServiceTypeMeta(type);
+                  return (
+                    <span
+                      key={type + i}
+                      className={`flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${meta.color}`}
+                      style={{ minWidth: 0, maxWidth: 140 }}
+                    >
+                      {meta.icon}
+                      <span className="truncate">{meta.label}</span>
+                    </span>
+                  );
+                })
+              ) : (
+                <span className="text-xs text-muted-foreground italic">No service type</span>
               )}
             </div>
           </div>
-          <ServiceStatusBadge status={service.status} />
+          <ServiceStatusBadge status={service.status} className="mt-2" />
         </div>
-        <div className="flex gap-2">
+        {/* Actions (view/edit/delete) */}
+        <div className="flex gap-2 items-center mt-2">
           <Button
             size="icon"
             variant="ghost"
@@ -114,33 +164,6 @@ const ServiceRecordCard = ({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Client & Vehicle Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {service.client && (
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="font-medium">{service.client.full_name}</p>
-                <p className="text-sm text-muted-foreground">{service.client.phone}</p>
-              </div>
-            </div>
-          )}
-          
-          {service.vehicle && (
-            <div className="flex items-center gap-2">
-              <Car className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="font-medium">
-                  {service.vehicle.year} {service.vehicle.make} {service.vehicle.model}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {service.vehicle.license_plate}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Service Details */}
         {service.description && (
           <div className="p-3 bg-muted/50 rounded-lg">
@@ -182,8 +205,22 @@ const ServiceRecordCard = ({
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-4 border-t">
+        {/* Dates and estimated completion */}
+        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2 flex-wrap">
+          <div className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
+            {format(new Date(service.created_at), 'MMM dd, yyyy')}
+          </div>
+          {service.estimated_completion_date && (
+            <div className="flex items-center gap-1">
+              <Wrench className="h-4 w-4" />
+              Due: {format(new Date(service.estimated_completion_date), 'MMM dd')}
+            </div>
+          )}
+        </div>
+
+        {/* Actions & Status Control */}
+        <div className="flex items-center justify-between pt-4 border-t mt-2">
           {!isHistoryView && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Status:</span>
@@ -201,7 +238,6 @@ const ServiceRecordCard = ({
               </Select>
             </div>
           )}
-
           <div className="flex items-center gap-2">
             {onEdit && (
               <Button variant="outline" size="sm" onClick={() => onEdit(service)}>
