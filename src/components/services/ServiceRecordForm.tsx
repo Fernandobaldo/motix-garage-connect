@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,7 +49,7 @@ const ServiceRecordForm = ({
   );
 
   return (
-    <div className="space-y-4" autoComplete="off">
+    <div className="space-y-4">
       <ServicesWithItemsSection
         services={form.services}
         onChange={svcs => setField("services", svcs)}

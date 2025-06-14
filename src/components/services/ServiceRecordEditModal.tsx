@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useServiceRecordForm } from "./useServiceRecordForm";
 import ServiceRecordForm from "./ServiceRecordForm";
@@ -35,7 +34,6 @@ const ServiceRecordEditModal = ({ isOpen, service, onClose, onSuccess }: Props) 
           form={form}
           setField={setField}
           loading={loading}
-          onSubmit={handleSubmit}
         />
       </DialogContent>
     </Dialog>
@@ -43,4 +41,3 @@ const ServiceRecordEditModal = ({ isOpen, service, onClose, onSuccess }: Props) 
 };
 
 export default ServiceRecordEditModal;
-
