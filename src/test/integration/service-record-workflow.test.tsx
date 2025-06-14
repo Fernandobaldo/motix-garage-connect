@@ -29,6 +29,58 @@ const createWrapper = () => {
   );
 };
 
+// ---- Mock Factories ----
+const createMockVehicle = (overrides: Partial<import('@/types/database').Vehicle> = {}): import('@/types/database').Vehicle => ({
+  id: 'vehicle-123',
+  make: 'Toyota',
+  model: 'Camry',
+  year: 2020,
+  license_plate: 'ABC123',
+  client_id: 'client-123',
+  tenant_id: 'tenant-123',
+  owner_id: 'owner-123',
+  fuel_type: 'gasoline',
+  transmission: 'automatic',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+  ...overrides,
+});
+
+// If you need to mock Workshop/Profile more strictly, do the same as above. (Already done in diff.)
+
+const createMockServiceRecord = (overrides: Partial<import('@/types/database').ServiceRecordWithRelations> = {}): import('@/types/database').ServiceRecordWithRelations => ({
+  id: 'service-123',
+  tenant_id: 'tenant-123',
+  service_type: 'oil_change',
+  description: 'Regular oil change',
+  status: 'pending',
+  cost: 75.00,
+  labor_hours: 1.5,
+  mileage: 50000,
+  appointment_id: null,
+  client_id: 'client-123',
+  estimated_completion_date: null,
+  images: [],
+  parts_used: [],
+  quotation_id: null,
+  technician_notes: '',
+  vehicle_id: 'vehicle-123',
+  workshop_id: 'workshop-123',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+  client: mockProfile,
+  vehicle: createMockVehicle(),
+  workshop: mockWorkshop,
+  ...overrides,
+});
+
+// ---- Use factories everywhere instead of partial objects ----
+const mockServiceRecord = createMockServiceRecord();
+const serviceWithoutClient = createMockServiceRecord({ client: null });
+const serviceWithMalformedVehicle = createMockServiceRecord({
+  vehicle: undefined as any // to test handling of vehicle absence/malformed object if needed
+});
+
 // Shared mock service record for use in multiple tests
 const mockProfile: import('@/types/database').Profile = {
   id: 'client-123',
@@ -59,45 +111,6 @@ const mockWorkshop: import('@/types/database').Workshop = {
   owner_id: 'user-123',
   is_public: false,
   languages_spoken: [],
-};
-
-const mockServiceRecord = {
-  id: 'service-123',
-  tenant_id: 'tenant-123',
-  service_type: 'oil_change',
-  description: 'Regular oil change',
-  status: 'pending' as const,
-  cost: 75.00,
-  labor_hours: 1.5,
-  mileage: 50000,
-  appointment_id: null,
-  client_id: 'client-123',
-  estimated_completion_date: null,
-  images: [],
-  parts_used: [],
-  quotation_id: null,
-  technician_notes: '',
-  vehicle_id: 'vehicle-123',
-  workshop_id: 'workshop-123',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
-  client: mockProfile,
-  vehicle: {
-    id: 'vehicle-123',
-    make: 'Toyota',
-    model: 'Camry',
-    year: 2020,
-    license_plate: 'ABC123'
-  },
-  workshop: mockWorkshop,
-};
-
-// Then, everywhere else in the file where you define a test service record (`const serviceWithoutClient`, etc),
-// make sure to use the above shape, providing at least default/dummy values for all properties.
-// Example for missing client:
-const serviceWithoutClient = {
-  ...mockServiceRecord,
-  client: null
 };
 
 describe('Service Record Workflow Integration', () => {
@@ -443,3 +456,10 @@ describe('Service Record Workflow Integration', () => {
     });
   });
 });
+
+//
+// Documentation for Future Contributors:
+// --------------------------------------
+// - Always use createMockVehicle, createMockServiceRecord to generate mock objects to avoid accidental missing properties and TS errors.
+// - When new required fields are added to the database types, update these utilities accordingly.
+// --------------------------------------
