@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import LicensePlateSearchField from '@/components/common/LicensePlateSearchField';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { SERVICE_TYPES } from "@/constants/serviceTypes";
+import { useWorkshopPreferences } from "@/hooks/useWorkshopPreferences";
+import ServiceRecordPartsSection, { PartUsed } from "./ServiceRecordPartsSection";
 
 interface ServiceRecordModalProps {
   isOpen: boolean;
@@ -25,6 +28,10 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
   const [selectedClient, setSelectedClient] = useState<{ id: string; name: string; type: 'auth' | 'guest' } | null>(null);
 
+  // Workshop preferences for distance unit
+  const { preferences } = useWorkshopPreferences();
+
+  // Replace simple string with dropdown for service type
   const [formData, setFormData] = useState({
     serviceType: '',
     description: '',
@@ -32,8 +39,12 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
     mileage: '',
     laborHours: '',
     technicianNotes: '',
-    partsUsed: '',
   });
+
+  // Structured parts array
+  const [partsUsed, setPartsUsed] = useState<PartUsed[]>([
+    { name: "", quantity: 1, unitPrice: 0, tax: 0, finalPrice: 0 }
+  ]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -45,10 +56,10 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
         mileage: '',
         laborHours: '',
         technicianNotes: '',
-        partsUsed: '',
       });
       setSelectedVehicle(null);
       setSelectedClient(null);
+      setPartsUsed([{ name: "", quantity: 1, unitPrice: 0, tax: 0, finalPrice: 0 }]);
     }
   }, [isOpen]);
 
@@ -76,9 +87,15 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
     setIsSubmitting(true);
 
     try {
-      const partsArray = formData.partsUsed 
-        ? formData.partsUsed.split(',').map(part => ({ name: part.trim() }))
-        : [];
+      // Remove empty part entries
+      const cleanParts = partsUsed.filter(p => p.name.trim());
+      const partsData = cleanParts.map(p => ({
+        name: p.name,
+        quantity: p.quantity,
+        unitPrice: p.unitPrice,
+        tax: p.tax,
+        finalPrice: p.finalPrice
+      }));
 
       const { error } = await supabase
         .from('service_records')
@@ -93,7 +110,7 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
           mileage: formData.mileage ? parseInt(formData.mileage) : null,
           labor_hours: formData.laborHours ? parseFloat(formData.laborHours) : null,
           technician_notes: formData.technicianNotes || null,
-          parts_used: partsArray,
+          parts_used: JSON.stringify(partsData),
           status: 'pending',
         });
 
@@ -125,8 +142,8 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
             <LicensePlateSearchField
               label="Search Vehicle by License Plate"
               placeholder="Enter license plate to find vehicle and client..."
-              onVehicleSelect={handleVehicleSelect}
-              onClientSelect={handleClientSelect}
+              onVehicleSelect={setSelectedVehicle}
+              onClientSelect={(id, name, type) => setSelectedClient({ id, name, type })}
               required
             />
 
@@ -160,13 +177,20 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="serviceType">Service Type *</Label>
-              <Input
-                id="serviceType"
-                placeholder="e.g., Oil Change, Brake Repair"
+              <Select
                 value={formData.serviceType}
-                onChange={(e) => setFormData({ ...formData, serviceType: e.target.value })}
+                onValueChange={val => setFormData(fd => ({ ...fd, serviceType: val }))}
                 required
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Service Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVICE_TYPES.map(type => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
@@ -178,7 +202,7 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
                 min="0"
                 placeholder="0.00"
                 value={formData.cost}
-                onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                onChange={e => setFormData(fd => ({ ...fd, cost: e.target.value }))}
               />
             </div>
           </div>
@@ -189,21 +213,30 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
               id="description"
               placeholder="Describe the service performed..."
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={e => setFormData(fd => ({ ...fd, description: e.target.value }))}
               rows={3}
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="mileage">Current Mileage</Label>
+              {/* Dynamic mileage label/placeholder */}
+              <Label htmlFor="mileage">
+                {preferences?.distance_unit === 'miles'
+                  ? "Current Mileage"
+                  : "Current Kilometer Reading"}
+              </Label>
               <Input
                 id="mileage"
                 type="number"
                 min="0"
-                placeholder="e.g., 50000"
+                placeholder={
+                  preferences?.distance_unit === 'miles'
+                    ? "e.g., 50000 miles"
+                    : "e.g., 50000 km"
+                }
                 value={formData.mileage}
-                onChange={(e) => setFormData({ ...formData, mileage: e.target.value })}
+                onChange={e => setFormData(fd => ({ ...fd, mileage: e.target.value }))}
               />
             </div>
 
@@ -216,20 +249,13 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
                 min="0"
                 placeholder="e.g., 2.5"
                 value={formData.laborHours}
-                onChange={(e) => setFormData({ ...formData, laborHours: e.target.value })}
+                onChange={e => setFormData(fd => ({ ...fd, laborHours: e.target.value }))}
               />
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="partsUsed">Parts Used</Label>
-            <Input
-              id="partsUsed"
-              placeholder="Comma-separated list: Oil Filter, Brake Pads, etc."
-              value={formData.partsUsed}
-              onChange={(e) => setFormData({ ...formData, partsUsed: e.target.value })}
-            />
-          </div>
+          {/* Enhanced Parts Section */}
+          <ServiceRecordPartsSection parts={partsUsed} setParts={setPartsUsed} />
 
           <div>
             <Label htmlFor="technicianNotes">Technician Notes</Label>
@@ -237,7 +263,7 @@ const ServiceRecordModal = ({ isOpen, onClose, onSuccess, initialVehicleId }: Se
               id="technicianNotes"
               placeholder="Internal notes, observations, recommendations..."
               value={formData.technicianNotes}
-              onChange={(e) => setFormData({ ...formData, technicianNotes: e.target.value })}
+              onChange={e => setFormData(fd => ({ ...fd, technicianNotes: e.target.value }))}
               rows={3}
             />
           </div>
