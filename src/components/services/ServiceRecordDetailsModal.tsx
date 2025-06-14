@@ -1,9 +1,11 @@
-
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import type { ServiceRecordWithRelations } from "@/types/database";
 import { formatCurrency } from "@/utils/currency";
 import { Fragment } from "react";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { exportServiceRecordToPDF } from "@/utils/serviceRecordPdfExport";
 
 // --- Utilities (copy from useServiceRecordForm) ---
 
@@ -85,12 +87,28 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
     0
   );
 
+  // Handler for PDF export
+  const handleExportPDF = () => {
+    exportServiceRecordToPDF(service, parsedServices, totalCost, nextOilChangeMileage, plainNotes);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Service Record Details</DialogTitle>
-          <DialogDescription>Full service, parts, and notes summary</DialogDescription>
+        <DialogHeader className="flex flex-row justify-between items-center">
+          <div>
+            <DialogTitle>Service Record Details</DialogTitle>
+            <DialogDescription>Full service, parts, and notes summary</DialogDescription>
+          </div>
+          <Button
+            onClick={handleExportPDF}
+            variant="outline"
+            size="sm"
+            className="ml-auto flex items-center gap-1"
+          >
+            <Download className="w-4 h-4" />
+            Generate PDF
+          </Button>
         </DialogHeader>
         <div className="space-y-5">
 
@@ -127,22 +145,22 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
                     <div className="ml-4 text-xs text-muted-foreground mb-2">No parts/items listed.</div>
                   ) : (
                     <div className="ml-2 mb-4 overflow-x-auto">
-                      <table className="min-w-[320px] text-xs border border-muted rounded">
+                      <table className="min-w-full text-xs border border-muted rounded">
                         <thead>
                           <tr className="bg-muted">
-                            <th className="px-2 py-1 text-left font-normal">Name</th>
-                            <th className="px-2 py-1 font-normal">Qty</th>
-                            <th className="px-2 py-1 font-normal">Price</th>
-                            <th className="px-2 py-1 font-normal">Subtotal</th>
+                            <th className="px-4 py-2 text-left font-normal">Name</th>
+                            <th className="px-4 py-2 font-normal">Qty</th>
+                            <th className="px-4 py-2 font-normal">Price</th>
+                            <th className="px-4 py-2 font-normal">Subtotal</th>
                           </tr>
                         </thead>
                         <tbody>
                           {svc.items.map((item, j) => (
                             <tr key={item.name + j} className="border-t">
-                              <td className="px-2 py-1">{item.name}</td>
-                              <td className="px-2 py-1 text-center">{item.quantity}</td>
-                              <td className="px-2 py-1 text-right">{formatCurrency(Number(item.price))}</td>
-                              <td className="px-2 py-1 text-right">{formatCurrency(Number(item.price) * Number(item.quantity))}</td>
+                              <td className="px-4 py-2">{item.name}</td>
+                              <td className="px-4 py-2 text-center">{item.quantity}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(Number(item.price))}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(Number(item.price) * Number(item.quantity))}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -166,8 +184,6 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
               <div className="font-semibold mb-1">Cost Summary</div>
               <div className="space-y-1 text-sm">
                 <div><span className="text-muted-foreground">Calculated Total:</span> <span className="font-medium">{formatCurrency(totalCost)}</span></div>
-                {typeof service.cost !== "undefined" && service.cost !== null &&
-                  <div className="text-xs text-muted-foreground">DB cost field: {formatCurrency(Number(service.cost))}</div>}
               </div>
             </div>
             <div>
@@ -201,3 +217,5 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
 };
 
 export default ServiceRecordDetailsModal;
+
+// NOTE: This file is now 200+ lines. It would benefit from being split into smaller files/components. Please consider asking me to refactor this file for better maintainability.
