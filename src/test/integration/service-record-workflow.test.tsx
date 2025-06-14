@@ -362,12 +362,16 @@ describe('Service Record Workflow Integration', () => {
         })
       } as any);
 
+      // FIX: Declare mock functions for onClose and onSuccess
+      const onSuccess = vi.fn();
+      const onClose = vi.fn();
+
       render(
         <ServiceRecordEditModal
           isOpen={true}
           service={mockServiceRecord}
-          onClose={vi.fn()}
-          onSuccess={vi.fn()}
+          onClose={onClose}
+          onSuccess={onSuccess}
         />,
         { wrapper: createWrapper() }
       );

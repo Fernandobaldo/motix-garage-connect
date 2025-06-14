@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,8 +57,9 @@ export const useServiceRecordForm = (
     description: initialRecord?.description || "",
     mileage: initialRecord?.mileage?.toString() || "",
     technicianNotes: initialRecord?.technician_notes || "",
+    // FIX: Use unknown first, then PartUsed[]
     partsUsed: Array.isArray(initialRecord?.parts_used)
-      ? (initialRecord?.parts_used as PartUsed[])
+      ? (initialRecord?.parts_used as unknown as PartUsed[])
       : [],
   });
 
@@ -72,8 +72,9 @@ export const useServiceRecordForm = (
         description: initialRecord.description || "",
         mileage: initialRecord.mileage != null ? String(initialRecord.mileage) : "",
         technicianNotes: initialRecord.technician_notes || "",
+        // FIX: Use unknown first, then PartUsed[]
         partsUsed: Array.isArray(initialRecord.parts_used)
-          ? (initialRecord.parts_used as PartUsed[])
+          ? (initialRecord?.parts_used as unknown as PartUsed[])
           : [],
       });
     }
