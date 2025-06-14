@@ -12,6 +12,7 @@ import { useState } from "react";
 import ServiceRecordEditModal from "./ServiceRecordEditModal";
 import ServiceRecordDetailsModal from "./ServiceRecordDetailsModal";
 import { Trash2, Eye, Edit as EditIcon } from "lucide-react";
+import { useServiceRecords } from "@/hooks/useServiceRecords";
 
 interface ServiceRecordCardProps {
   service: ServiceRecordWithRelations;
@@ -20,6 +21,7 @@ interface ServiceRecordCardProps {
   onPdfExport?: (service: ServiceRecordWithRelations) => void;
   onShare?: (service: ServiceRecordWithRelations) => void;
   isHistoryView?: boolean;
+  onViewDetails?: (service: ServiceRecordWithRelations) => void;
 }
 
 const ServiceRecordCard = ({
@@ -28,7 +30,8 @@ const ServiceRecordCard = ({
   onEdit,
   onPdfExport,
   onShare,
-  isHistoryView = false
+  isHistoryView = false,
+  onViewDetails
 }: ServiceRecordCardProps) => {
   const { preferences } = useWorkshopPreferences();
   const [showEdit, setShowEdit] = useState(false);
@@ -86,7 +89,7 @@ const ServiceRecordCard = ({
             size="icon"
             variant="ghost"
             aria-label="View Details"
-            onClick={() => setShowDetails(true)}
+            onClick={() => onViewDetails?.(service)}
           >
             <Eye className="h-4 w-4" />
           </Button>

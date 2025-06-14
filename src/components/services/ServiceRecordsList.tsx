@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useServiceRecords } from "@/hooks/useServiceRecords";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -189,7 +190,7 @@ const ServiceRecordsList = ({
               onPdfExport={onPdfExport}
               onEdit={() => setEditingService(service)}
               onShare={() => {}} // implement if sharing feature
-              onViewDetails={() => setDetailsService(service)}
+              onViewDetails={(s) => setDetailsService(s)}
               isHistoryView={filter === "history"}
             />
           ))}
@@ -211,3 +212,4 @@ const ServiceRecordsList = ({
 };
 
 export default ServiceRecordsList;
+
