@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -85,15 +86,24 @@ export const useServiceRecords = () => {
 
   const updateServiceStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: ServiceStatus }) => {
-      const { data, error } = await supabase
-        .from('service_records')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select('*')
-        .single();
-
-      if (error) throw error;
-      return data;
+      // If status is "completed", Supabase trigger will delete the row (move to history), so don't try to fetch .single()
+      if (status === 'completed') {
+        const { error } = await supabase
+          .from('service_records')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', id);
+        if (error) throw error;
+        return null; // row is gone
+      } else {
+        const { data, error } = await supabase
+          .from('service_records')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select('*')
+          .single();
+        if (error) throw error;
+        return data;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-records'] });
