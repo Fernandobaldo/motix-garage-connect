@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,18 +11,22 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 interface ServiceRecordFormProps {
   form: ServiceRecordFormState;
   setField: (name: keyof ServiceRecordFormState, value: any) => void;
   loading: boolean;
-  // No onSubmit! Submission handled at modal/form level
+  onDelete?: () => void; // callback for deleting (injected by parent modal)
+  isEditMode?: boolean; // true to display delete
 }
 
 const ServiceRecordForm = ({
   form,
   setField,
   loading,
+  onDelete,
+  isEditMode = false,
 }: ServiceRecordFormProps) => {
   // Calculate total cost from all services' items
   const totalCost = form.services.reduce(
@@ -133,7 +136,47 @@ const ServiceRecordForm = ({
       </Accordion>
 
       {/* Total Cost (readonly) */}
-      <div className="flex justify-end pt-2">
+      <div className="flex justify-end pt-2 items-center gap-4">
+        {isEditMode && !!onDelete && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="text-destructive border border-destructive bg-transparent hover:bg-destructive/10 rounded px-3 py-1 text-sm font-medium flex items-center gap-1 transition-colors"
+                disabled={loading}
+              >
+                <span>Delete</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-delete">
+                  <path d="M3 6h18"></path>
+                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+                  <line x1="10" x2="10" y1="11" y2="17"></line>
+                  <line x1="14" x2="14" y1="11" y2="17"></line>
+                </svg>
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Service Record</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this service record? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={loading}
+                  className="bg-destructive text-white hover:bg-destructive/90"
+                  onClick={() => {
+                    if (onDelete) onDelete();
+                  }}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         <div className="bg-muted rounded font-medium px-4 py-2">
           Total Cost: {formatCurrency(totalCost)}
         </div>
@@ -144,4 +187,3 @@ const ServiceRecordForm = ({
 };
 
 export default ServiceRecordForm;
-
