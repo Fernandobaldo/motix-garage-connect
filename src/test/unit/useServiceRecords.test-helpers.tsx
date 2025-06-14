@@ -56,6 +56,13 @@ export const setupBaseMockAuth = () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       last_login_at: null
-    }
+    },
+    session: null,
+    loading: false,
+    profileError: null,
+    signIn: vi.fn(),
+    signUp: vi.fn(),
+    signOut: vi.fn(),
+    updateProfile: vi.fn()
   }));
 };
