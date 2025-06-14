@@ -33,8 +33,8 @@ const ServiceRecordsList = ({
 
   // Refresh list after add/edit modal closes or after updates
   const refreshOnEdit = () => {
-    setEditingService(null);
     refetch();
+    setEditingService(null);
   };
 
   // Filter services based on the main filter and additional filters

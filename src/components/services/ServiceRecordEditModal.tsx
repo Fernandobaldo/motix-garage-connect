@@ -18,17 +18,17 @@ interface Props {
  */
 const ServiceRecordEditModal = ({ isOpen, service, onClose, onSuccess }: Props) => {
   // Fetch refetch from the service records hook
-  const { refetch } = useServiceRecords();
+  const { refetch, refreshRecords } = useServiceRecords();
 
+  // Always call refetch on close/success
   const handleModalClose = () => {
     onClose();
-    // always refetch after closing in case of changes
-    refetch();
+    refreshRecords?.();
   };
 
   const handleSuccess = () => {
     onSuccess?.();
-    refetch();
+    refreshRecords?.();
     onClose();
   };
 

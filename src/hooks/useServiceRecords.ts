@@ -219,10 +219,13 @@ export const useServiceRecords = () => {
   const getServiceRecordById = (id: string) =>
     serviceRecords.find((sr) => sr.id === id);
 
+  const refreshRecords = () => refetch();
+
   return {
     serviceRecords,
     isLoading,
-    refetch, // <-- expose refetch
+    refetch,
+    refreshRecords,
     updateServiceStatus,
     createServiceRecord: createServiceRecord.mutate,
     isUpdating: updateServiceStatusMutation.isPending,
