@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -156,6 +155,70 @@ export const useServiceRecords = () => {
     updateServiceStatusMutation.mutate({ id, status });
   };
 
+  // New - update a service record
+  const updateServiceRecordMutation = useMutation({
+    mutationFn: async ({
+      id,
+      updates
+    }: {
+      id: string;
+      updates: Partial<ServiceRecordWithRelations>;
+    }) => {
+      const { data, error } = await supabase
+        .from('service_records')
+        .update(updates)
+        .eq('id', id)
+        .select('*')
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-records'] });
+      toast({
+        title: 'Success',
+        description: 'Service record updated successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update service record',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // New - delete a service record
+  const deleteServiceRecordMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('service_records')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-records'] });
+      toast({
+        title: 'Deleted',
+        description: 'Service record deleted successfully',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete service record',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Utility
+  const getServiceRecordById = (id: string) =>
+    serviceRecords.find((sr) => sr.id === id);
+
   return {
     serviceRecords,
     isLoading,
@@ -163,5 +226,10 @@ export const useServiceRecords = () => {
     updateServiceStatus,
     createServiceRecord: createServiceRecord.mutate,
     isUpdating: updateServiceStatusMutation.isPending,
+    updateServiceRecord: updateServiceRecordMutation.mutate,
+    isUpdatePending: updateServiceRecordMutation.isPending,
+    deleteServiceRecord: deleteServiceRecordMutation.mutate,
+    isDeletePending: deleteServiceRecordMutation.isPending,
+    getServiceRecordById,
   };
 };

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useServiceRecords } from "@/hooks/useServiceRecords";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
 import ServiceFilters from "./ServiceFilters";
 import ServiceRecordCard from "./ServiceRecordCard";
+import ServiceRecordEditModal from "./ServiceRecordEditModal";
+import ServiceRecordDetailsModal from "./ServiceRecordDetailsModal";
 import type { ServiceFilterState, ServiceRecordWithRelations, ServiceStatus } from "@/types/database";
 
 interface ServiceRecordsListProps {
@@ -13,12 +14,21 @@ interface ServiceRecordsListProps {
   onPdfExport?: (service: ServiceRecordWithRelations) => void;
 }
 
-const ServiceRecordsList = ({ 
-  filter = 'active', 
-  onPdfExport 
+const ServiceRecordsList = ({
+  filter = "active",
+  onPdfExport,
 }: ServiceRecordsListProps) => {
-  const { serviceRecords, isLoading, updateServiceStatus } = useServiceRecords();
+  const {
+    serviceRecords,
+    isLoading,
+    updateServiceStatus,
+    getServiceRecordById,
+  } = useServiceRecords();
   const [filters, setFilters] = useState<ServiceFilterState>({});
+
+  // Modal/UI state for details & edit
+  const [editingService, setEditingService] = useState<ServiceRecordWithRelations | null>(null);
+  const [detailsService, setDetailsService] = useState<ServiceRecordWithRelations | null>(null);
 
   // Filter services based on the main filter and additional filters
   const filteredServices = serviceRecords.filter((service) => {
@@ -177,11 +187,25 @@ const ServiceRecordsList = ({
               service={service}
               onStatusUpdate={updateServiceStatus}
               onPdfExport={onPdfExport}
-              isHistoryView={filter === 'history'}
+              onEdit={() => setEditingService(service)}
+              onShare={() => {}} // implement if sharing feature
+              onViewDetails={() => setDetailsService(service)}
+              isHistoryView={filter === "history"}
             />
           ))}
         </div>
       )}
+      <ServiceRecordEditModal
+        isOpen={!!editingService}
+        service={editingService!}
+        onClose={() => setEditingService(null)}
+        onSuccess={() => setEditingService(null)}
+      />
+      <ServiceRecordDetailsModal
+        isOpen={!!detailsService}
+        service={detailsService!}
+        onClose={() => setDetailsService(null)}
+      />
     </div>
   );
 };

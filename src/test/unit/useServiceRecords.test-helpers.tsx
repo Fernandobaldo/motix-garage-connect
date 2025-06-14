@@ -1,4 +1,3 @@
-
 // Shared test helpers, mocks, and setup for useServiceRecords tests
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -66,3 +65,6 @@ export const setupBaseMockAuth = () => {
     updateProfile: vi.fn()
   }));
 };
+
+export const mockUpdateServiceRecord = vi.fn();
+export const mockDeleteServiceRecord = vi.fn();

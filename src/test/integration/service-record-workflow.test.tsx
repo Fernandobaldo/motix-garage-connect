@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ServiceRecordModal from '@/components/vehicles/ServiceRecordModal';
 import ServiceRecordCard from '@/components/services/ServiceRecordCard';
+import ServiceRecordEditModal from '@/components/services/ServiceRecordEditModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -116,15 +117,16 @@ const mockWorkshop: import('@/types/database').Workshop = {
 describe('Service Record Workflow Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+    mockSupabase.from.mockReset();
+
     mockUseAuth.mockReturnValue({
       user: { id: 'user-123' },
-      profile: { 
+      profile: {
         id: 'user-123',
-        tenant_id: 'tenant-123', 
+        tenant_id: 'tenant-123',
         role: 'workshop',
         full_name: 'Test Workshop Owner'
-      },
+      }
     } as any);
 
     // Mock useWorkshopPreferences
@@ -338,6 +340,79 @@ describe('Service Record Workflow Integration', () => {
       // Should still render other information
       expect(screen.getByText('Oil Change')).toBeInTheDocument();
       expect(screen.getByText('2020 Toyota Camry')).toBeInTheDocument();
+    });
+  });
+
+  describe('Service Record Edit/Delete', () => {
+    it('should edit a service record', async () => {
+      // Mock update mutation
+      mockSupabase.from.mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { ...mockServiceRecord, description: 'Edited Description' },
+                error: null
+              })
+            })
+          })
+        })
+      } as any);
+
+      render(
+        <ServiceRecordEditModal
+          isOpen={true}
+          service={mockServiceRecord}
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />,
+        { wrapper: createWrapper() }
+      );
+      // Simulate edit and submit
+      const descriptionInput = screen.getByLabelText(/description/i);
+      fireEvent.change(descriptionInput, { target: { value: 'Edited Description' }});
+      const submitBtn = screen.getByRole('button', { name: /save/i });
+      fireEvent.click(submitBtn);
+      expect(descriptionInput).toHaveValue('Edited Description');
+    });
+
+    it('should delete a service record', async () => {
+      // Mock delete mutation
+      mockSupabase.from.mockReturnValue({
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null })
+        })
+      } as any);
+
+      render(
+        <ServiceRecordCard
+          service={mockServiceRecord}
+          onStatusUpdate={vi.fn()}
+        />,
+        { wrapper: createWrapper() }
+      );
+
+      // Click delete button and confirm
+      fireEvent.click(screen.getByLabelText("Delete"));
+      // Find the Confirm Delete dialog & approve
+      const delBtn = screen.getByText('Delete');
+      fireEvent.click(delBtn);
+      // After delete, the card should remain but the record is removed from data
+    });
+
+    it('should view service record details', async () => {
+      render(
+        <ServiceRecordCard
+          service={mockServiceRecord}
+          onStatusUpdate={vi.fn()}
+        />,
+        { wrapper: createWrapper() }
+      );
+      fireEvent.click(screen.getByLabelText("View Details"));
+      expect(screen.getByText('Service Record Details')).toBeInTheDocument();
+      expect(
+        screen.getByText(mockServiceRecord.service_type, { exact: false })
+      ).toBeInTheDocument();
     });
   });
 

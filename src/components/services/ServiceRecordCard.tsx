@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +8,10 @@ import ServiceStatusBadge from "./ServiceStatusBadge";
 import type { ServiceRecordWithRelations, ServiceStatus } from "@/types/database";
 import { formatCurrency, formatDistance } from "@/utils/currency";
 import { useWorkshopPreferences } from "@/hooks/useWorkshopPreferences";
+import { useState } from "react";
+import ServiceRecordEditModal from "./ServiceRecordEditModal";
+import ServiceRecordDetailsModal from "./ServiceRecordDetailsModal";
+import { Trash2, Eye, Edit as EditIcon } from "lucide-react";
 
 interface ServiceRecordCardProps {
   service: ServiceRecordWithRelations;
@@ -28,6 +31,10 @@ const ServiceRecordCard = ({
   isHistoryView = false
 }: ServiceRecordCardProps) => {
   const { preferences } = useWorkshopPreferences();
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { deleteServiceRecord, isDeletePending } = useServiceRecords();
 
   const handleStatusChange = (newStatus: ServiceStatus) => {
     onStatusUpdate(service.id, newStatus);
@@ -46,8 +53,13 @@ const ServiceRecordCard = ({
     return labels[type] || type;
   };
 
+  const handleDelete = () => {
+    deleteServiceRecord(service.id);
+    setConfirmDelete(false);
+  };
+
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow" data-testid="service-record-card">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -68,6 +80,33 @@ const ServiceRecordCard = ({
             </div>
           </div>
           <ServiceStatusBadge status={service.status} />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="View Details"
+            onClick={() => setShowDetails(true)}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Edit"
+            onClick={() => setShowEdit(true)}
+          >
+            <EditIcon className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Delete"
+            onClick={() => setConfirmDelete(true)}
+            disabled={isDeletePending}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </CardHeader>
 
