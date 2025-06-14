@@ -7,11 +7,13 @@ import { useAuth } from '@/hooks/useAuth';
 
 // Mock dependencies
 vi.mock('@/integrations/supabase/client');
-vi.mock('@/hooks/useAuth');
+vi.mock('@/hooks/useAuth', () => ({
+  useAuth: vi.fn(),
+}));
 vi.mock('@/hooks/use-toast');
 
 const mockSupabase = supabase as any;
-const mockUseAuth = useAuth as unknown as { mockReturnValue: (val: any) => void };
+const { useAuth: mockUseAuth } = require('@/hooks/useAuth');
 
 // Test wrapper with QueryClient
 const createWrapper = () => {
@@ -30,12 +32,11 @@ const createWrapper = () => {
 describe('useServiceRecords', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Default auth mock
-    mockUseAuth.mockReturnValue({
+    // Directly set up the useAuth mock implementation
+    mockUseAuth.mockImplementation(() => ({
       user: { id: 'user-123' },
       profile: { tenant_id: 'tenant-123', role: 'workshop' },
-    } as any);
+    }));
   });
 
   describe('Data Fetching', () => {
