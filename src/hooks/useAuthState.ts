@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +10,7 @@ export const useAuthState = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileFetchCount, setProfileFetchCount] = useState(0); // For deduplication/debug
 
   const handleInvalidUser = async (userId: string, context: string) => {
     logInvalidUUID(context, userId);
@@ -29,43 +29,51 @@ export const useAuthState = () => {
     }
   };
 
+  // --- HARD FAILSAFE: maximum loading time ---
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (loading) {
+      timeout = setTimeout(() => {
+        console.error("[AuthState] Profile loading timeout reached! Setting loading=false to avoid indefinite spinner.");
+        setLoading(false);
+        setProfileError((prev) => prev || 'We were unable to load your profile. Please retry or contact support.');
+      }, 10000); // 10 seconds
+    }
+    return () => { if (timeout) clearTimeout(timeout); };
+  }, [loading]);
+
+  // --- Robust Profile Fetch with Deduplication and Failsafes ---
   const fetchUserProfile = async (userId: string, retryCount = 0) => {
+    setProfileFetchCount((c) => c + 1);
     if (!userId) {
-      console.error('Cannot fetch profile: no user ID provided');
+      console.error('[AuthState] fetchUserProfile: no userId');
       setLoading(false);
       return;
     }
-
-    // Validate UUID before making any database queries
     if (!isValidUUID(userId)) {
       await handleInvalidUser(userId, 'fetchUserProfile');
       return;
     }
-
-    console.log('Fetching profile for user:', userId, 'retry:', retryCount);
-    
+    console.log('[AuthState] Fetching profile for user:', userId, 'retry:', retryCount);
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        console.error('Error fetching profile:', error);
-        
-        // Check if it's a UUID error specifically
+        console.error('[AuthState] Profile fetch error:', error);
         if (isUUIDError(error)) {
           await handleInvalidUser(userId, 'fetchUserProfile - UUID error');
           return;
         }
-        
+        setProfile(null);
         setProfileError(error.message);
         setLoading(false);
-        
-        // Schedule retry for network/temporary errors only
+        // Retry on network/temporary errors only (code 'PGRST000' or no code)
         if (retryCount < 2 && (error.code === 'PGRST000' || !error.code)) {
-          console.log('Scheduling profile fetch retry in 1 second...');
+          console.log('[AuthState] Scheduling retry in 1s...');
           setTimeout(() => {
             setLoading(true);
             fetchUserProfile(userId, retryCount + 1);
@@ -73,21 +81,25 @@ export const useAuthState = () => {
         }
         return;
       }
-
-      console.log('Profile fetched successfully:', data);
+      if (!data) {
+        console.warn('[AuthState] Profile fetch: No profile found for user:', userId);
+        setProfile(null);
+        setProfileError(null);
+        setLoading(false);
+        return;
+      }
+      // Success
+      console.log('[AuthState] Profile fetched successfully:', data);
       setProfile(data as Profile);
       setProfileError(null);
       setLoading(false);
     } catch (error: any) {
-      console.error('Unexpected error fetching profile:', error);
-      
-      // Check if it's a UUID error
+      console.error('[AuthState] Unexpected fetch error:', error);
       if (isUUIDError(error)) {
         await handleInvalidUser(userId, 'fetchUserProfile - catch block');
         return;
       }
-      
-      setProfileError('Failed to load profile');
+      setProfileError('[Unexpected error]: Failed to load profile');
       setLoading(false);
     }
   };
@@ -135,27 +147,21 @@ export const useAuthState = () => {
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id || 'no user');
+      (event, session) => {
+        console.log('[AuthState] Auth event:', event, session?.user?.id || 'no user');
         setSession(session);
         setUser(session?.user ?? null);
-        
         if (session?.user) {
-          // Validate user ID immediately on auth state change
           if (!isValidUUID(session.user.id)) {
-            await handleInvalidUser(session.user.id, 'onAuthStateChange');
+            handleInvalidUser(session.user.id, 'onAuthStateChange');
             return;
           }
-          
-          console.log('User authenticated, fetching profile for:', session.user.id);
-          await fetchUserProfile(session.user.id);
-          
-          // Update last login timestamp only for sign in events
+          // Profile fetch is deferred, so multiple auth events during page load are collapsed
+          fetchUserProfile(session.user.id);
           if (event === 'SIGNED_IN') {
-            await updateLastLogin(session.user.id);
+            updateLastLogin(session.user.id);
           }
         } else {
-          console.log('No user session, clearing profile and stopping loading');
           setProfile(null);
           setProfileError(null);
           setLoading(false);
@@ -165,21 +171,16 @@ export const useAuthState = () => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', session?.user?.id || 'no session');
+      console.log('[AuthState] Initial session check:', session?.user?.id || 'no session');
       setSession(session);
       setUser(session?.user ?? null);
-      
       if (session?.user) {
-        // Validate user ID immediately on initial session check
         if (!isValidUUID(session.user.id)) {
           handleInvalidUser(session.user.id, 'getSession');
           return;
         }
-        
-        console.log('Found existing session, fetching profile');
         fetchUserProfile(session.user.id);
       } else {
-        console.log('No existing session, stopping loading');
         setLoading(false);
       }
     });
