@@ -13,6 +13,7 @@ import ServiceRecordEditModal from "./ServiceRecordEditModal";
 import ServiceRecordDetailsModal from "./ServiceRecordDetailsModal";
 import { Trash2, Eye, Edit as EditIcon } from "lucide-react";
 import { useServiceRecords } from "@/hooks/useServiceRecords";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader as AlertDialogHeaderUI, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 /**
  * Helper to get label and icon for each service type.
@@ -70,16 +71,20 @@ const ServiceRecordCard = ({
   const { preferences } = useWorkshopPreferences();
   const [showEdit, setShowEdit] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const { deleteServiceRecord, isDeletePending } = useServiceRecords();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { deleteServiceRecord, isDeletePending, refreshRecords } = useServiceRecords();
 
   const handleStatusChange = (newStatus: ServiceStatus) => {
     onStatusUpdate(service.id, newStatus);
   };
 
   const handleDelete = () => {
-    deleteServiceRecord(service.id);
-    setConfirmDelete(false);
+    deleteServiceRecord(service.id, {
+      onSuccess: () => {
+        setShowDeleteDialog(false);
+        refreshRecords?.();
+      }
+    });
   };
 
   // Vehicle main title and subtitle (plate on same line if known)
@@ -221,6 +226,45 @@ const ServiceRecordCard = ({
                 Share
               </Button>
             )}
+            {/* --- DELETE BUTTON --- */}
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteDialog(true);
+                  }}
+                  disabled={isDeletePending}
+                  title="Delete Service Record"
+                  aria-label="Delete Service Record"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeaderUI>
+                  <AlertDialogTitle>Delete Service Record</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to permanently delete this service record? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeaderUI>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeletePending}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-white hover:bg-destructive/90"
+                    disabled={isDeletePending}
+                    onClick={handleDelete}
+                  >
+                    {isDeletePending ? "Deleting..." : "Delete"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            {/* --- END DELETE BUTTON --- */}
           </div>
         </div>
       </CardContent>
