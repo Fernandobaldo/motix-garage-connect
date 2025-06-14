@@ -1,11 +1,10 @@
-
 import { renderHook, waitFor } from '@testing-library/react';
 import { useServiceRecords } from '@/hooks/useServiceRecords';
 import {
   mockSupabase,
   createWrapper,
   setupBaseMockAuth,
-} from './useServiceRecords.test-helpers';
+} from './useServiceRecords.test-helpers.tsx';
 import { describe, it, beforeEach, expect } from 'vitest';
 
 describe('useServiceRecords - Service Record Creation', () => {
