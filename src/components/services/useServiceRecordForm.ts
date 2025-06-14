@@ -1,42 +1,60 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { ServiceRecordWithRelations, PartUsed } from "@/types/database";
 
-/**
- * Service type option: value from dropdown or custom if "Other."
- */
-export interface ServiceTypeItem {
-  value: string;
-  custom?: string;
+/** --- NEW NESTED STRUCTURE --- */
+export interface ServiceWithItems {
+  serviceType: { value: string; custom?: string };
+  items: PartUsed[];
 }
 
+// Old types removed
 export interface ServiceRecordFormState {
-  serviceTypes: ServiceTypeItem[]; // Array of service types
+  services: ServiceWithItems[];
   description: string;
   mileage: string;
   technicianNotes: string;
-  partsUsed: PartUsed[];
 }
 
-// Utility: convert array of service type objects back to string(s) for storage (comma separated or as JSON string? We'll use comma-separated string for now for backward compatibility)
-const flattenServiceTypes = (items: ServiceTypeItem[]) =>
-  items
-    .map((i) => (i.value === "Other" && i.custom ? i.custom : i.value))
+// Utility: flatten the services to the old data model
+const flattenServicesToFields = (services: ServiceWithItems[]) => {
+  // For legacy save: flatten all serviceTypes to comma-separated string
+  const serviceTypeString = services
+    .map((svc) =>
+      svc.serviceType.value === "Other" && svc.serviceType.custom
+        ? svc.serviceType.custom
+        : svc.serviceType.value
+    )
     .filter(Boolean)
     .join(", ");
+  // Flatten all items under all services (still flat array in db for now)
+  const allItems: PartUsed[] = services.flatMap((svc) => svc.items);
+  return { serviceTypeString, allItems };
+};
 
-const parseServiceTypes = (service_type: string): ServiceTypeItem[] => {
-  if (!service_type) return [{ value: "" }];
-  // Heuristic: If it's a comma-separated string, split it.
-  if (service_type.includes(",")) {
-    return service_type.split(",").map((v) => {
-      const val = v.trim();
-      return { value: val === "Other" ? "Other" : val };
-    });
+const parseServicesFromRecord = (service_type: string, parts_used: any): ServiceWithItems[] => {
+  // This tries to group them 1:1 if possible or fallback to a single service with all parts
+  const serviceTypes = service_type
+    ? service_type.split(",").map((v) => ({ value: v.trim() }))
+    : [{ value: "" }];
+
+  const items: PartUsed[] = Array.isArray(parts_used) ? (parts_used as PartUsed[]) : [];
+  // Map items equally to services if possible (best effort), or all items to first
+  if (serviceTypes.length === 1) {
+    return [{ serviceType: serviceTypes[0], items }];
   }
-  return [{ value: service_type }];
+  const perSvc = serviceTypes.map((type) => ({
+    serviceType: type,
+    items: [],
+  }));
+  if (items.length > 0) {
+    // Just add all items to the first service (can be improved)
+    perSvc[0].items = items;
+  }
+  return perSvc;
 };
 
 export const useServiceRecordForm = (
@@ -49,56 +67,51 @@ export const useServiceRecordForm = (
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // Form state, initialized with blanks or provided record
   const [form, setForm] = useState<ServiceRecordFormState>({
-    serviceTypes: initialRecord?.service_type
-      ? parseServiceTypes(initialRecord.service_type)
-      : [{ value: "" }],
+    services: initialRecord?.service_type
+      ? parseServicesFromRecord(initialRecord.service_type, initialRecord.parts_used)
+      : [{ serviceType: { value: "" }, items: [{ name: "", quantity: 1, price: 0 }] }],
     description: initialRecord?.description || "",
     mileage: initialRecord?.mileage?.toString() || "",
     technicianNotes: initialRecord?.technician_notes || "",
-    // FIX: Use unknown first, then PartUsed[]
-    partsUsed: Array.isArray(initialRecord?.parts_used)
-      ? (initialRecord?.parts_used as unknown as PartUsed[])
-      : [],
   });
 
   useEffect(() => {
     if (mode === "edit" && initialRecord) {
       setForm({
-        serviceTypes: initialRecord?.service_type
-          ? parseServiceTypes(initialRecord.service_type)
-          : [{ value: "" }],
+        services: initialRecord?.service_type
+          ? parseServicesFromRecord(initialRecord.service_type, initialRecord.parts_used)
+          : [{ serviceType: { value: "" }, items: [{ name: "", quantity: 1, price: 0 }] }],
         description: initialRecord.description || "",
         mileage: initialRecord.mileage != null ? String(initialRecord.mileage) : "",
         technicianNotes: initialRecord.technician_notes || "",
-        // FIX: Use unknown first, then PartUsed[]
-        partsUsed: Array.isArray(initialRecord.parts_used)
-          ? (initialRecord?.parts_used as unknown as PartUsed[])
-          : [],
       });
     }
   }, [mode, initialRecord]);
 
-  // General field updater
+  // General updater
   const setField = (name: keyof ServiceRecordFormState, value: any) => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  // --- SUBMIT LOGIC (edit mode, see below for add) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    // Validation: must have at least one service, at least one item with name
-    if (
-      !form.serviceTypes.length ||
-      !form.serviceTypes[0].value ||
-      form.partsUsed.some((item) => !item.name)
-    ) {
+    // Validation: at least one service, at least one item in each with name
+    const isValid =
+      form.services.length > 0 &&
+      form.services.every(
+        (svc) =>
+          svc.serviceType.value &&
+          svc.items.length > 0 &&
+          svc.items.every((item) => !!item.name)
+      );
+    if (!isValid) {
       toast({
         title: "Required fields missing",
         description:
-          "Please fill in at least one service type and each item must have a name.",
+          "Please fill in at least one service type, and each item must have a name.",
         variant: "destructive",
       });
       setLoading(false);
@@ -110,21 +123,28 @@ export const useServiceRecordForm = (
         return;
       }
       if (!initialRecord) throw new Error("No service record to update");
-      // Calculate total cost for saving
-      const totalCost = form.partsUsed.reduce(
-        (acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0),
+      // Calculate total cost from all items
+      const totalCost = form.services.reduce(
+        (accSvc, svc) =>
+          accSvc +
+          svc.items.reduce(
+            (acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0),
+            0
+          ),
         0
       );
+      // Flatten to legacy db format
+      const { serviceTypeString, allItems } = flattenServicesToFields(form.services);
       const { error } = await supabase
         .from("service_records")
         .update({
-          service_type: flattenServiceTypes(form.serviceTypes), // save as comma-separated for compatibility
+          service_type: serviceTypeString,
           description: form.description,
-          cost: totalCost, // always update cost as the summary
+          cost: totalCost,
           mileage: form.mileage ? parseInt(form.mileage) : null,
-          labor_hours: null, // remove labor hours
+          labor_hours: null,
           technician_notes: form.technicianNotes,
-          parts_used: form.partsUsed as any, // Cast for TS and Supabase Json
+          parts_used: allItems as any, // Still flat for now
         })
         .eq("id", initialRecord.id);
 

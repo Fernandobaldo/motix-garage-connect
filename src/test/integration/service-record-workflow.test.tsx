@@ -142,34 +142,7 @@ describe('Service Record Workflow Integration', () => {
 
   describe('Service Record Creation Flow', () => {
     it('should handle complete service record creation workflow', async () => {
-      const mockVehicleData = {
-        vehicle_id: 'vehicle-123',
-        license_plate: 'ABC123',
-        make: 'Toyota',
-        model: 'Camry',
-        year: 2020
-      };
-
-      const mockClientData = {
-        id: 'client-123',
-        name: 'John Doe',
-        type: 'auth'
-      };
-
-      // Mock successful service record creation
-      mockSupabase.from.mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockResolvedValue({
-            data: [{
-              id: 'new-service-123',
-              tenant_id: 'tenant-123',
-              service_type: 'oil_change',
-              status: 'pending'
-            }],
-            error: null
-          })
-        })
-      } as any);
+      // (No db call, just UI)
 
       const onSuccess = vi.fn();
       const onClose = vi.fn();
@@ -183,35 +156,55 @@ describe('Service Record Workflow Integration', () => {
         { wrapper: createWrapper() }
       );
 
-      // Verify modal is rendered
+      // Modal open
       expect(screen.getByText('Create New Service Record')).toBeInTheDocument();
 
-      // Should see Service Types section with Add Service Type button and dropdown
-      expect(screen.getByText(/service type\(s?\)/i)).toBeInTheDocument();
-      fireEvent.click(screen.getByText(/add service type/i));
-      // Should be able to select a service type
-      const dropdown = screen.getAllByRole("button", { name: /select service type/i })[0];
-      fireEvent.mouseDown(dropdown);
-      const option = await screen.findByText("Oil Change");
-      fireEvent.click(option);
+      // Add service
+      fireEvent.click(screen.getByText(/add service/i));
+      // Select service type for first (required)
+      const dropdowns = screen.getAllByRole("button", { name: /select service type/i });
+      fireEvent.mouseDown(dropdowns[0]);
+      const oilChangeOpt = await screen.findByText("Oil Change");
+      fireEvent.click(oilChangeOpt);
 
-      // Description field:
-      const descriptionInput = screen.getByLabelText(/description/i);
-      fireEvent.change(descriptionInput, { target: { value: 'Regular oil change service' } });
+      // Add an item to that service
+      const firstPartName = screen.getAllByPlaceholderText(/part name/i)[0];
+      fireEvent.change(firstPartName, { target: { value: 'Oil Filter' } });
 
-      // Items grid (part name required) and total cost calculation
-      const partNameInput = screen.getAllByPlaceholderText(/part name/i)[0];
-      fireEvent.change(partNameInput, { target: { value: 'Oil Filter' } });
+      const firstQty = screen.getAllByPlaceholderText(/qty/i)[0];
+      fireEvent.change(firstQty, { target: { value: '2' } });
 
-      const qtyInput = screen.getAllByPlaceholderText(/qty/i)[0];
-      fireEvent.change(qtyInput, { target: { value: '2' } });
+      const firstPrice = screen.getAllByPlaceholderText(/price/i)[0];
+      fireEvent.change(firstPrice, { target: { value: '10' } });
 
-      const priceInput = screen.getAllByPlaceholderText(/price/i)[0];
-      fireEvent.change(priceInput, { target: { value: '10' } });
+      expect(screen.getByText(/total cost/i)).toHaveTextContent("$20");
 
-      expect(screen.getByText(/total cost/i)).toHaveTextContent("$20"); // e.g., $20.00
+      // Can add a second service
+      fireEvent.click(screen.getByText(/add service/i));
+      // Select service type for second
+      const secondDropdown = screen.getAllByRole("button", { name: /select service type/i })[1];
+      fireEvent.mouseDown(secondDropdown);
+      const brakeOpt = await screen.findByText("Brake Service");
+      fireEvent.click(brakeOpt);
 
-      // Try to submit: should succeed if validations met
+      // Add an item to the second service
+      const secondPartName = screen.getAllByPlaceholderText(/part name/i)[1];
+      fireEvent.change(secondPartName, { target: { value: 'Brake Pad' } });
+      const secondQty = screen.getAllByPlaceholderText(/qty/i)[1];
+      fireEvent.change(secondQty, { target: { value: '1' } });
+      const secondPrice = screen.getAllByPlaceholderText(/price/i)[1];
+      fireEvent.change(secondPrice, { target: { value: '50' } });
+
+      // Total cost should now reflect both services: 20 + 50 = 70
+      expect(screen.getByText(/total cost/i)).toHaveTextContent("$70");
+
+      // Deleting a service removes its items
+      const removeBtns = screen.getAllByLabelText("Remove service");
+      fireEvent.click(removeBtns[1]);
+      // Only one service left; total cost returns to $20
+      expect(screen.getByText(/total cost/i)).toHaveTextContent("$20");
+
+      // (Tests for submission/validation in other tests)
     });
 
     it('should validate required fields before submission', async () => {
@@ -226,7 +219,7 @@ describe('Service Record Workflow Integration', () => {
         />,
         { wrapper: createWrapper() }
       );
-      // Remove service type and part name to trigger validation error
+      // Try to submit with no service type/items
       fireEvent.click(screen.getByText(/save/i));
       expect(await screen.findByText(/required fields missing/i)).toBeInTheDocument();
     });

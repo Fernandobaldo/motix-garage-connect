@@ -1,4 +1,3 @@
-
 import { Tables } from '@/integrations/supabase/types';
 
 // Base database types
@@ -69,6 +68,12 @@ export interface ChatConversationWithParticipants extends ChatConversation {
 export interface ChatMessageWithSender extends ChatMessage {
   profiles?: Profile | null;
   sender?: Profile | null;
+}
+
+// Add this:
+export interface ServiceWithItems {
+  serviceType: { value: string; custom?: string };
+  items: PartUsed[];
 }
 
 // Form data types

@@ -1,12 +1,10 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import ItemsSection from "@/components/appointments/ServiceReportPartsSection";
-import ServiceItemsSection from "./ServiceItemsSection";
-import type { PartUsed } from "@/types/database";
-import { ServiceRecordFormState } from "./useServiceRecordForm";
+import ServicesWithItemsSection from "./ServicesWithItemsSection";
+import { ServiceWithItems, ServiceRecordFormState } from "./useServiceRecordForm";
 import { formatCurrency } from "@/utils/currency";
 
 interface ServiceRecordFormProps {
@@ -22,22 +20,31 @@ const ServiceRecordForm = ({
   loading,
   onSubmit,
 }: ServiceRecordFormProps) => {
-  // Calculate total cost from items (parts)
-  const totalCost = form.partsUsed.reduce(
-    (acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0),
+  // Calculate total cost from all services' items
+  const totalCost = form.services.reduce(
+    (svcCost, svc) =>
+      svcCost +
+      svc.items.reduce(
+        (acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0),
+        0
+      ),
     0
   );
-  // Validate at least one service type, at least one part with name
-  const servicesValid = Array.isArray(form.serviceTypes) && form.serviceTypes.length > 0 && form.serviceTypes[0].value;
-  const itemsValid = form.partsUsed.every(item => !!item.name);
 
-  // The parent (modal) or the custom submit logic should do validation and show errors
+  // Validation for UI only
+  const servicesValid =
+    Array.isArray(form.services) &&
+    form.services.length > 0 &&
+    form.services.every(svc => svc.serviceType.value);
+  const itemsValid = form.services.every(svc =>
+    svc.items.every(item => !!item.name)
+  );
 
   return (
     <form className="space-y-4" onSubmit={onSubmit} autoComplete="off">
-      <ServiceItemsSection
-        serviceTypes={form.serviceTypes}
-        onChange={types => setField("serviceTypes", types)}
+      <ServicesWithItemsSection
+        services={form.services}
+        onChange={svcs => setField("services", svcs)}
         disabled={loading}
       />
       <div>
@@ -62,7 +69,7 @@ const ServiceRecordForm = ({
             onChange={(e) => setField("mileage", e.target.value)}
           />
         </div>
-        {/* Labor Hours is removed */}
+        {/* Labor Hours still removed */}
       </div>
       <div>
         <Label htmlFor="technician_notes">Technician Notes</Label>
@@ -74,10 +81,6 @@ const ServiceRecordForm = ({
           rows={2}
         />
       </div>
-      <ItemsSection
-        partsUsed={form.partsUsed}
-        onPartsChange={(p: PartUsed[]) => setField("partsUsed", p)}
-      />
       {/* Total Cost (readonly) */}
       <div className="flex justify-end pt-2">
         <div className="bg-muted rounded font-medium px-4 py-2">
