@@ -23,11 +23,12 @@ export const createWrapper = () => {
       mutations: { retry: false },
     },
   });
-  return function Wrapper({ children }: { children: ReactNode }) {
+  function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
-  };
+  }
+  return Wrapper;
 };
 
 export const setupBaseMockAuth = () => {
