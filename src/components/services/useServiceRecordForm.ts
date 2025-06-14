@@ -83,7 +83,7 @@ export const useServiceRecordForm = (
           mileage: form.mileage ? parseInt(form.mileage) : null,
           labor_hours: form.laborHours ? parseFloat(form.laborHours) : null,
           technician_notes: form.technicianNotes,
-          parts_used: form.partsUsed as unknown as object[], // Ensure TS compatibility for Json[]
+          parts_used: form.partsUsed as any, // Cast for TS and Supabase Json
         })
         .eq("id", initialRecord.id);
 
