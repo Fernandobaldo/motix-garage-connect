@@ -81,12 +81,12 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
 
   // Get workshop distance unit preference
   const { preferences } = useWorkshopPreferences();
-  const distanceUnit = preferences?.distance_unit === "miles" ? "miles" : "km";
-  const currentMileageLabel = distanceUnit === "miles" ? "Current Miles" : "Current Kilometers";
-  const nextOilChangeLabel =
-    distanceUnit === "miles"
-      ? "Next Oil Change Mileage (miles)"
-      : "Next Oil Change Mileage (km)";
+  const isMiles = preferences?.distance_unit === "miles";
+  const distanceUnit = isMiles ? "miles" : "km";
+  const currentMileageLabel = isMiles ? "Current Miles" : "Current Kilometers";
+  const nextOilChangeLabel = isMiles
+    ? "Next Oil Change Miles"
+    : "Next Oil Change Kilometers";
 
   // Calculate total cost
   const totalCost = parsedServices.reduce(
@@ -193,7 +193,12 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
             <div>
               <div className="font-semibold mb-1">Cost Summary</div>
               <div className="space-y-1 text-sm">
-                <div><span className="text-muted-foreground">Calculated Total:</span> <span className="font-medium">{formatCurrency(totalCost, preferences?.currency_code)}</span></div>
+                <div>
+                  <span className="text-muted-foreground">Calculated Total:</span>{" "}
+                  <span className="font-medium">
+                    {formatCurrency(totalCost, preferences?.currency_code)}
+                  </span>
+                </div>
               </div>
             </div>
             <div>
