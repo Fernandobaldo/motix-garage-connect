@@ -34,7 +34,7 @@ export const useServiceRecordForm = (
     laborHours: initialRecord?.labor_hours?.toString() || "",
     technicianNotes: initialRecord?.technician_notes || "",
     partsUsed: Array.isArray(initialRecord?.parts_used)
-      ? (initialRecord?.parts_used as PartUsed[])
+      ? (initialRecord?.parts_used as unknown as PartUsed[])
       : [],
   });
 
@@ -50,7 +50,7 @@ export const useServiceRecordForm = (
           : "",
         technicianNotes: initialRecord.technician_notes || "",
         partsUsed: Array.isArray(initialRecord.parts_used)
-          ? (initialRecord.parts_used as PartUsed[])
+          ? (initialRecord.parts_used as unknown as PartUsed[])
           : [],
       });
     }
@@ -83,7 +83,7 @@ export const useServiceRecordForm = (
           mileage: form.mileage ? parseInt(form.mileage) : null,
           labor_hours: form.laborHours ? parseFloat(form.laborHours) : null,
           technician_notes: form.technicianNotes,
-          parts_used: form.partsUsed,
+          parts_used: form.partsUsed as unknown as object[], // Ensure TS compatibility for Json[]
         })
         .eq("id", initialRecord.id);
 
@@ -113,4 +113,3 @@ export const useServiceRecordForm = (
     handleSubmit,
   };
 };
-
