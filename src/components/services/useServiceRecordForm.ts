@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,7 +60,8 @@ export const useServiceRecordForm = (
   mode: "add" | "edit",
   initialRecord?: ServiceRecordWithRelations,
   onSuccess?: () => void,
-  onClose?: () => void
+  onClose?: () => void,
+  extra?: { selectedVehicle?: any; selectedClient?: { id: string; name: string; type: "auth" | "guest" } }
 ) => {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -89,16 +89,14 @@ export const useServiceRecordForm = (
     }
   }, [mode, initialRecord]);
 
-  // General updater
   const setField = (name: keyof ServiceRecordFormState, value: any) => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  // --- SUBMIT LOGIC (edit mode, see below for add) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Validation: at least one service, at least one item in each with name
+    // Validation: at least one service, each item has a name
     const isValid =
       form.services.length > 0 &&
       form.services.every(
@@ -118,12 +116,64 @@ export const useServiceRecordForm = (
       return;
     }
     try {
+      // --- ADD MODE (CREATE) ---
       if (mode === "add") {
+        // Validation for vehicle/client done in modal
+        if (!profile?.tenant_id) {
+          toast({
+            title: "Unable to create service record - no workshop selected",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        if (!extra?.selectedVehicle || !extra?.selectedClient) {
+          toast({
+            title: "Missing vehicle or client",
+            description: "Select vehicle and client to create service record.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        // Flatten
+        const { serviceTypeString, allItems } = flattenServicesToFields(form.services);
+        const totalCost = form.services.reduce(
+          (svcCost, svc) =>
+            svcCost +
+            svc.items.reduce(
+              (acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.price) || 0),
+              0
+            ),
+          0
+        );
+        // Insert into supabase
+        const { error } = await supabase.from("service_records").insert({
+          tenant_id: profile.tenant_id,
+          vehicle_id: extra.selectedVehicle.vehicle_id || extra.selectedVehicle.id,
+          workshop_id: profile.id,
+          client_id: extra.selectedClient.id,
+          service_type: serviceTypeString,
+          description: form.description,
+          cost: totalCost,
+          mileage: form.mileage ? parseInt(form.mileage) : null,
+          labor_hours: null,
+          technician_notes: form.technicianNotes,
+          parts_used: allItems as any,
+          status: "pending",
+        });
+        if (error) throw error;
+        toast({
+          title: "Service record created",
+          description: "Service record created successfully.",
+        });
+        onSuccess?.();
+        onClose?.();
         setLoading(false);
         return;
       }
+      // --- EDIT MODE ---
       if (!initialRecord) throw new Error("No service record to update");
-      // Calculate total cost from all items
       const totalCost = form.services.reduce(
         (accSvc, svc) =>
           accSvc +
@@ -133,7 +183,6 @@ export const useServiceRecordForm = (
           ),
         0
       );
-      // Flatten to legacy db format
       const { serviceTypeString, allItems } = flattenServicesToFields(form.services);
       const { error } = await supabase
         .from("service_records")
@@ -144,10 +193,9 @@ export const useServiceRecordForm = (
           mileage: form.mileage ? parseInt(form.mileage) : null,
           labor_hours: null,
           technician_notes: form.technicianNotes,
-          parts_used: allItems as any, // Still flat for now
+          parts_used: allItems as any,
         })
         .eq("id", initialRecord.id);
-
       if (error) throw error;
       toast({
         title: "Service record updated",
@@ -158,7 +206,7 @@ export const useServiceRecordForm = (
     } catch (err: any) {
       toast({
         title: "Error",
-        description: err.message || "Failed to update service record.",
+        description: err.message || "Failed to save service record.",
         variant: "destructive",
       });
     } finally {
