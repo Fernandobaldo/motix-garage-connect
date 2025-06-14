@@ -7,6 +7,7 @@ import LicensePlateSearchField from "@/components/common/LicensePlateSearchField
 import ServiceRecordForm from "@/components/services/ServiceRecordForm";
 import { useServiceRecordForm } from "@/components/services/useServiceRecordForm";
 import type { ServiceRecordWithRelations } from "@/types/database";
+import { useServiceRecords } from "@/hooks/useServiceRecords";
 
 /** Display vehicle & client info as a card (read-only) */
 function VehicleClientInfoCard({
@@ -73,6 +74,9 @@ const ServiceRecordModal = ({
     null
   );
 
+  // Add this (NEW):
+  const { refreshRecords } = useServiceRecords();
+
   useEffect(() => {
     // Reset on open/close only for create mode
     if (!isOpen && mode === "create") {
@@ -100,6 +104,13 @@ const ServiceRecordModal = ({
       : undefined,
     isOpen // <-- Pass isOpen to hook so it can reset state
   );
+
+  // Add a wrapped onSuccess that refreshes the list:
+  const handleSuccess = () => {
+    refreshRecords?.();
+    onSuccess?.();
+    onClose();
+  };
 
   // Wrapper for handleSubmit (CREATE: Block if missing selections)
   const wrappedHandleSubmit = (e: React.FormEvent) => {
@@ -176,7 +187,6 @@ const ServiceRecordModal = ({
               disabled={
                 loading ||
                 (isCreate && (!selectedVehicle || !selectedClient)) ||
-                // Modal disables submit if no selected v/cl OR if no services or items filled in
                 (form.services.length === 0 ||
                   !form.services.every(
                     svc =>
