@@ -80,6 +80,11 @@ const ServiceRecordModalForm = ({
   const title = isCreate ? "Create New Service Record" : "Edit Service Record";
   const description = isCreate ? "Add a new service record for a vehicle" : "Edit and update the service record data";
 
+  // Handler for "Delete" (discard) in create mode — just close the modal (form is unsaved)
+  const handleDelete = () => {
+    onClose();
+  };
+
   return (
     <>
       <DialogHeader>
@@ -121,6 +126,8 @@ const ServiceRecordModalForm = ({
           form={form}
           setField={setField}
           loading={loading}
+          onDelete={isCreate ? handleDelete : undefined}
+          isEditMode={!isCreate}
         />
         <div className="flex justify-end space-x-4 pt-4">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
