@@ -55,22 +55,22 @@ const ServiceRecordForm = ({
         onChange={svcs => setField("services", svcs)}
         disabled={loading}
       />
-      {/* Mileage Section */}
-      <div className={`grid grid-cols-1 ${hasOilChange ? "md:grid-cols-2" : "md:grid-cols-2"} gap-4`}>
-        <div>
-          <Label htmlFor="mileage">Current Mileage ({distanceUnit})</Label>
-          <Input
-            id="mileage"
-            type="number"
-            min="0"
-            placeholder={`e.g., 50000`}
-            value={form.mileage}
-            onChange={(e) => setField("mileage", e.target.value)}
-            disabled={loading}
-          />
-        </div>
-        {/* Show Next Oil Change Mileage if "Oil Change" service is present */}
-        {hasOilChange && (
+      {/* Mileage Section - Only shown with Oil Change */}
+      {hasOilChange && (
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4`}>
+          <div>
+            <Label htmlFor="mileage">Current Mileage ({distanceUnit})</Label>
+            <Input
+              id="mileage"
+              type="number"
+              min="0"
+              placeholder={`e.g., 50000`}
+              value={form.mileage}
+              onChange={(e) => setField("mileage", e.target.value)}
+              disabled={loading}
+            />
+          </div>
+          {/* Next Oil Change Mileage */}
           <div>
             <Label htmlFor="next_oil_change_mileage">Next Oil Change Mileage ({distanceUnit})</Label>
             <Input
@@ -83,8 +83,8 @@ const ServiceRecordForm = ({
               disabled={loading}
             />
           </div>
-        )}
-      </div>
+        </div>
+      )}
       {/* Technician Notes */}
       <div>
         <Label htmlFor="technician_notes">Technician Notes</Label>
