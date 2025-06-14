@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import {
@@ -8,8 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CalendarIcon, RocketIcon } from "@radix-ui/react-icons";
-import { CheckCircle2, GraduationCap, HeartHandshake, PiggyBank, Store } from "lucide-react";
+import { Calendar, Rocket, Wrench, HeartHandshake } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const LandingPage = () => {
@@ -32,7 +32,7 @@ const LandingPage = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <CalendarIcon className="mr-2 h-5 w-5 text-blue-500" />
+                  <Calendar className="mr-2 h-5 w-5 text-blue-500" />
                   Appointment Management
                 </CardTitle>
               </CardHeader>
@@ -87,3 +87,4 @@ const LandingPage = () => {
 };
 
 export default LandingPage;
+
