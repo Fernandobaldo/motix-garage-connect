@@ -39,11 +39,14 @@ const ServicesWithItemsSection = ({
   onChange,
   disabled,
 }: ServicesWithItemsSectionProps) => {
-  // Add service
+  // Add service: ensure items get correct serviceType field
   const addService = () =>
     onChange([
       ...services,
-      { serviceType: { value: "" }, items: [{ name: "", quantity: 1, price: 0 }] }
+      {
+        serviceType: { value: "" },
+        items: [{ name: "", quantity: 1, price: 0, serviceType: "" }],
+      }
     ]);
 
   // Remove service
@@ -51,24 +54,47 @@ const ServicesWithItemsSection = ({
     onChange(services.filter((_, idx) => idx !== i));
   };
 
-  // Update service type
+  // Update service type: also updates the serviceType field on the items
   const handleServiceTypeChange = (i: number, value: string) => {
     const updated = [...services];
     updated[i].serviceType = { value, custom: value === "Other" ? updated[i].serviceType.custom ?? "" : undefined };
+    // Update serviceType on all items in this service
+    updated[i].items = updated[i].items.map(item => ({
+      ...item,
+      serviceType:
+        value === "Other" && updated[i].serviceType.custom
+          ? updated[i].serviceType.custom
+          : value,
+    }));
     onChange(updated);
   };
 
-  // Custom service name
+  // Custom service name update: also update serviceType
   const handleCustomChange = (i: number, custom: string) => {
     const updated = [...services];
     updated[i].serviceType = { ...updated[i].serviceType, custom };
+    // If value is "Other", we'll use custom name as type
+    if (updated[i].serviceType.value === "Other") {
+      updated[i].items = updated[i].items.map(item => ({
+        ...item,
+        serviceType: custom,
+      }));
+    }
     onChange(updated);
   };
 
-  // Add item to a service
+  // Add item to service: pre-fill serviceType
   const addItem = (svcIdx: number) => {
+    const svc = services[svcIdx];
+    const svcType =
+      svc.serviceType.value === "Other" && svc.serviceType.custom
+        ? svc.serviceType.custom
+        : svc.serviceType.value;
     const updated = [...services];
-    updated[svcIdx].items = [...updated[svcIdx].items, { name: "", quantity: 1, price: 0 }];
+    updated[svcIdx].items = [
+      ...updated[svcIdx].items,
+      { name: "", quantity: 1, price: 0, serviceType: svcType },
+    ];
     onChange(updated);
   };
 
@@ -138,6 +164,11 @@ const ServicesWithItemsSection = ({
     updated[svcIdx].items[itemIdx] = {
       ...updated[svcIdx].items[itemIdx],
       [field]: value,
+      // always keep latest serviceType
+      serviceType:
+        updated[svcIdx].serviceType.value === "Other" && updated[svcIdx].serviceType.custom
+          ? updated[svcIdx].serviceType.custom
+          : updated[svcIdx].serviceType.value,
     };
     onChange(updated);
   };

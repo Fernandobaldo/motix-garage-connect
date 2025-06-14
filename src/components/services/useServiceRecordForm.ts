@@ -17,7 +17,7 @@ export interface ServiceRecordFormState {
   nextOilChangeMileage: string; // NEW FIELD
 }
 
-// Utility: flatten the services to old data model
+// Utility: flatten the services to old data model, but include serviceType on each item
 const flattenServicesToFields = (services: ServiceWithItems[]) => {
   const serviceTypeString = services
     .map((svc) =>
@@ -27,27 +27,63 @@ const flattenServicesToFields = (services: ServiceWithItems[]) => {
     )
     .filter(Boolean)
     .join(", ");
-  const allItems: PartUsed[] = services.flatMap((svc) => svc.items);
+  // Each part now carries its serviceType - this is new
+  const allItems: PartUsed[] = services.flatMap((svc) =>
+    svc.items.map((item) => ({
+      ...item,
+      // track service type on each part
+      serviceType:
+        svc.serviceType.value === "Other" && svc.serviceType.custom
+          ? svc.serviceType.custom
+          : svc.serviceType.value,
+    }))
+  );
   return { serviceTypeString, allItems };
 };
 
+// Utility: parse services & items grouped by serviceType
 const parseServicesFromRecord = (service_type: string, parts_used: any): ServiceWithItems[] => {
+  // If saved parts have serviceType field, group by it. If not, fallback to old grouping.
+  const parts: (PartUsed & { serviceType?: string })[] = Array.isArray(parts_used) ? parts_used : [];
+
+  // build mapping from visible service types
   const serviceTypes = service_type
     ? service_type.split(",").map((v) => ({ value: v.trim() }))
     : [{ value: "" }];
 
-  const items: PartUsed[] = Array.isArray(parts_used) ? (parts_used as PartUsed[]) : [];
-  if (serviceTypes.length === 1) {
-    return [{ serviceType: serviceTypes[0], items }];
+  // If every item has serviceType, group using that
+  const itemsGrouped: Record<string, PartUsed[]> = {};
+  let hasExplicitTypes = parts.length > 0 && parts.every(p => !!p.serviceType);
+
+  if (hasExplicitTypes) {
+    for (const p of parts) {
+      const tkey = p.serviceType || "";
+      if (!itemsGrouped[tkey]) itemsGrouped[tkey] = [];
+      // Remove the serviceType property for item to keep shape
+      const {serviceType, ...rest} = p;
+      itemsGrouped[tkey].push(rest);
+    }
+    // Build per-service with correct custom field support
+    return serviceTypes.map((stype) => ({
+      serviceType: stype,
+      items: itemsGrouped[
+        stype.value
+      ] || [],
+    }));
+  } else {
+    // Fallback (legacy) – assign all parts to first service, others empty
+    if (serviceTypes.length === 1) {
+      return [{ serviceType: serviceTypes[0], items: parts }];
+    }
+    const perSvc = serviceTypes.map((type) => ({
+      serviceType: type,
+      items: [],
+    }));
+    if (parts.length > 0) {
+      perSvc[0].items = parts;
+    }
+    return perSvc;
   }
-  const perSvc = serviceTypes.map((type) => ({
-    serviceType: type,
-    items: [],
-  }));
-  if (items.length > 0) {
-    perSvc[0].items = items;
-  }
-  return perSvc;
 };
 
 // Utility to extract nextOilChangeMileage from technician notes (if present as JSON)
