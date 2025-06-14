@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +20,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import PublicBooking from "./pages/PublicBooking";
 import NotFound from "./pages/NotFound";
 import ClientDetailPage from "./components/clients/ClientDetailPage";
+import DashboardPage from "./pages/Dashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +44,7 @@ function App() {
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
+                      <Route path="/dashboard" element={<DashboardPage />} />
                       <Route path="/book/:slug" element={<PublicBooking />} />
                       <Route path="/client" element={<ClientAccount />} />
                       <Route path="/client/appointments" element={<ClientAppointments />} />
