@@ -23,11 +23,10 @@ export const createWrapper = () => {
       mutations: { retry: false },
     },
   });
-  function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
-  }
+  // React Testing Library expects a React.FC/ComponentType as wrapper
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
   return Wrapper;
 };
 
