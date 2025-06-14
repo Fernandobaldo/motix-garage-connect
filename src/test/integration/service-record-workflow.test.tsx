@@ -1,4 +1,3 @@
-
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
@@ -28,6 +27,45 @@ const createWrapper = () => {
   return ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+};
+
+// Shared mock service record for use in multiple tests
+const mockServiceRecord = {
+  id: 'service-123',
+  tenant_id: 'tenant-123',
+  service_type: 'oil_change',
+  description: 'Regular oil change',
+  status: 'pending' as const,
+  cost: 75.00,
+  labor_hours: 1.5,
+  mileage: 50000,
+  appointment_id: null,
+  client_id: 'client-123',
+  estimated_completion_date: null,
+  images: [],
+  parts_used: [],
+  quotation_id: null,
+  technician_notes: '',
+  vehicle_id: 'vehicle-123',
+  workshop_id: 'workshop-123',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+  client: {
+    id: 'client-123',
+    full_name: 'John Doe',
+    phone: '123-456-7890'
+  },
+  vehicle: {
+    id: 'vehicle-123',
+    make: 'Toyota',
+    model: 'Camry',
+    year: 2020,
+    license_plate: 'ABC123'
+  },
+  workshop: {
+    id: 'workshop-123',
+    name: 'Best Auto Repair'
+  }
 };
 
 describe('Service Record Workflow Integration', () => {
@@ -179,33 +217,6 @@ describe('Service Record Workflow Integration', () => {
   });
 
   describe('Service Record Updates', () => {
-    const mockServiceRecord = {
-      id: 'service-123',
-      tenant_id: 'tenant-123',
-      service_type: 'oil_change',
-      description: 'Regular oil change',
-      status: 'pending' as const,
-      cost: 75.00,
-      labor_hours: 1.5,
-      mileage: 50000,
-      created_at: '2024-01-01T00:00:00Z',
-      client: {
-        id: 'client-123',
-        full_name: 'John Doe',
-        phone: '123-456-7890'
-      },
-      vehicle: {
-        id: 'vehicle-123',
-        make: 'Toyota',
-        model: 'Camry',
-        year: 2020,
-        license_plate: 'ABC123'
-      },
-      workshop: {
-        id: 'workshop-123',
-        name: 'Best Auto Repair'
-      }
-    };
 
     it('should handle status updates correctly', async () => {
       const onStatusUpdate = vi.fn();
@@ -288,25 +299,48 @@ describe('Service Record Workflow Integration', () => {
   describe('Data Consistency', () => {
     it('should maintain data consistency across components', async () => {
       const serviceData = {
+        id: 'new-service-456',
         tenant_id: 'tenant-123',
         vehicle_id: 'vehicle-123',
         workshop_id: 'workshop-123',
         client_id: 'client-123',
+        appointment_id: null,
+        quotation_id: null,
         service_type: 'brake_service',
         description: 'Brake pad replacement',
         cost: 250.00,
-        status: 'pending' as const
+        labor_hours: null,
+        mileage: null,
+        technician_notes: '',
+        status: 'pending' as const,
+        estimated_completion_date: null,
+        images: [],
+        parts_used: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        client: {
+          id: 'client-123',
+          full_name: 'John Doe',
+          phone: '123-456-7890'
+        },
+        vehicle: {
+          id: 'vehicle-123',
+          make: 'Toyota',
+          model: 'Camry',
+          year: 2020,
+          license_plate: 'ABC123'
+        },
+        workshop: {
+          id: 'workshop-123',
+          name: 'Best Auto Repair'
+        }
       };
 
       // Mock consistent data responses
       mockSupabase.from.mockReturnValue({
         insert: vi.fn().mockReturnValue({
           select: vi.fn().mockResolvedValue({
-            data: [{ 
-              id: 'new-service-456', 
-              ...serviceData,
-              created_at: '2024-01-01T00:00:00Z'
-            }],
+            data: [serviceData],
             error: null
           })
         })
