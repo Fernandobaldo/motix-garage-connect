@@ -49,6 +49,9 @@ const countries = [
   { code: 'KE', name: 'Kenya' },
 ];
 
+// Add descending sort by country name for the dropdown
+const sortedCountries = [...countries].sort((a, b) => b.name.localeCompare(a.name));
+
 const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
   const [components, setComponents] = useState<AddressComponents>({
     street: '',
@@ -145,7 +148,7 @@ const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
               <SelectValue placeholder="Select country" />
             </SelectTrigger>
             <SelectContent>
-              {countries.map((country) => (
+              {sortedCountries.map((country) => (
                 <SelectItem key={country.code} value={country.code}>
                   {country.name}
                 </SelectItem>
