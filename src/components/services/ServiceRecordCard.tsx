@@ -230,18 +230,26 @@ const ServiceRecordCard = ({
                   // Default: use export utility directly
                   // Parse grouped services, notes as in details modal
                   const serviceTypeStr = service.service_type;
+                  // Safely ensure parts is always an array of objects
                   const parts = Array.isArray(service.parts_used) ? service.parts_used : [];
+                  // Defensive filtering: only use objects
+                  const validParts = parts.filter(
+                    (p) => typeof p === "object" && p !== null
+                  );
+
                   // Copy of parseServicesFromRecord:
                   const serviceTypes = typeof serviceTypeStr === 'string'
-                    ? serviceTypeStr.split(",").map((v) => ({ value: v.trim() })) :
-                    [{ value: "" }];
-                  let hasTypes = parts.length > 0 && parts.every(p => !!p.serviceType);
+                    ? serviceTypeStr.split(",").map((v) => ({ value: v.trim() }))
+                    : [{ value: "" }];
+                  let hasTypes = validParts.length > 0 && validParts.every((p) => "serviceType" in p && typeof p.serviceType === "string");
                   let parsedServices = [];
+
                   if (hasTypes) {
                     const itemsGrouped: Record<string, any[]> = {};
-                    for (const p of parts) {
-                      const tkey = p.serviceType || "";
+                    for (const p of validParts) {
+                      const tkey = typeof p.serviceType === "string" ? p.serviceType : "";
                       if (!itemsGrouped[tkey]) itemsGrouped[tkey] = [];
+                      // Only destructure if p is object and not null
                       const { serviceType, ...rest } = p;
                       itemsGrouped[tkey].push(rest);
                     }
@@ -251,14 +259,14 @@ const ServiceRecordCard = ({
                     }));
                   } else {
                     if (serviceTypes.length === 1) {
-                      parsedServices = [{ serviceType: serviceTypes[0], items: parts }];
+                      parsedServices = [{ serviceType: serviceTypes[0], items: validParts }];
                     } else {
                       const perSvc = serviceTypes.map((t) => ({
                         serviceType: t,
                         items: [],
                       }));
-                      if (parts.length > 0) {
-                        perSvc[0].items = parts;
+                      if (validParts.length > 0) {
+                        perSvc[0].items = validParts;
                       }
                       parsedServices = perSvc;
                     }
@@ -266,7 +274,10 @@ const ServiceRecordCard = ({
                   // Notes extraction
                   let nextOilChangeMileage = "";
                   let plainNotes = "";
-                  if (service.technician_notes && service.technician_notes.startsWith("{")) {
+                  if (
+                    typeof service.technician_notes === "string" &&
+                    service.technician_notes.startsWith("{")
+                  ) {
                     try {
                       const endIdx = service.technician_notes.indexOf("}\n");
                       if (endIdx !== -1) {
@@ -275,15 +286,21 @@ const ServiceRecordCard = ({
                         nextOilChangeMileage = parsed.nextOilChangeMileage ?? "";
                         plainNotes = service.technician_notes.slice(endIdx + 2) || "";
                       }
-                    } catch { plainNotes = service.technician_notes; }
+                    } catch {
+                      plainNotes = service.technician_notes;
+                    }
                   } else {
                     plainNotes = service.technician_notes || "";
                   }
                   const totalCost = parsedServices.reduce(
-                    (svcTally, svc) => svcTally + svc.items.reduce(
-                      (itemTally, item) => itemTally + (Number(item.quantity) || 0) * (Number(item.price) || 0),
-                      0
-                    ),
+                    (svcTally, svc) =>
+                      svcTally +
+                      svc.items.reduce(
+                        (itemTally, item) =>
+                          itemTally +
+                          (Number(item.quantity) || 0) * (Number(item.price) || 0),
+                        0
+                      ),
                     0
                   );
                   exportServiceRecordToPDF(
@@ -293,12 +310,14 @@ const ServiceRecordCard = ({
                     nextOilChangeMileage,
                     plainNotes,
                     // Send workshop header info (safeguarded)
-                    workshop ? {
-                      name: workshop.name,
-                      address: workshop.address,
-                      phone: workshop.phone,
-                      email: workshop.email
-                    } : undefined,
+                    workshop
+                      ? {
+                          name: workshop.name,
+                          address: workshop.address,
+                          phone: workshop.phone,
+                          email: workshop.email,
+                        }
+                      : undefined,
                     preferences
                   );
                 }
