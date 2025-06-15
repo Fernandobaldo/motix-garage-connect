@@ -91,32 +91,6 @@ const WorkshopProfileForm = ({
     onFormDataChange({ ...formData, working_hours: newWorkingHours });
   };
 
-  // Convert address to display string for use outside of the address form
-  const displayAddress = (addressObj: any) => {
-    if (
-      typeof addressObj === "object" &&
-      addressObj !== null &&
-      "street" in addressObj
-    ) {
-      const countryObj = Array.isArray(addressObj.country) ? addressObj.country[0] : addressObj.country;
-      const countryName =
-        typeof countryObj === "string"
-          ? countries.find((c) => c.code === countryObj)?.name || ""
-          : "";
-      return [
-        addressObj.street,
-        addressObj.city,
-        addressObj.state,
-        addressObj.postalCode,
-        countryName,
-      ]
-        .filter(Boolean)
-        .join(", ");
-    }
-    // fallback for legacy
-    return String(addressObj || "");
-  };
-
   // For initial load, convert legacy string to object (for backward compat)
   const handleAddressChange = (address: any) => {
     onFormDataChange({ ...formData, address });
@@ -191,10 +165,6 @@ const WorkshopProfileForm = ({
                     address={formData.address}
                     onAddressChange={handleAddressChange}
                   />
-                </div>
-                <div className="mt-1 text-xs text-gray-500">
-                  {/* Show a summary display string */}
-                  {displayAddress(formData.address)}
                 </div>
               </div>
               <div>
