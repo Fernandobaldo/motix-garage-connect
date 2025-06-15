@@ -16,8 +16,11 @@ import ServiceRecordsHistorySection from "./ServiceRecordsHistorySection";
 import { useServiceRecordFilters } from "./useServiceRecordFilters";
 
 interface ServiceRecordsListProps {
-  filter?: 'active' | 'history' | 'all';
-  onPdfExport?: (service: ServiceRecordWithRelations) => void;
+  filter?: "active" | "history" | "all";
+  // Accept handler for both types, with overload
+  onPdfExport?: (
+    service: ServiceRecordWithRelations | ServiceHistoryWithRelations
+  ) => void;
 }
 
 const ServiceRecordsList = ({
@@ -156,7 +159,12 @@ const ServiceRecordsList = ({
         historyRecords={sortedHistory}
         filters={filters}
         setFilters={setFilters}
-        onPdfExport={onPdfExport}
+        // Adapt onPdfExport for history, so it always receives a ServiceHistoryWithRelations
+        onPdfExport={
+          onPdfExport
+            ? (record) => onPdfExport(record)
+            : undefined
+        }
       />
     );
   }
