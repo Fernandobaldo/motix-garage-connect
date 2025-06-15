@@ -79,7 +79,7 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
   // Extracted next oil change and plain notes
   const { nextOilChangeMileage, plainNotes } = extractNextOilChangeMileage(service.technician_notes);
 
-  // Get workshop distance unit preference
+  // Get workshop distance unit and currency preferences
   const { preferences } = useWorkshopPreferences();
   const isMiles = preferences?.distance_unit === "miles";
   const distanceUnit = isMiles ? "miles" : "km";
@@ -87,6 +87,7 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
   const nextOilChangeLabel = isMiles
     ? "Next Oil Change Miles"
     : "Next Oil Change Kilometers";
+  const currencyCode: string = preferences?.currency_code || "USD";
 
   // Calculate total cost
   const totalCost = parsedServices.reduce(
@@ -169,8 +170,8 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
                             <tr key={item.name + j} className="border-t">
                               <td className="px-4 py-2">{item.name}</td>
                               <td className="px-4 py-2 text-center">{item.quantity}</td>
-                              <td className="px-4 py-2 text-right">{formatCurrency(Number(item.price))}</td>
-                              <td className="px-4 py-2 text-right">{formatCurrency(Number(item.price) * Number(item.quantity))}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(Number(item.price), currencyCode)}</td>
+                              <td className="px-4 py-2 text-right">{formatCurrency(Number(item.price) * Number(item.quantity), currencyCode)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -196,7 +197,7 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
                 <div>
                   <span className="text-muted-foreground">Calculated Total:</span>{" "}
                   <span className="font-medium">
-                    {formatCurrency(totalCost, preferences?.currency_code)}
+                    {formatCurrency(totalCost, currencyCode)}
                   </span>
                 </div>
               </div>

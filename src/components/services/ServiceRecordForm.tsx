@@ -1,3 +1,4 @@
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,10 +49,13 @@ const ServiceRecordForm = ({
     svc.items.every(item => !!item.name)
   );
 
-  // Get workshop distance unit preference
+  // Get workshop distance unit and currency preferences
   const { preferences } = useWorkshopPreferences();
   const isMiles = preferences?.distance_unit === "miles";
   const distanceUnit = isMiles ? "miles" : "km";
+  // Currency code
+  const currencyCode: string = preferences?.currency_code || 'USD';
+
   // Check if "Oil Change" is being performed
   const hasOilChange = form.services.some(
     svc => svc.serviceType.value?.toLowerCase().includes("oil") &&
@@ -178,7 +182,7 @@ const ServiceRecordForm = ({
           </AlertDialog>
         )}
         <div className="bg-muted rounded font-medium px-4 py-2">
-          Total Cost: {formatCurrency(totalCost)}
+          Total Cost: {formatCurrency(totalCost, currencyCode)}
         </div>
       </div>
       {/* No action buttons here! Only visible in parent modal */}
@@ -187,3 +191,4 @@ const ServiceRecordForm = ({
 };
 
 export default ServiceRecordForm;
+
