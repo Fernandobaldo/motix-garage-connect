@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useServiceRecords } from "@/hooks/useServiceRecords";
 import { useUnifiedServiceRecords } from "@/hooks/useUnifiedServiceRecords";
+import { useServiceHistory } from "@/hooks/useServiceHistory";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
@@ -110,7 +111,6 @@ const ServiceRecordsList = ({
   });
 
   // Add history-specific handlers for editing, details, PDF, delete, status
-  import { useServiceHistory } from "@/hooks/useServiceHistory";
   const {
     deleteServiceHistory,
     isDeletePending,
