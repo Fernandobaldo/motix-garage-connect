@@ -1,60 +1,69 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { FileText } from "lucide-react";
-import { format } from "date-fns";
-import { ServiceHistoryWithRelations } from "@/types/database";
+import { useState } from "react";
+import ServiceRecordCard from "./ServiceRecordCard";
+import ServiceRecordDetailsModal from "./ServiceRecordDetailsModal";
+import ServiceRecordEditModal from "./ServiceRecordEditModal";
+import { useServiceHistory } from "@/hooks/useServiceHistory";
+import type { ServiceHistoryWithRelations, ServiceStatus } from "@/types/database";
 
 interface ServiceHistoryListProps {
   history: ServiceHistoryWithRelations[];
+  onPdfExport?: (record: ServiceHistoryWithRelations) => void;
 }
 
-const ServiceHistoryList = ({ history }: ServiceHistoryListProps) => {
+const ServiceHistoryList = ({
+  history,
+  onPdfExport,
+}: ServiceHistoryListProps) => {
+  const {
+    deleteServiceHistory,
+    isDeletePending,
+    updateStatus,
+    isStatusPending,
+  } = useServiceHistory();
+
+  const [editingRecord, setEditingRecord] = useState<ServiceHistoryWithRelations | null>(null);
+  const [detailsRecord, setDetailsRecord] = useState<ServiceHistoryWithRelations | null>(null);
+
+  // For modals: refresh state on edit
+  const refreshOnEdit = () => {
+    setEditingRecord(null);
+  };
+
   if (history.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-8">
-          <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No completed or cancelled history records found.</p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-8 border rounded bg-muted">
+        <span className="text-muted-foreground mb-4">No completed or cancelled history records found.</span>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
       {history.map((record) => (
-        <Card key={record.id} className="hover:shadow-md transition-shadow">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">{record.service_type}</CardTitle>
-                <div className="text-xs text-muted-foreground">
-                  {record.completed_at ? format(new Date(record.completed_at), "MMM dd, yyyy") : "—"}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {record.vehicle
-                    ? `${record.vehicle.year} ${record.vehicle.make} ${record.vehicle.model}`
-                    : ""}
-                </div>
-              </div>
-              <Badge variant={record.status === "completed" ? "default" : "destructive"}>
-                {record.status}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm mb-2">
-              {record.description}
-            </div>
-            {record.cost && (
-              <div className="text-xs text-muted-foreground">
-                Cost: ${record.cost}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <ServiceRecordCard
+          key={record.id}
+          service={record as any}
+          onStatusUpdate={(id, status) => updateStatus({ id, status } as any)}
+          onEdit={() => setEditingRecord(record)}
+          onPdfExport={onPdfExport}
+          onShare={() => {}}
+          onViewDetails={(svc) => setDetailsRecord(svc as any)}
+          isHistoryView={true}
+        />
       ))}
+      {/* Modals */}
+      <ServiceRecordEditModal
+        isOpen={!!editingRecord}
+        service={editingRecord!}
+        onClose={refreshOnEdit}
+        onSuccess={refreshOnEdit}
+      />
+      <ServiceRecordDetailsModal
+        isOpen={!!detailsRecord}
+        service={detailsRecord!}
+        onClose={() => setDetailsRecord(null)}
+      />
     </div>
   );
 };

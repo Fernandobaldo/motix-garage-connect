@@ -109,6 +109,16 @@ const ServiceRecordsList = ({
     return true;
   });
 
+  // Add history-specific handlers for editing, details, PDF, delete, status
+  const {
+    deleteServiceHistory,
+    isDeletePending,
+    updateStatus: updateHistoryStatus,
+    isStatusPending,
+  } = useServiceHistory();
+  const [editingHistory, setEditingHistory] = useState<ServiceRecordWithRelations | null>(null);
+  const [detailsHistory, setDetailsHistory] = useState<ServiceRecordWithRelations | null>(null);
+
   // Filtering for service_history (completed/cancelled)
   const filteredHistory = serviceHistory.filter((record) => {
     // For history: show completed OR cancelled
@@ -234,7 +244,11 @@ const ServiceRecordsList = ({
             />
           </CardContent>
         </Card>
-        <ServiceHistoryList history={sortedHistory} />
+        {/* Updated ServiceHistoryList for full actions */}
+        <ServiceHistoryList
+          history={sortedHistory as any}
+          onPdfExport={onPdfExport}
+        />
       </div>
     );
   }
