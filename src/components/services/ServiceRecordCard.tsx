@@ -14,6 +14,8 @@ import ServiceRecordDetailsModal from "./ServiceRecordDetailsModal";
 import { Trash2, Eye, Edit as EditIcon } from "lucide-react";
 import { useServiceRecords } from "@/hooks/useServiceRecords";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader as AlertDialogHeaderUI, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { useWorkshop } from "@/hooks/useWorkshop";
+import { exportServiceRecordToPDF } from "@/utils/serviceRecordPdfExport";
 
 /**
  * Helper to get label and icon for each service type.
@@ -69,6 +71,8 @@ const ServiceRecordCard = ({
   onViewDetails
 }: ServiceRecordCardProps) => {
   const { preferences } = useWorkshopPreferences();
+  const { workshop } = useWorkshop(); // Now includes workshop context
+
   const [showEdit, setShowEdit] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -214,12 +218,96 @@ const ServiceRecordCard = ({
                 Edit
               </Button>
             )}
-            {onPdfExport && (
-              <Button variant="outline" size="sm" onClick={() => onPdfExport(service)}>
-                <Download className="h-4 w-4 mr-1" />
-                PDF
-              </Button>
-            )}
+            {/* PDF Button: provide correct info */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // If parent handles, use that, else direct export
+                if (onPdfExport) {
+                  onPdfExport(service);
+                } else {
+                  // Default: use export utility directly
+                  // Parse grouped services, notes as in details modal
+                  const serviceTypeStr = service.service_type;
+                  const parts = Array.isArray(service.parts_used) ? service.parts_used : [];
+                  // Copy of parseServicesFromRecord:
+                  const serviceTypes = typeof serviceTypeStr === 'string'
+                    ? serviceTypeStr.split(",").map((v) => ({ value: v.trim() })) :
+                    [{ value: "" }];
+                  let hasTypes = parts.length > 0 && parts.every(p => !!p.serviceType);
+                  let parsedServices = [];
+                  if (hasTypes) {
+                    const itemsGrouped: Record<string, any[]> = {};
+                    for (const p of parts) {
+                      const tkey = p.serviceType || "";
+                      if (!itemsGrouped[tkey]) itemsGrouped[tkey] = [];
+                      const { serviceType, ...rest } = p;
+                      itemsGrouped[tkey].push(rest);
+                    }
+                    parsedServices = serviceTypes.map(stype => ({
+                      serviceType: stype,
+                      items: itemsGrouped[stype.value] || [],
+                    }));
+                  } else {
+                    if (serviceTypes.length === 1) {
+                      parsedServices = [{ serviceType: serviceTypes[0], items: parts }];
+                    } else {
+                      const perSvc = serviceTypes.map((t) => ({
+                        serviceType: t,
+                        items: [],
+                      }));
+                      if (parts.length > 0) {
+                        perSvc[0].items = parts;
+                      }
+                      parsedServices = perSvc;
+                    }
+                  }
+                  // Notes extraction
+                  let nextOilChangeMileage = "";
+                  let plainNotes = "";
+                  if (service.technician_notes && service.technician_notes.startsWith("{")) {
+                    try {
+                      const endIdx = service.technician_notes.indexOf("}\n");
+                      if (endIdx !== -1) {
+                        const jsonBlob = service.technician_notes.slice(0, endIdx + 1);
+                        const parsed = JSON.parse(jsonBlob);
+                        nextOilChangeMileage = parsed.nextOilChangeMileage ?? "";
+                        plainNotes = service.technician_notes.slice(endIdx + 2) || "";
+                      }
+                    } catch { plainNotes = service.technician_notes; }
+                  } else {
+                    plainNotes = service.technician_notes || "";
+                  }
+                  const totalCost = parsedServices.reduce(
+                    (svcTally, svc) => svcTally + svc.items.reduce(
+                      (itemTally, item) => itemTally + (Number(item.quantity) || 0) * (Number(item.price) || 0),
+                      0
+                    ),
+                    0
+                  );
+                  exportServiceRecordToPDF(
+                    service,
+                    parsedServices,
+                    totalCost,
+                    nextOilChangeMileage,
+                    plainNotes,
+                    // Send workshop header info (safeguarded)
+                    workshop ? {
+                      name: workshop.name,
+                      address: workshop.address,
+                      phone: workshop.phone,
+                      email: workshop.email
+                    } : undefined,
+                    preferences
+                  );
+                }
+              }}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              PDF
+            </Button>
+            {/* ... rest of actions ... */}
             {onShare && (
               <Button variant="outline" size="sm" onClick={() => onShare(service)}>
                 <Share2 className="h-4 w-4 mr-1" />

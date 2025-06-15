@@ -3,33 +3,70 @@ import jsPDF from "jspdf";
 import { formatCurrency } from "@/utils/currency";
 
 /**
- * Export a service record and its grouped services as a PDF
+ * Export a service record and its grouped services as a PDF,
+ * with workshop/garage info and correct currency/unit.
  * @param service The full service record object (with vehicle/client info)
  * @param parsedServices Array of { serviceType, items } describing grouped service items
  * @param totalCost Calculated total cost (number)
  * @param nextOilChangeMileage String for next oil change mileage (if any)
  * @param plainNotes Plain technician notes, with no JSON prefix
+ * @param workshop Optional workshop object, can include name, address, email, phone
+ * @param preferences Workshop preferences (currency_code, distance_unit)
  */
 export function exportServiceRecordToPDF(
   service: any,
   parsedServices: { serviceType: { value: string }, items: any[] }[],
   totalCost: number,
   nextOilChangeMileage: string,
-  plainNotes: string
+  plainNotes: string,
+  workshop?: {
+    name?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+  },
+  preferences?: {
+    currency_code?: string;
+    distance_unit?: string;
+  }
 ) {
   const doc = new jsPDF();
+  let y = 18;
 
-  let y = 20;
+  // ----------------- HEADER WITH GARAGE INFO ------------------
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text((workshop?.name || "Service Garage/Workshop"), 105, y, { align: "center" });
 
+  doc.setFontSize(11);
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  if (workshop?.address) {
+    doc.text(`Address: ${workshop.address}`, 105, y, { align: "center" }); y += 6;
+  }
+  if (workshop?.phone) {
+    doc.text(`Phone: ${workshop.phone}`, 105, y, { align: "center" }); y += 6;
+  }
+  if (workshop?.email) {
+    doc.text(`Email: ${workshop.email}`, 105, y, { align: "center" }); y += 6;
+  }
+  // Separate with line under header
+  y += 4;
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.line(18, y, 192, y);
+  y += 8;
+
+  // ----------------- RECORD TITLE ------------------
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.text("Service Record", 105, y, { align: "center" });
-
   y += 12;
+
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
 
-  // Vehicle/Client
+  //--------- Garage/Vehicle/Client section ---------
   doc.text("Vehicle:", 15, y); 
   doc.text(
     service.vehicle
@@ -52,7 +89,7 @@ export function exportServiceRecordToPDF(
   doc.text("Status:", 15, y);
   doc.text(service.status, 45, y);
 
-  // Service Details
+  // ----------------- Services Performed ---------------
   y += 12;
   doc.setFont("helvetica", "bold");
   doc.text("Services Performed", 15, y);
@@ -85,14 +122,21 @@ export function exportServiceRecordToPDF(
       doc.setFontSize(9);
       doc.text(item.name || "-", 30, y);
       doc.text(String(item.quantity || "-"), 90, y);
-      doc.text(formatCurrency(Number(item.price)), 110, y);
-      doc.text(formatCurrency(Number(item.price) * Number(item.quantity)), 140, y);
+      doc.text(formatCurrency(
+          Number(item.price),
+          preferences?.currency_code || "USD"
+        ), 110, y);
+      doc.text(
+        formatCurrency(
+          Number(item.price) * Number(item.quantity),
+          preferences?.currency_code || "USD"
+        ), 140, y);
       y += 6;
     });
     y += 4;
   });
 
-  // Cost summary
+  // ----------------- Cost summary -----------------
   y += 5;
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
@@ -101,9 +145,9 @@ export function exportServiceRecordToPDF(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text("Calculated Total:", 18, y);
-  doc.text(formatCurrency(totalCost), 50, y);
+  doc.text(formatCurrency(totalCost, preferences?.currency_code || "USD"), 50, y);
 
-  // Detail summary
+  // ----------------- Detail summary -----------------
   y += 10;
   doc.setFont("helvetica", "bold");
   doc.text("Other Details", 15, y);
@@ -111,13 +155,19 @@ export function exportServiceRecordToPDF(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
 
-  doc.text("Mileage:", 18, y);
-  doc.text(service.mileage != null ? String(service.mileage) : "—", 50, y);
+  // --- Distance unit
+  const isMiles = preferences?.distance_unit === "miles";
+  const distanceUnit = isMiles ? "miles" : "km";
+  const currentMileageLabel = isMiles ? "Current Miles:" : "Current Kilometers:";
+  const nextOilChangeLabel = isMiles ? "Next Oil Change Miles:" : "Next Oil Change Kilometers:";
+
+  doc.text(currentMileageLabel, 18, y);
+  doc.text(service.mileage != null ? `${service.mileage.toLocaleString()} ${distanceUnit}` : "—", 68, y);
 
   if (nextOilChangeMileage) {
     y += 6;
-    doc.text("Next Oil Change Mileage:", 18, y);
-    doc.text(nextOilChangeMileage, 60, y);
+    doc.text(nextOilChangeLabel, 18, y);
+    doc.text(`${nextOilChangeMileage.toLocaleString()} ${distanceUnit}`, 68, y);
   }
 
   if (typeof service.labor_hours === "number") {

@@ -6,6 +6,7 @@ import { Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { exportServiceRecordToPDF } from "@/utils/serviceRecordPdfExport";
+import { useWorkshop } from "@/hooks/useWorkshop";
 import { useWorkshopPreferences } from "@/hooks/useWorkshopPreferences";
 
 // --- Utilities (copy from useServiceRecordForm) ---
@@ -81,6 +82,8 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
 
   // Get workshop distance unit and currency preferences
   const { preferences } = useWorkshopPreferences();
+  const { workshop } = useWorkshop();
+
   const isMiles = preferences?.distance_unit === "miles";
   const distanceUnit = isMiles ? "miles" : "km";
   const currentMileageLabel = isMiles ? "Current Miles" : "Current Kilometers";
@@ -100,7 +103,20 @@ const ServiceRecordDetailsModal = ({ isOpen, service, onClose }: Props) => {
 
   // Handler for PDF export
   const handleExportPDF = () => {
-    exportServiceRecordToPDF(service, parsedServices, totalCost, nextOilChangeMileage, plainNotes);
+    exportServiceRecordToPDF(
+      service,
+      parsedServices,
+      totalCost,
+      nextOilChangeMileage,
+      plainNotes,
+      workshop ? {
+        name: workshop.name,
+        address: workshop.address,
+        phone: workshop.phone,
+        email: workshop.email
+      } : undefined,
+      preferences
+    );
   };
 
   return (
