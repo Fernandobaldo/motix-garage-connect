@@ -1,11 +1,18 @@
-import { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface AddressFieldsProps {
-  address: string;
-  onAddressChange: (address: string) => void;
+  address: any; // Accepts object or string for backward compatibility
+  onAddressChange: (address: object) => void;
 }
 
 interface AddressComponents {
@@ -13,100 +20,114 @@ interface AddressComponents {
   city: string;
   state: string;
   postalCode: string;
-  country: string;
+  country: string; // country code
 }
 
 const countries = [
-  { code: 'US', name: 'United States' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'FR', name: 'France' },
-  { code: 'ES', name: 'Spain' },
-  { code: 'IT', name: 'Italy' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'BE', name: 'Belgium' },
-  { code: 'CH', name: 'Switzerland' },
-  { code: 'AT', name: 'Austria' },
-  { code: 'SE', name: 'Sweden' },
-  { code: 'NO', name: 'Norway' },
-  { code: 'DK', name: 'Denmark' },
-  { code: 'FI', name: 'Finland' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'KR', name: 'South Korea' },
-  { code: 'CN', name: 'China' },
-  { code: 'IN', name: 'India' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'MX', name: 'Mexico' },
-  { code: 'AR', name: 'Argentina' },
-  { code: 'CL', name: 'Chile' },
-  { code: 'ZA', name: 'South Africa' },
-  { code: 'EG', name: 'Egypt' },
-  { code: 'MA', name: 'Morocco' },
-  { code: 'NG', name: 'Nigeria' },
-  { code: 'KE', name: 'Kenya' },
+  { code: "US", name: "United States" },
+  { code: "CA", name: "Canada" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "AU", name: "Australia" },
+  { code: "DE", name: "Germany" },
+  { code: "FR", name: "France" },
+  { code: "ES", name: "Spain" },
+  { code: "IT", name: "Italy" },
+  { code: "NL", name: "Netherlands" },
+  { code: "BE", name: "Belgium" },
+  { code: "CH", name: "Switzerland" },
+  { code: "AT", name: "Austria" },
+  { code: "SE", name: "Sweden" },
+  { code: "NO", name: "Norway" },
+  { code: "DK", name: "Denmark" },
+  { code: "FI", name: "Finland" },
+  { code: "JP", name: "Japan" },
+  { code: "KR", name: "South Korea" },
+  { code: "CN", name: "China" },
+  { code: "IN", name: "India" },
+  { code: "BR", name: "Brazil" },
+  { code: "MX", name: "Mexico" },
+  { code: "AR", name: "Argentina" },
+  { code: "CL", name: "Chile" },
+  { code: "ZA", name: "South Africa" },
+  { code: "EG", name: "Egypt" },
+  { code: "MA", name: "Morocco" },
+  { code: "NG", name: "Nigeria" },
+  { code: "KE", name: "Kenya" },
 ];
 
-// Sort by country name for the dropdown (ascending, A–Z)
 const sortedCountries = [...countries].sort((a, b) => a.name.localeCompare(b.name));
+
+// Helper for legacy comma addresses (for compatibility only)
+function parseLegacyAddress(address: string): AddressComponents {
+  const parts = typeof address === "string" ? address.split(",").map((p) => p.trim()) : [];
+  const [street, city, state, postalCode, countryName] = [
+    parts[0] || "",
+    parts[1] || "",
+    parts[2] || "",
+    parts[3] || "",
+    parts[4] || "",
+  ];
+  let country = "US";
+  if (countryName) {
+    const matched = countries.find((c) => c.name === countryName);
+    if (matched) country = matched.code;
+  }
+  return { street, city, state, postalCode, country };
+}
+
+// Backward compatible loader: accepts object OR string
+function parseAddress(addr: any): AddressComponents {
+  if (
+    typeof addr === "object" &&
+    addr !== null &&
+    "street" in addr &&
+    "city" in addr &&
+    "state" in addr &&
+    "postalCode" in addr &&
+    "country" in addr
+  ) {
+    return {
+      street: addr.street || "",
+      city: addr.city || "",
+      state: addr.state || "",
+      postalCode: addr.postalCode || "",
+      country: addr.country || "US",
+    };
+  } else if (typeof addr === "string") {
+    return parseLegacyAddress(addr);
+  }
+  // fallback default
+  return {
+    street: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "US",
+  };
+}
 
 const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
   const [components, setComponents] = useState<AddressComponents>({
-    street: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'US',
+    street: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "US",
   });
 
-  // Parse existing address on mount and any time address changes
+  // Load and normalize address
   useEffect(() => {
-    if (address) {
-      // Expect: "street, city, state, postalCode, countryName"
-      const parts = address.split(',').map(part => part.trim());
-      const [street, city, state, postalCode, countryName] = [
-        parts[0] || '',
-        parts[1] || '',
-        parts[2] || '',
-        parts[3] || '',
-        parts[4] || '',
-      ];
-
-      // Convert country name back to country code if possible
-      let country = 'US';
-      if (countryName) {
-        const matched = countries.find(c => c.name === countryName);
-        if (matched) {
-          country = matched.code;
-        }
-      }
-
-      setComponents({
-        street,
-        city,
-        state,
-        postalCode,
-        country,
-      });
-    }
+    setComponents(parseAddress(address));
   }, [address]);
 
-  // Update the combined address when components change
+  // Pass updated structured address object up
   useEffect(() => {
-    const addressParts = [
-      components.street,
-      components.city,
-      components.state,
-      components.postalCode,
-      countries.find(c => c.code === components.country)?.name,
-    ].filter(Boolean);
-
-    onAddressChange(addressParts.join(', '));
-  }, [components, onAddressChange]);
+    onAddressChange({ ...components });
+    // eslint-disable-next-line
+  }, [components]);
 
   const updateComponent = (field: keyof AddressComponents, value: string) => {
-    setComponents(prev => ({ ...prev, [field]: value }));
+    setComponents((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -116,7 +137,7 @@ const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
         <Input
           id="street"
           value={components.street}
-          onChange={(e) => updateComponent('street', e.target.value)}
+          onChange={(e) => updateComponent("street", e.target.value)}
           placeholder="123 Main Street"
         />
       </div>
@@ -127,7 +148,7 @@ const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
           <Input
             id="city"
             value={components.city}
-            onChange={(e) => updateComponent('city', e.target.value)}
+            onChange={(e) => updateComponent("city", e.target.value)}
             placeholder="New York"
           />
         </div>
@@ -137,7 +158,7 @@ const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
           <Input
             id="state"
             value={components.state}
-            onChange={(e) => updateComponent('state', e.target.value)}
+            onChange={(e) => updateComponent("state", e.target.value)}
             placeholder="NY, Ontario, etc."
           />
         </div>
@@ -149,14 +170,17 @@ const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
           <Input
             id="postalCode"
             value={components.postalCode}
-            onChange={(e) => updateComponent('postalCode', e.target.value)}
+            onChange={(e) => updateComponent("postalCode", e.target.value)}
             placeholder="10001, K1A 0A6, etc."
           />
         </div>
 
         <div>
           <Label htmlFor="country">Country</Label>
-          <Select value={components.country} onValueChange={(value) => updateComponent('country', value)}>
+          <Select
+            value={components.country}
+            onValueChange={(value) => updateComponent("country", value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select country" />
             </SelectTrigger>
@@ -175,3 +199,4 @@ const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
 };
 
 export default AddressFields;
+

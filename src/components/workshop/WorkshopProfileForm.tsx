@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,7 +57,12 @@ const availableLanguages = [
   'Russian'
 ];
 
-const WorkshopProfileForm = ({ formData, onFormDataChange, onSubmit, isSubmitting }: WorkshopProfileFormProps) => {
+const WorkshopProfileForm = ({
+  formData,
+  onFormDataChange,
+  onSubmit,
+  isSubmitting,
+}: WorkshopProfileFormProps) => {
   const handleServiceChange = (service: string, checked: boolean) => {
     const newServices = checked 
       ? [...formData.services_offered, service]
@@ -86,7 +90,34 @@ const WorkshopProfileForm = ({ formData, onFormDataChange, onSubmit, isSubmittin
     onFormDataChange({ ...formData, working_hours: newWorkingHours });
   };
 
-  const handleAddressChange = (address: string) => {
+  // Convert address to display string for use outside of the address form
+  const displayAddress = (addressObj: any) => {
+    if (
+      typeof addressObj === "object" &&
+      addressObj !== null &&
+      "street" in addressObj
+    ) {
+      const countryObj = Array.isArray(addressObj.country) ? addressObj.country[0] : addressObj.country;
+      const countryName =
+        typeof countryObj === "string"
+          ? countries.find((c) => c.code === countryObj)?.name || ""
+          : "";
+      return [
+        addressObj.street,
+        addressObj.city,
+        addressObj.state,
+        addressObj.postalCode,
+        countryName,
+      ]
+        .filter(Boolean)
+        .join(", ");
+    }
+    // fallback for legacy
+    return String(addressObj || "");
+  };
+
+  // For initial load, convert legacy string to object (for backward compat)
+  const handleAddressChange = (address: any) => {
     onFormDataChange({ ...formData, address });
   };
 
@@ -133,7 +164,9 @@ const WorkshopProfileForm = ({ formData, onFormDataChange, onSubmit, isSubmittin
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => onFormDataChange({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      onFormDataChange({ ...formData, name: e.target.value })
+                    }
                     placeholder="Enter workshop name"
                     required
                   />
@@ -143,29 +176,35 @@ const WorkshopProfileForm = ({ formData, onFormDataChange, onSubmit, isSubmittin
                   <Input
                     id="phone"
                     value={formData.phone}
-                    onChange={(e) => onFormDataChange({ ...formData, phone: e.target.value })}
+                    onChange={(e) =>
+                      onFormDataChange({ ...formData, phone: e.target.value })
+                    }
                     placeholder="Enter phone number"
                   />
                 </div>
               </div>
-
               <div>
                 <Label>Workshop Address</Label>
                 <div className="mt-2">
-                  <AddressFields 
+                  <AddressFields
                     address={formData.address}
                     onAddressChange={handleAddressChange}
                   />
                 </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  {/* Show a summary display string */}
+                  {displayAddress(formData.address)}
+                </div>
               </div>
-
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => onFormDataChange({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    onFormDataChange({ ...formData, email: e.target.value })
+                  }
                   placeholder="Enter email address"
                 />
               </div>
