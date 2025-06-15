@@ -1,6 +1,6 @@
-
 import jsPDF from "jspdf";
 import { formatCurrency } from "@/utils/currency";
+import { countries } from "@/utils/countries";
 
 /**
  * Export a service record and its grouped services as a PDF,
@@ -41,8 +41,9 @@ export function exportServiceRecordToPDF(
   doc.setFontSize(11);
   y += 8;
   doc.setFont("helvetica", "normal");
+
   if (workshop?.address) {
-    doc.text(`Address: ${workshop.address}`, 105, y, { align: "center" }); y += 6;
+    doc.text(`Address: ${formatWorkshopAddress(workshop.address)}`, 105, y, { align: "center" }); y += 6;
   }
   if (workshop?.phone) {
     doc.text(`Phone: ${workshop.phone}`, 105, y, { align: "center" }); y += 6;
@@ -50,6 +51,7 @@ export function exportServiceRecordToPDF(
   if (workshop?.email) {
     doc.text(`Email: ${workshop.email}`, 105, y, { align: "center" }); y += 6;
   }
+
   // Separate with line under header
   y += 4;
   doc.setDrawColor(200, 200, 200);
@@ -210,4 +212,41 @@ export function exportServiceRecordToPDF(
   // Save
   const fileName = `ServiceRecord-${service.id || "Record"}.pdf`;
   doc.save(fileName);
+}
+
+// Helper: Format workshop address (obj or string) to readable string
+function formatWorkshopAddress(address: any): string {
+  if (!address) return "";
+  // If address is an object with standard keys
+  if (
+    typeof address === "object" &&
+    address !== null &&
+    "street" in address
+  ) {
+    // Find country name from code
+    let countryCode = Array.isArray(address.country) ? address.country[0] : address.country;
+    let countryName = "";
+    if (typeof countryCode === "string") {
+      countryName = countries.find((c) => c.code === countryCode)?.name || countryCode;
+    }
+    return [
+      address.street,
+      address.city,
+      address.state,
+      address.postalCode,
+      countryName,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  } else if (typeof address === "string" && address.startsWith("{") && address.endsWith("}")) {
+    // Try to parse stringified object (just in case!)
+    try {
+      const obj = JSON.parse(address);
+      return formatWorkshopAddress(obj);
+    } catch {
+      // fallback to plain string
+    }
+  }
+  // Legacy: plain string address, could include commas
+  return String(address);
 }
