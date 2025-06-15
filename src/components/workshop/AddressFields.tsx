@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,8 +48,8 @@ const countries = [
   { code: 'KE', name: 'Kenya' },
 ];
 
-// Add descending sort by country name for the dropdown
-const sortedCountries = [...countries].sort((a, b) => b.name.localeCompare(a.name));
+// Sort by country name for the dropdown (ascending, A–Z)
+const sortedCountries = [...countries].sort((a, b) => a.name.localeCompare(b.name));
 
 const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
   const [components, setComponents] = useState<AddressComponents>({
