@@ -230,30 +230,47 @@ const ServiceRecordCard = ({
                   // Default: use export utility directly
                   // Parse grouped services, notes as in details modal
                   const serviceTypeStr = service.service_type;
-                  // Safely ensure parts is always an array of objects
+                  // Defensive: ensure parts is always an array
                   const parts = Array.isArray(service.parts_used) ? service.parts_used : [];
-                  // Defensive filtering: only use objects
+
+                  // Defensive filtering: only objects with valid type
                   const validParts = parts.filter(
-                    (p) => typeof p === "object" && p !== null
+                    (p): p is { [key: string]: any } =>
+                      typeof p === "object" && p !== null
                   );
 
-                  // Copy of parseServicesFromRecord:
-                  const serviceTypes = typeof serviceTypeStr === 'string'
-                    ? serviceTypeStr.split(",").map((v) => ({ value: v.trim() }))
-                    : [{ value: "" }];
-                  let hasTypes = validParts.length > 0 && validParts.every((p) => "serviceType" in p && typeof p.serviceType === "string");
+                  // Safely parse serviceTypes
+                  const serviceTypes =
+                    typeof serviceTypeStr === "string"
+                      ? serviceTypeStr.split(",").map((v) => ({ value: v.trim() }))
+                      : [{ value: "" }];
+
+                  // Check if all parts have a string serviceType
+                  let hasTypes =
+                    validParts.length > 0 &&
+                    validParts.every(
+                      (p) =>
+                        "serviceType" in p &&
+                        typeof p.serviceType === "string"
+                    );
                   let parsedServices = [];
 
                   if (hasTypes) {
                     const itemsGrouped: Record<string, any[]> = {};
                     for (const p of validParts) {
-                      const tkey = typeof p.serviceType === "string" ? p.serviceType : "";
+                      // Only access serviceType if p is object and key exists
+                      const tkey =
+                        "serviceType" in p && typeof p.serviceType === "string"
+                          ? p.serviceType
+                          : "";
                       if (!itemsGrouped[tkey]) itemsGrouped[tkey] = [];
-                      // Only destructure if p is object and not null
-                      const { serviceType, ...rest } = p;
-                      itemsGrouped[tkey].push(rest);
+                      // Only destructure if p is a plain object
+                      if (typeof p === "object" && p !== null && "serviceType" in p) {
+                        const { serviceType, ...rest } = p as Record<string, any>;
+                        itemsGrouped[tkey].push(rest);
+                      }
                     }
-                    parsedServices = serviceTypes.map(stype => ({
+                    parsedServices = serviceTypes.map((stype) => ({
                       serviceType: stype,
                       items: itemsGrouped[stype.value] || [],
                     }));
