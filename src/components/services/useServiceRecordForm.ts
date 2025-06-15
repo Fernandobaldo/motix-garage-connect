@@ -245,18 +245,46 @@ export const useServiceRecordForm = (
             ),
           0
         );
-        // Insert into supabase
+        // Get correct workshop_id (from selectedVehicle or profile)
+        // If the selectedVehicle has a workshop_id, use it. If not, assume profile.id is current user's id—so look up the workshop from their profile+tenant.
+        let workshopId: string | undefined = undefined;
+        if (extra.selectedVehicle?.workshop_id) {
+          workshopId = extra.selectedVehicle.workshop_id;
+        } else if (profile?.tenant_id) {
+          // Find the workshop for this tenant/owner
+          const { data: workshops } = await supabase
+            .from("workshops")
+            .select("id, owner_id")
+            .eq("tenant_id", profile.tenant_id);
+          // Try to match owner to user
+          if (workshops && Array.isArray(workshops)) {
+            const owned = workshops.find(
+              (w: any) => w.owner_id === profile.id
+            );
+            if (owned) workshopId = owned.id;
+            else if (workshops.length > 0) workshopId = workshops[0].id; // fallback: use any workshop for tenant
+          }
+        }
+        if (!workshopId) {
+          toast({
+            title: "Unable to create record: Could not find workshop id for tenant.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Insert into supabase with correct workshop_id
         const { error } = await supabase.from("service_records").insert({
           tenant_id: profile.tenant_id,
           vehicle_id: extra.selectedVehicle.vehicle_id || extra.selectedVehicle.id,
-          workshop_id: profile.id,
+          workshop_id: workshopId, // <-- FIXED: always real workshop id
           client_id: extra.selectedClient.id,
           service_type: serviceTypeString,
           description: form.description,
           cost: totalCost,
           mileage: form.mileage ? parseInt(form.mileage) : null,
           labor_hours: null,
-          // Embedding the nextOilChangeMileage into technician_notes
           technician_notes: buildTechnicianNotes(
             form.nextOilChangeMileage,
             form.technicianNotes
