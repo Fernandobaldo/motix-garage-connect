@@ -9,7 +9,7 @@ import ServiceRecordCard from "./ServiceRecordCard";
 import ServiceRecordEditModal from "./ServiceRecordEditModal";
 import ServiceRecordDetailsModal from "./ServiceRecordDetailsModal";
 import ServiceHistoryList from "./ServiceHistoryList";
-import type { ServiceFilterState, ServiceRecordWithRelations, ServiceStatus } from "@/types/database";
+import type { ServiceFilterState, ServiceRecordWithRelations, ServiceStatus, ServiceHistoryWithRelations } from "@/types/database";
 
 interface ServiceRecordsListProps {
   filter?: 'active' | 'history' | 'all';
@@ -110,14 +110,15 @@ const ServiceRecordsList = ({
   });
 
   // Add history-specific handlers for editing, details, PDF, delete, status
+  import { useServiceHistory } from "@/hooks/useServiceHistory";
   const {
     deleteServiceHistory,
     isDeletePending,
     updateStatus: updateHistoryStatus,
     isStatusPending,
   } = useServiceHistory();
-  const [editingHistory, setEditingHistory] = useState<ServiceRecordWithRelations | null>(null);
-  const [detailsHistory, setDetailsHistory] = useState<ServiceRecordWithRelations | null>(null);
+  const [editingHistory, setEditingHistory] = useState<ServiceHistoryWithRelations | null>(null);
+  const [detailsHistory, setDetailsHistory] = useState<ServiceHistoryWithRelations | null>(null);
 
   // Filtering for service_history (completed/cancelled)
   const filteredHistory = serviceHistory.filter((record) => {
@@ -246,8 +247,8 @@ const ServiceRecordsList = ({
         </Card>
         {/* Updated ServiceHistoryList for full actions */}
         <ServiceHistoryList
-          history={sortedHistory as any}
-          onPdfExport={onPdfExport}
+          history={sortedHistory as ServiceHistoryWithRelations[]}
+          onPdfExport={onPdfExport ? ((record) => onPdfExport(record as any)) : undefined}
         />
       </div>
     );

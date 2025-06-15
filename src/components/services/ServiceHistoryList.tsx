@@ -43,25 +43,25 @@ const ServiceHistoryList = ({
       {history.map((record) => (
         <ServiceRecordCard
           key={record.id}
-          service={record as any}
+          service={record as any} // Accept the shape mismatch for now, since both have similar props
           onStatusUpdate={(id, status) => updateStatus({ id, status } as any)}
           onEdit={() => setEditingRecord(record)}
-          onPdfExport={onPdfExport}
+          onPdfExport={onPdfExport ? (() => onPdfExport(record)) : undefined}
           onShare={() => {}}
-          onViewDetails={(svc) => setDetailsRecord(svc as any)}
+          onViewDetails={() => setDetailsRecord(record)}
           isHistoryView={true}
         />
       ))}
       {/* Modals */}
       <ServiceRecordEditModal
         isOpen={!!editingRecord}
-        service={editingRecord!}
+        service={editingRecord as any}
         onClose={refreshOnEdit}
         onSuccess={refreshOnEdit}
       />
       <ServiceRecordDetailsModal
         isOpen={!!detailsRecord}
-        service={detailsRecord!}
+        service={detailsRecord as any}
         onClose={() => setDetailsRecord(null)}
       />
     </div>
@@ -69,3 +69,4 @@ const ServiceHistoryList = ({
 };
 
 export default ServiceHistoryList;
+
