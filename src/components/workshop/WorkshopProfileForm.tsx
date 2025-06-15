@@ -12,6 +12,7 @@ import NotificationTemplateManager from '@/components/notifications/Notification
 import NotificationPreferences from '@/components/notifications/NotificationPreferences';
 import BrandingManager from '@/components/workshop/BrandingManager';
 import AddressFields from './AddressFields';
+import { countries } from "@/utils/countries";
 
 interface WorkshopProfileFormProps {
   formData: {
