@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -74,6 +75,16 @@ function parseAddress(addr: any): AddressComponents {
   };
 }
 
+function useDebouncedCallback<T extends (...args: any[]) => void>(callback: T, delay: number) {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  return (...args: Parameters<T>) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      callback(...args);
+    }, delay);
+  };
+}
+
 const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
   const [components, setComponents] = useState<AddressComponents>({
     street: "",
@@ -83,19 +94,26 @@ const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
     country: "US",
   });
 
-  // Load and normalize address
+  // Parse address prop on mount or when it changes
   useEffect(() => {
     setComponents(parseAddress(address));
+    // eslint-disable-next-line
   }, [address]);
 
-  // Pass updated structured address object up
-  useEffect(() => {
-    onAddressChange({ ...components });
-    // eslint-disable-next-line
-  }, [components]);
+  // Debounce sending up the address, so typing fast doesn't call a parent update each keystroke
+  const debouncedAddressChange = useDebouncedCallback((addressObj: AddressComponents) => {
+    // Debugging: should only log when you type in an address field
+    console.log("[AddressFields] onAddressChange (debounced)", addressObj);
+    onAddressChange(addressObj);
+  }, 280);
 
+  // Update state and (debounced) notify parent on user field change
   const updateComponent = (field: keyof AddressComponents, value: string) => {
-    setComponents((prev) => ({ ...prev, [field]: value }));
+    setComponents((prev) => {
+      const updated = { ...prev, [field]: value };
+      debouncedAddressChange(updated);
+      return updated;
+    });
   };
 
   return (
