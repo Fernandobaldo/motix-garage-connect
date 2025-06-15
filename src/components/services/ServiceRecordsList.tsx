@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useServiceRecords } from "@/hooks/useServiceRecords";
+import { useUnifiedServiceRecords } from "@/hooks/useUnifiedServiceRecords";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
@@ -7,6 +8,7 @@ import ServiceFilters from "./ServiceFilters";
 import ServiceRecordCard from "./ServiceRecordCard";
 import ServiceRecordEditModal from "./ServiceRecordEditModal";
 import ServiceRecordDetailsModal from "./ServiceRecordDetailsModal";
+import ServiceHistoryList from "./ServiceHistoryList";
 import type { ServiceFilterState, ServiceRecordWithRelations, ServiceStatus } from "@/types/database";
 
 interface ServiceRecordsListProps {
@@ -19,12 +21,14 @@ const ServiceRecordsList = ({
   onPdfExport,
 }: ServiceRecordsListProps) => {
   const {
-    serviceRecords,
-    isLoading,
     updateServiceStatus,
     getServiceRecordById,
     refetch,
   } = useServiceRecords(); 
+
+  // Use unified hook for record/history
+  const { serviceRecords, serviceHistory, isLoading } = useUnifiedServiceRecords();
+
   const [filters, setFilters] = useState<ServiceFilterState>({});
 
   // Modal/UI state for details & edit
@@ -37,15 +41,15 @@ const ServiceRecordsList = ({
     setEditingService(null);
   };
 
-  // Filter services based on the main filter and additional filters
-  const filteredServices = serviceRecords.filter((service) => {
+  // Filtering function for active/cancelled
+  const filteredActive = serviceRecords.filter((service) => {
     // Apply main filter (active/history/all)
     if (filter === 'active') {
       const activeStatuses: ServiceStatus[] = ['pending', 'in_progress', 'awaiting_approval'];
       if (!activeStatuses.includes(service.status)) return false;
     } else if (filter === 'history') {
-      const historyStatuses: ServiceStatus[] = ['completed', 'cancelled'];
-      if (!historyStatuses.includes(service.status)) return false;
+      // don't show in this list!
+      return false;
     }
 
     // Apply status filter
@@ -105,9 +109,71 @@ const ServiceRecordsList = ({
     return true;
   });
 
+  // Filtering for service_history (completed/cancelled)
+  const filteredHistory = serviceHistory.filter((record) => {
+    // For history: show completed OR cancelled
+    if (filter !== "history") return false;
+    if (!["completed", "cancelled"].includes(record.status)) return false;
+
+    // Apply serviceType
+    if (filters.serviceType && record.service_type !== filters.serviceType) return false;
+
+    // Apply client name (on client)
+    if (filters.clientName) {
+      const clientName = record.client?.full_name?.toLowerCase() || '';
+      if (!clientName.includes(filters.clientName.toLowerCase())) return false;
+    }
+
+    // license plate
+    if (filters.licensePlate) {
+      const licensePlate = record.vehicle?.license_plate?.toLowerCase() || '';
+      if (!licensePlate.includes(filters.licensePlate.toLowerCase())) return false;
+    }
+
+    // date filter
+    if (filters.dateRange && filters.dateRange !== 'all') {
+      const recordDate = record.completed_at ? new Date(record.completed_at) : new Date(record.created_at);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+      switch (filters.dateRange) {
+        case 'today': {
+          const recordToday = new Date(
+            recordDate.getFullYear(),
+            recordDate.getMonth(),
+            recordDate.getDate()
+          );
+          if (recordToday.getTime() !== today.getTime()) return false;
+          break;
+        }
+        case 'week': {
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay());
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          weekEnd.setHours(23, 59, 59, 999);
+          if (recordDate < weekStart || recordDate > weekEnd) return false;
+          break;
+        }
+        case 'month': {
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+          const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          monthEnd.setHours(23, 59, 59, 999);
+          if (recordDate < monthStart || recordDate > monthEnd) return false;
+          break;
+        }
+      }
+    }
+    return true;
+  });
+
   // Sort services by date (newest first)
-  const sortedServices = [...filteredServices].sort((a, b) => {
+  const sortedActive = [...filteredActive].sort((a, b) => {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  const sortedHistory = [...filteredHistory].sort((a, b) => {
+    return new Date(b.completed_at ?? b.created_at).getTime() - new Date(a.completed_at ?? a.created_at).getTime();
   });
 
   const getFilterTitle = () => {
@@ -143,6 +209,37 @@ const ServiceRecordsList = ({
     );
   }
 
+  // Render for "history"
+  if (filter === "history") {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  Service History
+                  <Badge variant="secondary">{sortedHistory.length}</Badge>
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Completed and cancelled services
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ServiceFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+            />
+          </CardContent>
+        </Card>
+        <ServiceHistoryList history={sortedHistory} />
+      </div>
+    );
+  }
+
+  // Render for active (default)
   return (
     <div className="space-y-6">
       <Card>
@@ -150,11 +247,11 @@ const ServiceRecordsList = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                {getFilterTitle()}
-                <Badge variant="secondary">{sortedServices.length}</Badge>
+                Active Services
+                <Badge variant="secondary">{sortedActive.length}</Badge>
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                {getFilterDescription()}
+                Services currently in progress or pending
               </p>
             </div>
           </div>
@@ -167,7 +264,7 @@ const ServiceRecordsList = ({
         </CardContent>
       </Card>
 
-      {sortedServices.length === 0 ? (
+      {sortedActive.length === 0 ? (
         <Card>
           <CardContent className="py-12">
             <div className="text-center space-y-4">
@@ -175,12 +272,7 @@ const ServiceRecordsList = ({
               <div>
                 <h3 className="text-lg font-medium">No services found</h3>
                 <p className="text-muted-foreground">
-                  {filter === 'active' 
-                    ? "No active services at the moment"
-                    : filter === 'history'
-                    ? "No service history available"
-                    : "No services created yet"
-                  }
+                  No active services at the moment
                 </p>
               </div>
             </div>
@@ -188,7 +280,7 @@ const ServiceRecordsList = ({
         </Card>
       ) : (
         <div className="space-y-4">
-          {sortedServices.map((service) => (
+          {sortedActive.map((service) => (
             <ServiceRecordCard
               key={service.id}
               service={service}
@@ -197,7 +289,7 @@ const ServiceRecordsList = ({
               onEdit={() => setEditingService(service)}
               onShare={() => {}} // implement if sharing feature
               onViewDetails={(s) => setDetailsService(s)}
-              isHistoryView={filter === "history"}
+              isHistoryView={false}
             />
           ))}
         </div>
