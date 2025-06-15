@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -86,14 +85,36 @@ export const useServiceRecords = () => {
 
   const updateServiceStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: ServiceStatus }) => {
-      // If status is "completed", Supabase trigger will delete the row (move to history), so don't try to fetch .single()
+      console.log('Attempting to update service status:', { id, status });
+
+      // Always fetch the current record before the op for more robust logging
+      const { data: beforeRecord, error: beforeError } = await supabase
+        .from('service_records')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      if (beforeError) {
+        console.error('Error fetching service record before update:', beforeError);
+        throw beforeError;
+      }
+      if (!beforeRecord) {
+        console.warn('Service record not found before update.');
+        throw new Error('Service record not found.');
+      }
+
       if (status === 'completed') {
         const { error } = await supabase
           .from('service_records')
           .update({ status, updated_at: new Date().toISOString() })
           .eq('id', id);
-        if (error) throw error;
+
+        if (error) {
+          console.error('Error updating service to completed:', error);
+          throw error;
+        }
+        console.log('Successfully marked as completed; should now be moved by trigger.');
         return null; // row is gone
+
       } else {
         const { data, error } = await supabase
           .from('service_records')
@@ -101,22 +122,28 @@ export const useServiceRecords = () => {
           .eq('id', id)
           .select('*')
           .single();
-        if (error) throw error;
+
+        if (error) {
+          console.error('Error updating service status:', error);
+          throw error;
+        }
+        console.log('Successfully updated service status:', data);
         return data;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['service-records'] });
       queryClient.invalidateQueries({ queryKey: ['service-history'] });
       toast({
-        title: 'Success',
-        description: 'Service status updated successfully',
+        title: 'Status Change Success',
+        description: `Service status updated for record ${variables.id}.`,
       });
     },
-    onError: (error) => {
+    onError: (error: any, variables) => {
+      console.error('Update Service Status Failed:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to update service status',
+        title: `Error updating status of ${variables?.id ?? 'unknown'}`,
+        description: error?.message ?? 'Unknown error',
         variant: 'destructive',
       });
     },
