@@ -60,23 +60,37 @@ const AddressFields = ({ address, onAddressChange }: AddressFieldsProps) => {
     country: 'US',
   });
 
-  // Parse existing address on mount
+  // Parse existing address on mount and any time address changes
   useEffect(() => {
     if (address) {
-      // Try to parse existing address - this is a simple implementation
-      // In a real app, you might want to use a proper address parsing service
+      // Expect: "street, city, state, postalCode, countryName"
       const parts = address.split(',').map(part => part.trim());
-      if (parts.length >= 1) {
-        setComponents(prev => ({
-          ...prev,
-          street: parts[0] || '',
-          city: parts[1] || '',
-          state: parts[2] || '',
-          country: parts[3] || 'US',
-        }));
+      const [street, city, state, postalCode, countryName] = [
+        parts[0] || '',
+        parts[1] || '',
+        parts[2] || '',
+        parts[3] || '',
+        parts[4] || '',
+      ];
+
+      // Convert country name back to country code if possible
+      let country = 'US';
+      if (countryName) {
+        const matched = countries.find(c => c.name === countryName);
+        if (matched) {
+          country = matched.code;
+        }
       }
+
+      setComponents({
+        street,
+        city,
+        state,
+        postalCode,
+        country,
+      });
     }
-  }, []);
+  }, [address]);
 
   // Update the combined address when components change
   useEffect(() => {
